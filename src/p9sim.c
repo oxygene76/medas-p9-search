@@ -21,6 +21,9 @@
 //       Writes the last snapshot of <in.sa> as a new archive of one snapshot:
 //       the input of the next segment of a long run.
 //
+//   p9sim sha256 <file>
+//       Prints the SHA-256 of a file (for machines without sha256sum).
+//
 //   p9sim dump <in.sa> <snapshot>
 //       Prints t, then one line per particle: name id m x y z vx vy vz (%.17g,
 //       exact), for the analysis (tools/analyze.py). Snapshot -1: the last.
@@ -247,6 +250,26 @@ static int cmd_last(const char* in, const char* out) {
     return 0;
 }
 
+static int cmd_sha256(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        perror(path);
+        return 2;
+    }
+    struct sha256_ctx ctx;
+    sha256_init(&ctx);
+    uint8_t buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof buf, f)) > 0) sha256_update(&ctx, buf, n);
+    fclose(f);
+    uint8_t d[32];
+    char h[65];
+    sha256_final(&ctx, d);
+    hex(d, h);
+    printf("%s  %s\n", h, path);
+    return 0;
+}
+
 static int cmd_dump(const char* in, long snap) {
     struct reb_simulation* r = reb_simulation_create_from_file((char*)in, snap);
     if (!r) return 2;
@@ -264,7 +287,8 @@ int main(int argc, char* argv[]) {
     if ((argc == 6 || argc == 7) && !strcmp(argv[1], "run")) return cmd_run(argv[2], strtod(argv[3], NULL), strtol(argv[4], NULL, 10), argv[5], argc == 7 ? argv[6] : NULL);
     if (argc == 4 && !strcmp(argv[1], "state")) return cmd_state(argv[2], strtol(argv[3], NULL, 10));
     if (argc == 4 && !strcmp(argv[1], "last")) return cmd_last(argv[2], argv[3]);
+    if (argc == 3 && !strcmp(argv[1], "sha256")) return cmd_sha256(argv[2]);
     if (argc == 4 && !strcmp(argv[1], "dump")) return cmd_dump(argv[2], strtol(argv[3], NULL, 10));
-    fprintf(stderr, "usage: p9sim init <ic.txt> <out.sa> | run <in.sa> <t_end> <n_snapshots> <out.sa> [<out.state>] | last <in.sa> <out.sa> | state <in.sa> <snapshot> | dump <in.sa> <snapshot>\n");
+    fprintf(stderr, "usage: p9sim init <ic.txt> <out.sa> | run <in.sa> <t_end> <n_snapshots> <out.sa> [<out.state>] | last <in.sa> <out.sa> | sha256 <file> | state <in.sa> <snapshot> | dump <in.sa> <snapshot>\n");
     return 1;
 }

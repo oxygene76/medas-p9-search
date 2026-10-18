@@ -17,7 +17,12 @@ Running it (on any machine, with a p9sim built from the same code) gives
   p9job.py make  --out DIR --t-end T --snapshots N [--n-tp 4000 --tp-from A --tp-to B --seed 9]
   p9job.py next  --prev DIR --out DIR --t-end T --snapshots N     (next segment of a chain)
   p9job.py run   DIR [--p9sim build/gcc-O3/p9sim] [--result-name result.json]
-  p9job.py check DIR --expected HASH                              (exit 0 if equal)
+  p9job.py control DIR                                            (record the expected result)
+  p9job.py check DIR [--expected HASH]                            (exit 0 if equal)
+
+A control job carries its expected result in job.json under "control"
+(outside the job id, which only covers schema, code, params and input): a
+machine that computes it can be checked against a result known in advance.
 """
 
 import argparse
@@ -57,10 +62,15 @@ def code_version():
             "build": "make (see Makefile): -std=c99 -fno-fast-math -ffp-contract=off, any -O level and compiler"}
 
 
+def job_id(job):
+    """sha256 over the canonical JSON of schema, code, params and input (not id or control)."""
+    return hashlib.sha256(canonical({k: job[k] for k in ("schema", "code", "params", "input")})).hexdigest()
+
+
 def write_job(out: Path, params, input_sa: Path):
     job = {"schema": SCHEMA, "code": code_version(), "params": params,
            "input": {"file": "input.sa", "sha256": sha256_file(input_sa), "bytes": input_sa.stat().st_size}}
-    job["id"] = hashlib.sha256(canonical(job)).hexdigest()
+    job["id"] = job_id(job)
     (out / "job.json").write_text(json.dumps(job, indent=1, sort_keys=True) + "\n")
     return job
 
@@ -128,9 +138,22 @@ def cmd_run(a):
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
 
+def cmd_control(a):
+    d = Path(a.dir)
+    job = json.loads((d / "job.json").read_text())
+    r = json.loads((d / a.result_name).read_text())
+    if r["job_id"] != job["id"]:
+        sys.exit("result.json belongs to another job")
+    job["control"] = {"expected_result_sha256": r["result_sha256"], "expected_final_state_sha256": r["final_state_sha256"],
+                      "reference_build": r["build"], "reference_platform": r["platform"]["machine"]}
+    (d / "job.json").write_text(json.dumps(job, indent=1, sort_keys=True) + "\n")
+    print(f"control: {r['result_sha256']}")
+
+
 def cmd_check(a):
     r = json.loads((Path(a.dir) / a.result_name).read_text())
-    ok = r["result_sha256"] == a.expected
+    expected = a.expected or json.loads((Path(a.dir) / "job.json").read_text())["control"]["expected_result_sha256"]
+    ok = r["result_sha256"] == expected
     print(("OK " if ok else "MISMATCH ") + r["result_sha256"])
     sys.exit(0 if ok else 1)
 
@@ -160,12 +183,15 @@ def main():
     r.add_argument("--prefix", default="", help="e.g. 'qemu-aarch64' or 'node tools/run_wasm.mjs'")
     r.add_argument("--output", default="output.sa")
     r.add_argument("--result-name", default="result.json")
+    k = sub.add_parser("control")
+    k.add_argument("dir")
+    k.add_argument("--result-name", default="result.json")
     c = sub.add_parser("check")
     c.add_argument("dir")
-    c.add_argument("--expected", required=True)
+    c.add_argument("--expected", default=None)
     c.add_argument("--result-name", default="result.json")
     a = ap.parse_args()
-    {"make": cmd_make, "next": cmd_next, "run": cmd_run, "check": cmd_check}[a.cmd](a)
+    {"make": cmd_make, "next": cmd_next, "run": cmd_run, "control": cmd_control, "check": cmd_check}[a.cmd](a)
 
 
 if __name__ == "__main__":
