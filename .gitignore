@@ -1,0 +1,5 @@
+build/
+runs/
+third_party/rebound-*/
+third_party/*.tar.gz
+__pycache__/
