@@ -22,13 +22,20 @@
 //       the input of the next segment of a long run.
 //
 //   p9sim dump <in.sa> <snapshot>
-//       Prints t, then one line per particle: name m x y z vx vy vz (%.17g,
+//       Prints t, then one line per particle: name id m x y z vx vy vz (%.17g,
 //       exact), for the analysis (tools/analyze.py). Snapshot -1: the last.
 //
 // Canonical state (independent of REBOUND's file layout, wall times and
-// random seeds stored in a SimulationArchive): "P9STATE1", t, N, then per
-// particle its name (32 bytes, zero padded), m, x, y, z, vx, vy, vz, all
-// doubles as IEEE-754 binary64 little endian.
+// random seeds stored in a SimulationArchive): "P9STATE2", t, N, then per
+// particle its id (uint64), m, x, y, z, vx, vy, vz; doubles as IEEE-754
+// binary64, everything little endian.
+//
+// Particle ids: `init` numbers the particles of the start file 0, 1, 2, …
+// and stores the number in the particle's radius r, which WHFast does not use
+// (no collisions). Names are kept for reading, but not hashed: REBOUND 5.2.2
+// restores names from a SimulationArchive through stored pointers
+// (binarydata.c, REB_CHARP_LIST), which fails when the reading machine has
+// another pointer size (WebAssembly is 32-bit): the names come out shifted.
 //
 // Reproducibility: integration uses only + - * / and sqrt (exact in IEEE-754)
 // once the start state exists; build without -ffast-math and with
@@ -42,7 +49,7 @@
 #include "rebound.h"
 #include "sha256.h"
 
-#define STATE_MAGIC "P9STATE1"
+#define STATE_MAGIC "P9STATE2"
 
 // Test particles are removed when they leave this region (au): beyond
 // R_OUT they are effectively lost to the Oort cloud, inside R_IN they reach
@@ -63,7 +70,7 @@ static void put_double(uint8_t* b, double d) {
 }
 
 static void state_hash(struct reb_simulation* r, struct sha256_ctx* ctx, FILE* out) {
-    uint8_t buf[32 + 7 * 8];
+    uint8_t buf[8 + 7 * 8];
     sha256_update(ctx, (const uint8_t*)STATE_MAGIC, 8);
     if (out) fwrite(STATE_MAGIC, 1, 8, out);
     uint8_t head[16];
@@ -73,10 +80,9 @@ static void state_hash(struct reb_simulation* r, struct sha256_ctx* ctx, FILE* o
     if (out) fwrite(head, 1, 16, out);
     for (size_t i = 0; i < r->N; i++) {
         const struct reb_particle* p = &r->particles[i];
-        memset(buf, 0, 32);
-        if (p->name) strncpy((char*)buf, p->name, 31);
+        put_le64(buf, (uint64_t)p->r);  // the particle id (see above)
         const double v[7] = {p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz};
-        for (int k = 0; k < 7; k++) put_double(buf + 32 + 8 * k, v[k]);
+        for (int k = 0; k < 7; k++) put_double(buf + 8 + 8 * k, v[k]);
         sha256_update(ctx, buf, sizeof buf);
         if (out) fwrite(buf, 1, sizeof buf, out);
     }
@@ -131,6 +137,7 @@ static int cmd_init(const char* ic, const char* out) {
                 fprintf(stderr, "bad particle line: %s", line);
                 return 2;
             }
+            p.r = (double)r->N;  // particle id: its line number among the particles, 0-based
             reb_simulation_add(r, p);
             reb_particle_set_name(&r->particles[r->N - 1], name);
         }
@@ -246,7 +253,7 @@ static int cmd_dump(const char* in, long snap) {
     printf("t %.17g\n", r->t);
     for (size_t i = 0; i < r->N; i++) {
         const struct reb_particle* p = &r->particles[i];
-        printf("%s %.17g %.17g %.17g %.17g %.17g %.17g %.17g\n", p->name ? p->name : "-", p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz);
+        printf("%s %.0f %.17g %.17g %.17g %.17g %.17g %.17g %.17g\n", p->name ? p->name : "-", p->r, p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz);
     }
     reb_simulation_free(r);
     return 0;
@@ -258,6 +265,6 @@ int main(int argc, char* argv[]) {
     if (argc == 4 && !strcmp(argv[1], "state")) return cmd_state(argv[2], strtol(argv[3], NULL, 10));
     if (argc == 4 && !strcmp(argv[1], "last")) return cmd_last(argv[2], argv[3]);
     if (argc == 4 && !strcmp(argv[1], "dump")) return cmd_dump(argv[2], strtol(argv[3], NULL, 10));
-    fprintf(stderr, "usage: p9sim init <ic.txt> <out.sa> | run <in.sa> <t_end> <n_snapshots> <out.sa> [<out.state>] | state <in.sa> <snapshot> | dump <in.sa> <snapshot>\n");
+    fprintf(stderr, "usage: p9sim init <ic.txt> <out.sa> | run <in.sa> <t_end> <n_snapshots> <out.sa> [<out.state>] | last <in.sa> <out.sa> | state <in.sa> <snapshot> | dump <in.sa> <snapshot>\n");
     return 1;
 }

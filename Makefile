@@ -26,7 +26,7 @@ OUT := build/$(VARIANT)
 REB_SRC := $(filter-out %/glad.c %/communication_mpi.c %/server.c %/integrator_whfast512.c,$(wildcard $(REBOUND)/src/*.c))
 SRC := src/p9sim.c src/sha256.c src/whfast512_stub.c
 
-CFLAGS := -std=c99 $(OPT) -fno-fast-math -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -I$(REBOUND)/src -Isrc -w $(CFLAGS_EXTRA)
+CFLAGS := -std=c99 -fno-fast-math $(OPT) -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -I$(REBOUND)/src -Isrc -w $(CFLAGS_EXTRA)
 LDLIBS := -lm $(LDFLAGS_EXTRA)
 
 $(OUT)/p9sim: $(SRC) $(REB_SRC) Makefile
@@ -37,3 +37,20 @@ $(OUT)/p9sim: $(SRC) $(REB_SRC) Makefile
 .PHONY: clean
 clean:
 	rm -rf build/gcc* build/clang* build/zig*
+
+# Cross builds with zig (https://ziglang.org, 0.16.0: clang 21 with musl and WASI libcs).
+ZIG ?= zig
+.PHONY: aarch64 wasm
+aarch64:   # static ARM64 binary (musl); run with qemu-aarch64 on x86
+	$(MAKE) VARIANT=zig-aarch64$(OPT) CC="$(ZIG) cc -target aarch64-linux-musl -static"
+wasm:      # WebAssembly (WASI preview 1); run with: node tools/run_wasm.mjs build/zig-wasm32$(OPT)/p9sim ...
+	$(MAKE) VARIANT=zig-wasm32$(OPT) CC="$(ZIG) cc -target wasm32-wasi" \
+	  CFLAGS_EXTRA="-D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS" \
+	  LDFLAGS_EXTRA="-lwasi-emulated-signal -lwasi-emulated-process-clocks"
+
+# Counter-examples for the reproducibility check (never for real runs):
+# fused multiply-add and -ffast-math change the rounding, so the hash changes.
+.PHONY: counterexamples
+counterexamples:
+	$(MAKE) VARIANT=gcc-O3-fma CC=gcc OPT="-O3 -march=x86-64-v3" CFLAGS_EXTRA="-ffp-contract=fast"
+	$(MAKE) VARIANT=gcc-O3-fastmath CC=gcc OPT="-O3 -ffast-math"
