@@ -51,8 +51,8 @@
 #include <time.h>
 #include "rebound.h"
 #include "sha256.h"
+#include "p9state.h"
 
-#define STATE_MAGIC "P9STATE2"
 
 // Test particles are removed when they leave this region (au): beyond
 // R_OUT they are effectively lost to the Oort cloud, inside R_IN they reach
@@ -62,39 +62,6 @@
 #define R_OUT 10000.0
 #define R_IN 5.0
 #define CHECK_EVERY 1000
-
-static void put_le64(uint8_t* b, uint64_t v) {
-    for (int i = 0; i < 8; i++) b[i] = (uint8_t)(v >> (8 * i));
-}
-static void put_double(uint8_t* b, double d) {
-    uint64_t v;
-    memcpy(&v, &d, 8);
-    put_le64(b, v);
-}
-
-static void state_hash(struct reb_simulation* r, struct sha256_ctx* ctx, FILE* out) {
-    uint8_t buf[8 + 7 * 8];
-    sha256_update(ctx, (const uint8_t*)STATE_MAGIC, 8);
-    if (out) fwrite(STATE_MAGIC, 1, 8, out);
-    uint8_t head[16];
-    put_double(head, r->t);
-    put_le64(head + 8, (uint64_t)r->N);
-    sha256_update(ctx, head, 16);
-    if (out) fwrite(head, 1, 16, out);
-    for (size_t i = 0; i < r->N; i++) {
-        const struct reb_particle* p = &r->particles[i];
-        put_le64(buf, (uint64_t)p->r);  // the particle id (see above)
-        const double v[7] = {p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz};
-        for (int k = 0; k < 7; k++) put_double(buf + 8 + 8 * k, v[k]);
-        sha256_update(ctx, buf, sizeof buf);
-        if (out) fwrite(buf, 1, sizeof buf, out);
-    }
-}
-
-static void hex(const uint8_t d[32], char s[65]) {
-    for (int i = 0; i < 32; i++) sprintf(s + 2 * i, "%02x", d[i]);
-    s[64] = 0;
-}
 
 static size_t n_removed = 0;
 
@@ -201,23 +168,23 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         }
         reb_simulation_synchronize(r);
         reb_simulation_save_to_file(r, out);
-        state_hash(r, &ctx, NULL);
+        p9_state_hash(r, &ctx, NULL);
         fprintf(stderr, "snapshot %ld/%ld t=%.6g N=%zu removed=%zu wall=%.1fs\n", k, n_snap, r->t, r->N, n_removed, now_s() - w0);
     }
     uint8_t d[32];
     char h[65];
     sha256_final(&ctx, d);
-    hex(d, h);
+    p9_hex(d, h);
     char hs[65] = "";
     if (state_out) {
         FILE* f = fopen(state_out, "wb");
         struct sha256_ctx c2;
         sha256_init(&c2);
-        state_hash(r, &c2, f);
+        p9_state_hash(r, &c2, f);
         fclose(f);
         uint8_t d2[32];
         sha256_final(&c2, d2);
-        hex(d2, hs);
+        p9_hex(d2, hs);
     }
     const double e1 = reb_simulation_energy(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu wall_s=%.3f dE_rel=%.3e\n", h, hs, r->t,
@@ -231,11 +198,11 @@ static int cmd_state(const char* in, long snap) {
     if (!r) return 2;
     struct sha256_ctx ctx;
     sha256_init(&ctx);
-    state_hash(r, &ctx, NULL);
+    p9_state_hash(r, &ctx, NULL);
     uint8_t d[32];
     char h[65];
     sha256_final(&ctx, d);
-    hex(d, h);
+    p9_hex(d, h);
     printf("state_sha256=%s t=%.17g N=%zu\n", h, r->t, r->N);
     reb_simulation_free(r);
     return 0;
@@ -265,7 +232,7 @@ static int cmd_sha256(const char* path) {
     uint8_t d[32];
     char h[65];
     sha256_final(&ctx, d);
-    hex(d, h);
+    p9_hex(d, h);
     printf("%s  %s\n", h, path);
     return 0;
 }
