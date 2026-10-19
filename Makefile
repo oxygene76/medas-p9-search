@@ -28,6 +28,7 @@ SRC := src/p9sim.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_st
 # Version compiled into the programs (printed with every result): the VERSION
 # file of a package, else git describe.
 P9_VERSION ?= $(shell cat VERSION 2>/dev/null || git describe --always --dirty 2>/dev/null || echo unknown)
+.DEFAULT_GOAL := $(OUT)/p9sim
 # A new version rebuilds every program (the version is compiled in).
 VERSION_STAMP := build/.version-$(P9_VERSION)
 $(VERSION_STAMP):
