@@ -144,6 +144,51 @@ P9_HD int p9_kick_tp(p9_body* p, const double* q, const double* gm, const double
     return enc;
 }
 
+// J2 of the central body (model "j2": the Sun with Jupiter, Saturn and Uranus
+// absorbed, Batygin & Brown 2016, AJ 151, 22, sec. 5.2). Potential of the
+// quadrupole Phi = mu J2 R^2 (3 s^2 - r^2) / (2 r^5), s = r . n with n the
+// unit axis (the absorbed planets' total angular momentum); acceleration
+// -grad Phi = 3/2 mu J2 R^2 / r^5 ((5 s^2 / r^2 - 1) r - 2 s n), with r the
+// position relative to the Sun (democratic heliocentric: a function of Q only,
+// so it belongs to the kick). j2[0] = mu J2 R^2, j2[1..3] = n.
+P9_HD void p9_j2_acc(double x, double y, double z, const double* j2, double* ax, double* ay, double* az) {
+    const double r2 = x * x + y * y + z * z;
+    const double ir2 = 1.0 / r2;
+    const double ir5 = ir2 * ir2 / sqrt(r2);
+    const double s = x * j2[1] + y * j2[2] + z * j2[3];
+    const double k = 1.5 * j2[0] * ir5;
+    const double c = 5.0 * s * s * ir2 - 1.0;
+    const double t = 2.0 * s;
+    *ax += k * (c * x - t * j2[1]);
+    *ay += k * (c * y - t * j2[2]);
+    *az += k * (c * z - t * j2[3]);
+}
+
+// Kick with the J2 of the central body; also returns np (one past the planets)
+// when the particle is within r_remove of the Sun (j2[4] = r_remove^2): there,
+// among the absorbed planets, the model does not hold (Batygin & Brown 2016
+// removed perihelia inside Uranus' orbit).
+P9_HD int p9_kick_tp_j2(p9_body* p, const double* q, const double* gm, const double* r2enc, int np, double h, const double* j2) {
+    double ax = 0.0, ay = 0.0, az = 0.0;
+    int enc = -1;
+    for (int j = 0; j < np; j++) {
+        const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
+        const double d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < r2enc[j] && enc < 0) enc = j;
+        const double d = sqrt(d2);
+        const double k = gm[j] / (d2 * d);
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    if (p->x * p->x + p->y * p->y + p->z * p->z < j2[4] && enc < 0) enc = np;
+    p9_j2_acc(p->x, p->y, p->z, j2, &ax, &ay, &az);
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+    return enc;
+}
+
 P9_HD void p9_jump(p9_body* p, const double* w, double h) {
     p->x += h * w[0];
     p->y += h * w[1];
@@ -158,6 +203,17 @@ P9_HD int p9_step_tp(p9_body* p, const double* q, const double* wa, const double
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
     const int enc = p9_kick_tp(p, q, gm, r2enc, np, dt);
+    p9_jump(p, wb, h);
+    p9_kepler(p, mu0, dt);
+    return enc;
+}
+
+// p9_step_tp with the J2 of the central body (model "j2").
+P9_HD int p9_step_tp_j2(p9_body* p, const double* q, const double* wa, const double* wb, const double* gm, const double* r2enc, int np, double mu0,
+                        double dt, const double* j2) {
+    const double h = 0.5 * dt;
+    p9_jump(p, wa, h);
+    const int enc = p9_kick_tp_j2(p, q, gm, r2enc, np, dt, j2);
     p9_jump(p, wb, h);
     p9_kepler(p, mu0, dt);
     return enc;

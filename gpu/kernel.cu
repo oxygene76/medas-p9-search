@@ -17,6 +17,7 @@
 
 __constant__ double c_gm[P9_MAX_PLANETS];
 __constant__ double c_r2enc[P9_MAX_PLANETS];  // squared encounter radii (0: no check)
+__constant__ double c_j2[5];                   // model "j2": mu J2 R^2, axis n, r_remove^2 (whdh.h)
 
 // Table of a block of nb steps (layout shared with p9gpu.c):
 //   q[nb * np * 3]          planets' positions relative to the Sun at the kick of each step
@@ -96,8 +97,37 @@ __global__ void p9_advance_t(p9_body* __restrict__ st, int* __restrict__ alive, 
     alive[i] = a;
 }
 
+// p9_advance with the J2 of the central body (model "j2", whdh.h; double only).
+__global__ void p9_advance_j2(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const double* __restrict__ tab, int np, int nb,
+                              unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= ntp || alive[i] != 1) return;
+    const double* q = tab;
+    const double* wa = tab + (size_t)nb * np * 3;
+    const double* wb = wa + (size_t)nb * 3;
+    p9_body p = st[i];
+    int a = 1;
+    for (int k = 0; k < nb; k++) {
+        const int enc = p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, c_r2enc, np, mu0, dt, c_j2);
+        if (enc >= 0) {
+            a = -1 - enc;
+            break;
+        }
+        if ((step0 + k + 1) % (unsigned long long)check_every == 0) {
+            const p9_body x = p9_synchronous(p, mu0, dt);
+            const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
+            if (r2 > rout2 || r2 < rin2) {
+                a = 0;
+                break;
+            }
+        }
+    }
+    st[i] = p;
+    alive[i] = a;
+}
+
 struct p9g {
-    int ntp, np, max_nb, cur, real;
+    int ntp, np, max_nb, cur, real, j2;
     p9_body* d_st;
     int* d_alive;
     double* d_tab[2];
@@ -149,6 +179,15 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
 
 extern "C" const char* p9g_name(p9g* g) { return g->name; }
 
+extern "C" int p9g_set_j2(p9g* g, const double* j2, char* err, int errlen) {
+    if (g->real != P9_REAL_DOUBLE) {
+        snprintf(err, errlen, "model j2: double only");
+        return 1;
+    }
+    g->j2 = 1;
+    return fail(cudaMemcpyToSymbol(c_j2, j2, sizeof(double) * 5), "j2", err, errlen);
+}
+
 // Waiting without occupying a CPU core: CUDA's own waits spin, and with
 // "blocking sync" the WSL2 driver still keeps a core busy in system calls.
 // Polling with a 1 ms sleep costs at most 1 ms per block of steps.
@@ -194,7 +233,10 @@ extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, d
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
     if (g->ntp > 0) {
         const int threads = 128, blocks = (g->ntp + threads - 1) / threads;
-        switch (g->real) {
+        if (g->j2) {
+            p9_advance_j2<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
+                                                             rout2);
+        } else switch (g->real) {
             case P9_REAL_DOUBLE:
                 p9_advance<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                               rout2);

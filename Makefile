@@ -81,13 +81,15 @@ GPU_CXXFLAGS := -std=c++17 -fno-fast-math -O3 -ffp-contract=off -Isrc -Igpu -w
 GPU_CFLAGS := -std=c99 -fno-fast-math -O3 -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -DP9_VERSION='"$(P9_VERSION)"' -I$(REBOUND)/src -Isrc -Igpu -w
 
 .PHONY: gpu gpu-cpu
-gpu: build/gpu/p9gpu
-build/gpu/p9gpu: gpu/kernel.cu gpu/cpu_t.cpp $(GPU_HDR) $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
-	@mkdir -p build/gpu
-	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Isrc -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o build/gpu/kernel.o
-	$(CXX) $(GPU_CXXFLAGS) -c gpu/cpu_t.cpp -o build/gpu/cpu_t.o
-	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) build/gpu/kernel.o build/gpu/cpu_t.o -L$(CUDA_LIB) -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
-	@echo "gpu: $(NVCC) --fmad=false $(GPU_ARCH); host gcc $(GPU_CFLAGS)" > build/gpu/BUILD-FLAGS
+# GPU_DIR=build/gpu-dev builds elsewhere (e.g. while runs use build/gpu/p9gpu)
+GPU_DIR ?= build/gpu
+gpu: $(GPU_DIR)/p9gpu
+$(GPU_DIR)/p9gpu: gpu/kernel.cu gpu/cpu_t.cpp $(GPU_HDR) $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
+	@mkdir -p $(GPU_DIR)
+	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Isrc -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o $(GPU_DIR)/kernel.o
+	$(CXX) $(GPU_CXXFLAGS) -c gpu/cpu_t.cpp -o $(GPU_DIR)/cpu_t.o
+	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) $(GPU_DIR)/kernel.o $(GPU_DIR)/cpu_t.o -L$(CUDA_LIB) -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
+	@echo "gpu: $(NVCC) --fmad=false $(GPU_ARCH); host gcc $(GPU_CFLAGS)" > $(GPU_DIR)/BUILD-FLAGS
 
 # The same integrator without CUDA (P9GPU_MODE=cpu only): reference and CPU speed.
 gpu-cpu: build/gpu-cpu/p9gpu
@@ -111,10 +113,14 @@ build/gpu-wasm/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 # build/gpu-cpu; leaves the other builds alone.
 PY ?= build/venv/bin/python
 .PHONY: test
-test: build/test/test_encounter gpu-cpu
+test: build/test/test_encounter build/test/test_j2 gpu-cpu
 	$(MAKE) VARIANT=test
 	build/test/test_encounter
+	build/test/test_j2
 	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_p9job.py -v
+build/test/test_j2: tests/test_j2.c gpu/whdh.h
+	@mkdir -p build/test
+	$(CC) -std=c99 -O2 -Wall -Wextra -ffp-contract=off -Igpu -o $@ tests/test_j2.c -lm
 build/test/test_encounter: tests/test_encounter.c src/p9encounter.c src/p9encounter.h
 	@mkdir -p build/test
 	$(CC) -std=c99 -O2 -Wall -Wextra -Isrc -o $@ tests/test_encounter.c src/p9encounter.c

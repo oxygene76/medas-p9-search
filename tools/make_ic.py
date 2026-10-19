@@ -119,8 +119,41 @@ def planets():
     return [(n, m, equatorial_to_ecliptic(p), equatorial_to_ecliptic(v)) for n, m, p, v in out]
 
 
-def build(n_tp, seed, tp_from, tp_to):
+def absorb(bodies, names):
+    """Model "j2" (Batygin & Brown 2016, AJ 151, 22, sec. 5.2): the planets in names merged into the
+    central body (mass, centre of mass), which gets the quadrupole of their orbit-averaged rings,
+    J2 R^2 = 1/2 sum m_i a_i^2 / M (a_i: heliocentric osculating semi-major axes), about the axis
+    of their total angular momentum. Returns the new list of bodies and the J2 parameters."""
+    sun = bodies[0]
+    gone = [b for b in bodies if b[0] in names]
+    if len(gone) != len(names):
+        raise SystemExit(f"--j2: unknown body in {names}")
+    M = sun[1] + sum(b[1] for b in gone)
+    P = (sun[1] * sun[2] + sum(b[1] * b[2] for b in gone)) / M
+    V = (sun[1] * sun[3] + sum(b[1] * b[3] for b in gone)) / M
+    s = 0.0
+    L = np.zeros(3)
+    a_out = {}
+    for name, m, p, v in gone:
+        r, u = p - sun[2], v - sun[3]
+        a = 1 / (2 / np.linalg.norm(r) - u @ u / (G * (sun[1] + m)))
+        a_out[name] = a
+        s += m * a * a
+        L += m * np.cross(p - P, v - V)
+    n = L / np.linalg.norm(L)
+    j2 = {"absorbed": list(names), "j2r2_au2": repr(float(s / (2 * M))), "mu_j2r2": repr(float(G * M * s / (2 * M))),
+          "axis": [repr(float(x)) for x in n], "r_remove_au": f"{max(a_out.values()):.2f}",
+          "note": "J2 R^2 = 1/2 sum m a^2 / M of the absorbed planets; test particles within r_remove (the outermost absorbed "
+                  "planet's semi-major axis) are removed"}
+    rest = [("Sun", M, P, V)] + [b for b in bodies[1:] if b[0] not in names]
+    return rest, j2
+
+
+def build(n_tp, seed, tp_from, tp_to, j2_names=None):
     bodies = planets()
+    j2 = None
+    if j2_names:
+        bodies, j2 = absorb(bodies, j2_names)
     sun = bodies[0]
     m9 = P9["m_earth"] * EARTH_IN_SUN
     e9 = 1 - P9["q"] / P9["a"]
@@ -143,7 +176,7 @@ def build(n_tp, seed, tp_from, tp_to):
     # ids: 0..5 the massive bodies, 6 + i test particle i of the whole set (also in a slice)
     for i in range(tp_from, tp_to):
         rows.append((f"tp{i:05d}", 0.0, sun[2] + tp_p[i] - com_p, sun[3] + tp_v[i] - com_v, len(bodies) + i))
-    return rows
+    return rows, j2
 
 
 def main():
@@ -154,13 +187,18 @@ def main():
     ap.add_argument("--tp-from", type=int, default=0)
     ap.add_argument("--tp-to", type=int, default=None)
     ap.add_argument("--dt", type=float, default=0.5)
+    ap.add_argument("--j2", default=None, help='model "j2": planets merged into the central body, e.g. Jupiter,Saturn,Uranus')
+    ap.add_argument("--j2-out", default=None, help="file for the J2 parameters (JSON)")
     args = ap.parse_args()
     tp_to = args.n_tp if args.tp_to is None else args.tp_to
-    rows = build(args.n_tp, args.seed, args.tp_from, tp_to)
+    rows, j2 = build(args.n_tp, args.seed, args.tp_from, tp_to, args.j2.split(",") if args.j2 else None)
+    if j2 and args.j2_out:
+        import json
+        open(args.j2_out, "w").write(json.dumps(j2, indent=1) + "\n")
     with open(args.out, "w") as f:
         f.write("# p9sim start values, written by tools/make_ic.py (see its docstring); values are Python repr (exact)\n")
         f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}\n")
-        f.write(f"G {G!r}\ndt {args.dt!r}\nN_active 6\ncorrector 0\n")
+        f.write(f"G {G!r}\ndt {args.dt!r}\nN_active {sum(1 for r in rows if r[1] > 0)}\ncorrector 0\n")
         for name, m, p, v, pid in rows:
             vals = [float(m), *map(float, p), *map(float, v)]
             f.write("p " + name + " " + " ".join(repr(x) for x in vals) + f" {pid}\n")

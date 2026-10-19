@@ -10,6 +10,9 @@
 //                        on the GPU; cpu: the same code on one CPU core (the
 //                        reference: it must give the same bits as the GPU)
 //   P9GPU_BLOCK=2000     steps per GPU launch (planets computed ahead per block)
+//   P9_J2="muJ2R2,nx,ny,nz,r_remove"   model "j2" (whdh.h): the central body
+//                        has a J2 (tools/p9job.py sets it from params.model);
+//                        test particles within r_remove of the Sun are removed
 //   P9GPU_REAL=double    number type of the test particles' integrator:
 //                        double (default), double-t, float, df64 (gpu/p9gpu_real.h)
 //
@@ -57,6 +60,8 @@ typedef struct {
     double mu0;        // G m0
     double m[P9_MAX_PLANETS], gm[P9_MAX_PLANETS];
     p9_body b[P9_MAX_PLANETS];  // Q (relative to the Sun) and barycentric velocity
+    int j2;                     // model "j2": J2 of the central body (j2v as in whdh.h)
+    double j2v[5];
 } planets;
 
 static void planets_kick(planets* P, double h) {
@@ -73,6 +78,8 @@ static void planets_kick(planets* P, double h) {
             a[i][2] += k * dz;
         }
     }
+    if (P->j2)
+        for (int i = 0; i < P->np; i++) p9_j2_acc(P->b[i].x, P->b[i].y, P->b[i].z, P->j2v, &a[i][0], &a[i][1], &a[i][2]);
     for (int i = 0; i < P->np; i++) {
         P->b[i].vx += h * a[i][0];
         P->b[i].vy += h * a[i][1];
@@ -212,7 +219,8 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
-            const int enc = p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
+            const int enc = P->j2 ? p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, P->j2v)
+                                  : p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
             if (enc >= 0) {
                 a = -1 - enc;
                 break;
@@ -283,6 +291,27 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     int* was_alive = malloc(sizeof(int) * (ntp > 0 ? ntp : 1));
     for (int i = 0; i < ntp; i++) alive[i] = was_alive[i] = 1;
     to_dh(r, &P, tp, ntp, &com);
+    P.j2 = 0;
+    const char* j2env = getenv("P9_J2");
+    if (j2env && *j2env) {
+        char* e = (char*)j2env;
+        for (int k = 0; k < 5; k++) {
+            char* end;
+            P.j2v[k] = strtod(e, &end);
+            if (end == e || (k < 4 && *end != ',') || (k == 4 && *end)) {
+                fprintf(stderr, "P9_J2: muJ2R2,nx,ny,nz,r_remove\n");
+                return 2;
+            }
+            e = end + 1;
+        }
+        P.j2v[4] = P.j2v[4] * P.j2v[4];
+        P.j2 = 1;
+        if (real != P9_REAL_DOUBLE) {
+            fprintf(stderr, "P9_J2: double only\n");
+            return 2;
+        }
+        printf("model j2 muJ2R2=%.17g n=%.17g,%.17g,%.17g r_remove2=%.17g\n", P.j2v[0], P.j2v[1], P.j2v[2], P.j2v[3], P.j2v[4]);
+    }
     const double e0 = p9_energy_massive(r);
     // keep every body half a drift ahead (whdh.h)
     for (int i = 0; i < P.np; i++) p9_kepler(&P.b[i], P.mu0, 0.5 * dt);
@@ -304,6 +333,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             return 3;
         }
         fprintf(stderr, "device: %s\n", p9g_name(g));
+        if (P.j2 && p9g_set_j2(g, P.j2v, err, sizeof err)) {
+            fprintf(stderr, "GPU: %s\n", err);
+            return 3;
+        }
     }
 #endif
     remove(out);
@@ -376,13 +409,13 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         sha256_final(&c2, d2);
         p9_hex(d2, hs);
     }
-    size_t removed = 0, removed_enc = 0;
-    for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0;
+    size_t removed = 0, removed_enc = 0, removed_inner = 0;
+    for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0, removed_inner += alive[i] == -1 - P.np;
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s planet_s=%.3f program=p9gpu version=%s\n",
+           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu planet_s=%.3f program=p9gpu version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", p9_real_name(real), planet_s, P9_VERSION);
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
