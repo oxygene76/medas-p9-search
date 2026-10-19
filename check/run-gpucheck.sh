@@ -72,11 +72,12 @@ say "p9gpu: $($GPU version) sha256 $(sha $GPU)"
 fail=0
 # EXPECTED: name mode real t_end snapshots input_sha256 expected_result_sha256 encounter_radii
 run_job() {  # name mode real t_end snaps radii -> result line
-  P9GPU_MODE=$2 P9GPU_REAL=$3 P9_ENCOUNTER_RADII=$6 "$( [ "$2" = cpu ] && echo $CPU || echo $GPU )" run "jobs/$1/input.sa" "$4" "$5" "jobs/$1/output-$2-$3.sa" 2>"jobs/$1/stderr-$2-$3.txt" | grep '^result_sha256='
+  [ "$6" = - ] && radii="" || radii=$6
+  P9GPU_MODE=$2 P9GPU_REAL=$3 P9_ENCOUNTER_RADII=$radii "$( [ "$2" = cpu ] && echo $CPU || echo $GPU )" run "jobs/$1/input.sa" "$4" "$5" "jobs/$1/output-$2-$3.sa" 2>"jobs/$1/stderr-$2-$3.txt" | grep '^result_sha256='
 }
 while read -r name mode real t_end snaps input_sha expected radii; do
   case "$name" in ''|'#'*) continue ;; esac
-  [ "$name" = bench ] && continue
+  case "$name" in bench*) continue ;; esac
   if [ "$(sha "jobs/$name/input.sa")" != "$input_sha" ]; then say "$name: input.sa does not match its sha256"; fail=1; continue; fi
   line=$(run_job "$name" "$mode" "$real" "$t_end" "$snaps" "$radii") || { say "$name ($mode, $real): FAILED, see jobs/$name/stderr-$mode-$real.txt"; fail=1; continue; }
   got=$(printf '%s' "$line" | sed 's/^result_sha256=\([0-9a-f]*\).*/\1/')
@@ -87,30 +88,33 @@ while read -r name mode real t_end snaps input_sha expected radii; do
 done < EXPECTED
 
 if [ "${SKIP_BENCH:-0}" != 1 ]; then
-  set -- $(grep '^bench ' EXPECTED)
-  say "bench: 64,000 test particles, 10 million years (20 million steps); on the reference GPU (RTX 5080 Laptop) 2,850 s"
-  nvidia-smi --query-gpu=utilization.gpu,clocks.sm,power.draw,memory.used,temperature.gpu --format=csv,noheader,nounits -l 5 > gpu-samples.csv &
-  SMI=$!
-  line=$(run_job bench "$2" "$3" "$4" "$5" "$8") || line=""
-  kill $SMI 2>/dev/null || true
-  if [ -z "$line" ]; then say "bench: FAILED, see jobs/bench/stderr-gpu-double.txt"; fail=1; else
+  say "bench: 64,000 test particles, 10 million years (20 million steps), in double (FP64) and in double-float (df64)"
+  W_DOUBLE=""; W_DF64=""
+  for b in bench bench-df64; do
+    set -- $(grep "^$b " EXPECTED)
+    [ $# -ge 8 ] || continue
+    nvidia-smi --query-gpu=utilization.gpu,clocks.sm,power.draw,memory.used,temperature.gpu --format=csv,noheader,nounits -l 5 > gpu-samples-$b.csv &
+    SMI=$!
+    line=$(run_job "$b" "$2" "$3" "$4" "$5" "$8") || line=""
+    kill $SMI 2>/dev/null || true
+    if [ -z "$line" ]; then say "$b: FAILED, see jobs/$b/stderr-gpu-$3.txt"; fail=1; continue; fi
     got=$(printf '%s' "$line" | sed 's/^result_sha256=\([0-9a-f]*\).*/\1/')
     wall=$(printf '%s' "$line" | sed 's/.*wall_s=\([0-9.]*\).*/\1/')
     if [ "$got" = "$7" ]; then verdict=SAME; else verdict=DIFFERENT; fail=1; fi
-    say "bench (gpu, double): $verdict result_sha256=$got wall_s=$wall"
+    say "$b (gpu, $3): $verdict result_sha256=$got wall_s=$wall particle-steps/s $(awk -v w="$wall" 'BEGIN { printf "%.3g", 64000 * 2e7 / w }')"
     [ "$verdict" = SAME ] || say "  expected $7"
-    say "bench: particle-steps per second $(awk -v w="$wall" 'BEGIN { printf "%.3g", 64000 * 2e7 / w }')"
-    awk -F', ' '{ n++; u += $1; c += $2; if ($3 > p) p = $3; if ($4 > m) m = $4; if ($5 > t) t = $5 }
-      END { if (n) printf "bench gpu: mean utilisation %.0f %%, mean SM clock %.0f MHz, max power %.0f W, max memory %.0f MiB, max temperature %.0f C (%d samples)\n", u/n, c/n, p, m, t, n }' gpu-samples.csv | tee -a "$REPORT"
-  fi
+    [ "$3" = double ] && W_DOUBLE=$wall || W_DF64=$wall
+    awk -F', ' -v b="$b" '{ n++; u += $1; c += $2; if ($3 > p) p = $3; if ($4 > m) m = $4; if ($5 > t) t = $5 }
+      END { if (n) printf "%s gpu: mean utilisation %.0f %%, mean SM clock %.0f MHz, max power %.0f W, max memory %.0f MiB, max temperature %.0f C (%d samples)\n", b, u/n, c/n, p, m, t, n }' gpu-samples-$b.csv | tee -a "$REPORT"
+  done
+  [ -n "$W_DOUBLE" ] && [ -n "$W_DF64" ] && say "bench: df64 is $(awk -v a="$W_DOUBLE" -v b="$W_DF64" 'BEGIN { printf "%.2f", a / b }') times as fast as double on this GPU"
 fi
 
 say "probe: throughput per operation (gpu/probe/peak.cu)"
 $PEAK 2>&1 | tee -a "$REPORT" || say "probe: failed"
 say "probe: the bench input for 20,000 steps in double, df64 and float (particle-steps per second; float is a probe only)"
-set -- $(grep '^bench ' EXPECTED)
 for real in double df64 float; do
-  line=$(P9GPU_REAL=$real P9_ENCOUNTER_RADII=$8 $GPU run jobs/bench/input.sa 10000 1 jobs/bench/probe.sa 2>/dev/null | grep '^result_sha256=') || line=""
+  line=$(P9GPU_REAL=$real $GPU run jobs/bench/input.sa 10000 1 jobs/bench/probe.sa 2>/dev/null | grep '^result_sha256=') || line=""
   wall=$(printf '%s' "$line" | sed 's/.*wall_s=\([0-9.]*\).*/\1/')
   [ -n "$line" ] && say "  $real: wall_s=$wall particle-steps/s $(awk -v w="$wall" 'BEGIN { printf "%.3g", 64000 * 20000 / w }')" || say "  $real: failed"
 done

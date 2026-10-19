@@ -29,9 +29,11 @@ sys.path.insert(0, "tools")
 import p9job
 out = Path(sys.argv[1])
 rows = [("control", "gpu", "result-cpu.json"), ("control", "cpu", "result-cpu.json"), ("repro", "gpu", "result-cpu.json"),
-        ("repro", "cpu", "result-cpu.json"), ("repro-df64", "gpu", "result-cpu.json"), ("bench", "gpu", "result.json")]
+        ("repro", "cpu", "result-cpu.json"), ("repro-df64", "gpu", "result-cpu.json"), ("bench", "gpu", "result.json"),
+        ("bench-df64", "gpu", "result.json")]
 lines = ["# name mode real t_end snapshots input_sha256 expected_result_sha256 encounter_radii (id=au)",
-         "# expected: control, repro, repro-df64 from p9gpu's CPU twin (the GPU's bits), bench from the reference GPU"]
+         "# expected: control, repro, repro-df64 from p9gpu's CPU twin (the GPU's bits), bench and bench-df64 from the reference GPU",
+         "# no removal at the planets in any job (only the distance rules); '-': no encounter radii"]
 for name, mode, res in rows:
     d = Path("runs/gpkg") / name
     job = json.loads((d / "job.json").read_text())
@@ -40,7 +42,7 @@ for name, mode, res in rows:
         sys.exit(f"{d}/{res} belongs to another job")
     p = job["params"]
     lines.append(" ".join([name, mode, p.get("real", "double"), repr(float(p["t_end_yr"])), str(p["snapshots"]), job["input"]["sha256"],
-                           r["result_sha256"], p9job.encounter_env(job)]))
+                           r["result_sha256"], p9job.encounter_env(job) or "-"]))
     (out / "jobs" / name).mkdir(exist_ok=True)
     for f in ("job.json", "input.sa"):
         (out / "jobs" / name / f).write_bytes((d / f).read_bytes())
