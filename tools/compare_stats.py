@@ -10,6 +10,7 @@ REBOUND WHFast on the CPU and p9gpu on the GPU), so single orbits diverge
 particles, clustering of Delta varpi and Delta Omega relative to Planet Nine
 (mean resultant length R, mean direction), and two-sample Kolmogorov-Smirnov
 tests of a, q, i and Delta varpi of the distant particles (a > 230 au, q > 42 au).
+Barycentric osculating elements throughout.
 """
 
 import argparse
@@ -21,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from analyze import G, at_time, circ, dump, elements  # noqa: E402
+from analyze import G, at_time, barycentric, circ, dump, elements  # noqa: E402
 
 MSUN = 1.0000059769986414
 
@@ -37,16 +38,19 @@ def load(dirs, p9sim, T):
             t, rows = dump(p9sim, sa, snap)
         except Exception:
             return None  # snapshot not written yet
-        sun = [r for r in rows if r[0] == "Sun"][0]
+        # barycentric elements (mu = G M_total): heliocentric osculating elements of
+        # distant bodies follow the Sun's wobble (Jupiter's period), which differs
+        # in phase between integrators
+        rows, mu = barycentric(rows)
         for name, m, r, v in rows:
             if name == "P9":
-                p9 = (r - sun[2], v - sun[3], m)
+                p9 = (r, v, m)
             elif name.startswith("tp"):
-                tps.append((name, r - sun[2], v - sun[3]))
+                tps.append((name, r, v))
     rP, vP, mP = p9
-    _, _, _, OmP, vpP = elements(G * (MSUN + mP), rP[None, :], vP[None, :])
+    _, _, _, OmP, vpP = elements(mu, rP[None, :], vP[None, :])
     names = [x[0] for x in tps]
-    A, E, I, Om, vp = elements(G * MSUN, np.array([x[1] for x in tps]), np.array([x[2] for x in tps]))
+    A, E, I, Om, vp = elements(mu, np.array([x[1] for x in tps]), np.array([x[2] for x in tps]))
     return {"names": names, "a": A, "e": E, "q": A * (1 - E), "i": I, "dvp": (vp - vpP[0]) % 360, "dOm": (Om - OmP[0]) % 360}
 
 

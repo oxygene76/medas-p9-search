@@ -6,9 +6,9 @@
 
 RUN_DIR: job directories (with output.sa) or chain directories (the last
 segment with an output is used). For each snapshot asked for, the particles
-of all directories are pooled. Heliocentric osculating elements (ecliptic
-J2000, the frame of the start values) relative to the Sun; mu = G M_sun for
-test particles.
+of all directories are pooled. Barycentric osculating elements (ecliptic
+J2000, the frame of the start values; mu = G M_total): heliocentric elements
+of distant bodies follow the Sun's wobble with Jupiter's period.
 
 Statistic as in Brown & Batygin (2016, 2021): the longitude of perihelion
 varpi and of the ascending node Omega of the distant, detached objects
@@ -85,9 +85,19 @@ def at_time(d: Path, T: float):
         p = json.loads((seg / "job.json").read_text())["params"]
         t0, t1, n = float(p["t_start_yr"]), float(p["t_end_yr"]), int(p["snapshots"])
         if t0 < T <= t1:
-            k = round((T - t0) / ((t1 - t0) / n)) - 1
-            return seg / "output.sa", k
+            x = (T - t0) / ((t1 - t0) / n)
+            if abs(x - round(x)) > 1e-9:
+                return None  # T is not a snapshot time
+            return seg / "output.sa", round(x) - 1
     return None
+
+
+def barycentric(rows):
+    """Positions and velocities relative to the barycentre of the massive bodies, and G M_total."""
+    M = sum(m for _, m, _, _ in rows if m > 0)
+    R = sum(m * r for _, m, r, _ in rows if m > 0) / M
+    V = sum(m * v for _, m, _, v in rows if m > 0) / M
+    return [(n, m, r - R, v - V) for n, m, r, v in rows], G * M
 
 
 def last_output(d: Path):
@@ -128,12 +138,12 @@ def main():
             print(f"{d}: snapshot {snap} not readable")
             continue
         t_seen.add(t)
-        sun = [r for r in rows if r[0] == "Sun"][0]
+        rows, mu = barycentric(rows)
         for name, m, r, v in rows:
             if name in ("Jupiter", "Saturn", "Uranus", "Neptune", "P9"):
-                planets.setdefault(name, []).append((r - sun[2], v - sun[3], m))
+                planets.setdefault(name, []).append((r, v, m))
             elif name != "Sun":
-                pooled.append((r - sun[2], v - sun[3]))
+                pooled.append((r, v))
     if len(t_seen) != 1:
         print(f"note: snapshots at different times {sorted(t_seen)}")
     t = min(t_seen)
@@ -141,11 +151,10 @@ def main():
     p9 = planets["P9"]
     spread = max(float(np.abs(x[0] - p9[0][0]).max()) for x in p9)
     rP, vP, mP = p9[0]
-    msun = 1.0000059769986414
-    _, _, _, OmP, vpP = elements(G * (msun + mP), rP[None, :], vP[None, :])
+    _, _, _, OmP, vpP = elements(mu, rP[None, :], vP[None, :])
     r = np.array([x[0] for x in pooled])
     v = np.array([x[1] for x in pooled])
-    A, E, I, Om, vp = elements(G * msun, r, v)
+    A, E, I, Om, vp = elements(mu, r, v)
     q = A * (1 - E)
     print(f"t = {t / 1e6:.1f} Myr; {len(a.dirs)} runs; Planet Nine identical in all runs: {spread == 0.0} (max difference {spread:.1e} au)")
     print(f"Planet Nine: varpi {vpP[0]:.1f} deg, Omega {OmP[0]:.1f} deg")
