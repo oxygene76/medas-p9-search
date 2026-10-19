@@ -202,7 +202,8 @@ def main():
         for name, m, p, v, pid in rows:
             vals = [float(m), *map(float, p), *map(float, v)]
             f.write("p " + name + " " + " ".join(repr(x) for x in vals) + f" {pid}\n")
-    print(f"make_ic: {len(rows)} bodies ({len(rows) - 6} test particles) -> {args.out}", file=sys.stderr)
+    n_massive = sum(1 for r in rows if r[1] > 0)
+    print(f"make_ic: {len(rows)} bodies ({len(rows) - n_massive} test particles) -> {args.out}", file=sys.stderr)
 
 
 if __name__ == "__main__":
