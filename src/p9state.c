@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include <math.h>
 #include <string.h>
 #include "p9state.h"
 
@@ -28,6 +29,21 @@ void p9_state_hash(struct reb_simulation* r, struct sha256_ctx* ctx, FILE* out) 
         sha256_update(ctx, buf, sizeof buf);
         if (out) fwrite(buf, 1, sizeof buf, out);
     }
+}
+
+double p9_energy_massive(struct reb_simulation* r) {
+    const size_t n = r->N_active < r->N ? r->N_active : r->N;
+    double e = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        const struct reb_particle* p = &r->particles[i];
+        e += 0.5 * p->m * (p->vx * p->vx + p->vy * p->vy + p->vz * p->vz);
+        for (size_t j = i + 1; j < n; j++) {
+            const struct reb_particle* q = &r->particles[j];
+            const double dx = p->x - q->x, dy = p->y - q->y, dz = p->z - q->z;
+            e -= r->G * p->m * q->m / sqrt(dx * dx + dy * dy + dz * dz);
+        }
+    }
+    return e;
 }
 
 void p9_hex(const uint8_t d[32], char s[65]) {

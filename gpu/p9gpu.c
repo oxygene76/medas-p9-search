@@ -262,7 +262,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     int* was_alive = malloc(sizeof(int) * (ntp > 0 ? ntp : 1));
     for (int i = 0; i < ntp; i++) alive[i] = was_alive[i] = 1;
     to_dh(r, &P, tp, ntp, &com);
-    const double e0 = reb_simulation_energy(r);
+    const double e0 = p9_energy_massive(r);
     // keep every body half a drift ahead (whdh.h)
     for (int i = 0; i < P.np; i++) p9_kepler(&P.b[i], P.mu0, 0.5 * dt);
     for (int i = 0; i < ntp; i++) p9_kepler(&tp[i], P.mu0, 0.5 * dt);
@@ -354,7 +354,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     size_t removed = 0, removed_enc = 0;
     for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0;
-    const double e1 = reb_simulation_energy(r);
+    const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
            "dE_rel=%.3e mode=%s planet_s=%.3f program=p9gpu version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,

@@ -191,7 +191,7 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
     if (r->N_active - 1 > 16 || p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_r2)) return 2;
     for (size_t j = 0; j + 1 < r->N_active; j++)
         if (enc_r2[j] > 0.0) r->additional_forces = encounter_check;
-    const double e0 = reb_simulation_energy(r);  // test particles are massless: the planets' energy
+    const double e0 = p9_energy_massive(r);  // test particles are massless: the planets' energy
     remove(out);
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -227,7 +227,7 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         sha256_final(&c2, d2);
         p9_hex(d2, hs);
     }
-    const double e1 = reb_simulation_energy(r);
+    const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
            "dE_rel=%.3e program=p9sim version=%s\n",
            h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, P9_VERSION);
