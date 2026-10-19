@@ -133,7 +133,8 @@ def cmd_next(a):
     pj = json.loads((prev / "job.json").read_text())
     pr = json.loads((prev / "result.json").read_text())
     out.mkdir(parents=True, exist_ok=True)
-    r = subprocess.run([str(a.p9sim), "last", str(prev / "output.sa"), str(out / "input.sa")], capture_output=True, text=True)
+    # the archive is read and written by p9sim (REBOUND), whichever program runs the job
+    r = subprocess.run([str(DEFAULT_P9SIM), "last", str(prev / "output.sa"), str(out / "input.sa")], capture_output=True, text=True)
     if r.returncode:
         sys.exit(r.stderr)
     params = dict(pj["params"])
