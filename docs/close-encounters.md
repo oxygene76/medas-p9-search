@@ -151,6 +151,21 @@ with v99 the 99th percentile of the encounter speeds at that planet
 `flyby_au`). Model j2 with dt = 5 yr is thereby unsuitable for encounters with
 Neptune and Planet Nine (it would need about 8 and 4.5 au).
 
+**The same check on p9gpu** (`tools/flyby_p9gpu.py`, 2026-10-19): the
+project lead's script is in the repository unchanged (`tools/flyby_check.py`);
+the port uses its test bodies, windows, reference (IAS15) and measures, and
+integrates each window with p9gpu (its CPU twin; the GPU gives the same hashes,
+checked for the cell Planet Nine 0.5 au / 0.35 au/yr / 0.5 yr). Result: in
+every cell of both presets (Planet Nine: d_min 0.25–50 au, 0.1–0.5 au/yr;
+Neptune: 0.5–5 au, 0.4–1.2 au/yr) and for dt = 0.5, 1 and 5 yr, p9gpu's
+errors equal those of REBOUND's WHFast in democratic heliocentric coordinates
+to two digits (median and maximum), e.g. Planet Nine 0.5 au, 0.35 au/yr,
+dt 0.5: 1.5e-4; Neptune 0.78 au, 0.8 au/yr: 1.0e-4; Neptune 0.78 au, 1.2
+au/yr (1.3 steps per flyby): 2.0e-3, maximum 2.8e-2. Tables:
+`runs/flyby/p9gpu-p9.txt`, `runs/flyby/p9gpu-neptune.txt`. Test:
+`tests/test_flyby.py` in `make test` (needs the Python package rebound 5.2.2,
+installed from `third_party/rebound-5.2.2.tar.gz`).
+
 v99 in the corrected 4-Gyr run (`tools/encounter_speeds.py`: orbits within 2
 au of the planet's orbit; relative speed at the closest approach of the two
 orbits, and Öpik's U from the Tisserand parameter):

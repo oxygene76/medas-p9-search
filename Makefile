@@ -118,6 +118,7 @@ test: build/test/test_encounter build/test/test_j2 gpu-cpu
 	build/test/test_encounter
 	build/test/test_j2
 	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_p9job.py -v
+	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_flyby.py -v
 .PHONY: test-resume
 test-resume:
 	$(MAKE) VARIANT=test
