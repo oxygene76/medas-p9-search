@@ -28,11 +28,15 @@ SRC := src/p9sim.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_st
 # Version compiled into the programs (printed with every result): the VERSION
 # file of a package, else git describe.
 P9_VERSION ?= $(shell cat VERSION 2>/dev/null || git describe --always --dirty 2>/dev/null || echo unknown)
+# A new version rebuilds every program (the version is compiled in).
+VERSION_STAMP := build/.version-$(P9_VERSION)
+$(VERSION_STAMP):
+	@mkdir -p build && rm -f build/.version-* && touch $@
 
 CFLAGS := -std=c99 -fno-fast-math $(OPT) -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -DP9_VERSION='"$(P9_VERSION)"' -I$(REBOUND)/src -Isrc -w $(CFLAGS_EXTRA)
 LDLIBS := -lm $(LDFLAGS_EXTRA)
 
-$(OUT)/p9sim: $(SRC) $(REB_SRC) Makefile
+$(OUT)/p9sim: $(SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p $(OUT)
 	$(CC) $(CFLAGS) -o $@ $(SRC) $(REB_SRC) $(LDLIBS)
 	@echo "$(VARIANT): $(CC) $(CFLAGS)" > $(OUT)/BUILD-FLAGS
@@ -72,7 +76,7 @@ GPU_CFLAGS := -std=c99 -fno-fast-math -O3 -ffp-contract=off -D_GNU_SOURCE -DLIBR
 
 .PHONY: gpu gpu-cpu
 gpu: build/gpu/p9gpu
-build/gpu/p9gpu: gpu/kernel.cu gpu/whdh.h gpu/p9gpu_api.h $(GPU_SRC) $(REB_SRC) Makefile
+build/gpu/p9gpu: gpu/kernel.cu gpu/whdh.h gpu/p9gpu_api.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu
 	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o build/gpu/kernel.o
 	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) build/gpu/kernel.o -L$(CUDA)/lib -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
@@ -80,7 +84,7 @@ build/gpu/p9gpu: gpu/kernel.cu gpu/whdh.h gpu/p9gpu_api.h $(GPU_SRC) $(REB_SRC) 
 
 # The same integrator without CUDA (P9GPU_MODE=cpu only): reference and CPU speed.
 gpu-cpu: build/gpu-cpu/p9gpu
-build/gpu-cpu/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile
+build/gpu-cpu/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu-cpu
 	$(CC) $(GPU_CFLAGS) -DP9_NO_CUDA -o $@ $(GPU_SRC) $(REB_SRC) -lm
 	@echo "gpu-cpu: $(CC) $(GPU_CFLAGS) -DP9_NO_CUDA" > build/gpu-cpu/BUILD-FLAGS
