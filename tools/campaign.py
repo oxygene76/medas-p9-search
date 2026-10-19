@@ -91,7 +91,8 @@ def chain(root, c, a, deadline, procs):
         if not (d / "job.json").exists():
             if k == 0:
                 cmd = JOB + ["make", "--out", str(d), "--t-end", repr(t_end), "--snapshots", str(snaps), "--n-tp", str(a.n_tp),
-                             "--tp-from", str(lo), "--tp-to", str(hi), "--seed", str(a.seed), "--program", a.program, "--p9sim", a.p9sim]
+                             "--tp-from", str(lo), "--tp-to", str(hi), "--seed", str(a.seed), "--program", a.program, "--p9sim", a.p9sim,
+                             *a.make_args.split()]
             else:
                 cmd = JOB + ["next", "--prev", str(root / f"chain{c:02d}" / f"seg{k - 1:03d}"), "--out", str(d), "--t-end", repr(t_end),
                              "--snapshots", str(snaps), "--p9sim", a.p9sim]
@@ -143,6 +144,8 @@ def main():
     ap.add_argument("--seed", type=int, default=9)
     ap.add_argument("--segment", type=float, default=2e7)
     ap.add_argument("--snap-every", type=float, default=1e6)
+    ap.add_argument("--make-args", default="", help="more arguments for the first segment's p9job make (e.g. --no-removal); "
+                                                    "the later segments take its parameters over")
     ap.add_argument("--t-end", type=float, default=None, help="years: no segment after this time (else segments until the deadline)")
     ap.add_argument("--deadline", required=True, help="local time, e.g. 2026-10-19T06:55")
     ap.add_argument("--grace", type=float, default=180, help="seconds after the deadline before running segments are stopped")
