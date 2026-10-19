@@ -36,6 +36,30 @@ integrators was looked at or taken over.
    c3(4z) = (c2 + c0 c3)/4), as in J. M. A. Danby (1992), Fundamentals of
    Celestial Mechanics, 2nd ed., chapter 6.
 
+## What was seen of the GLISSE repository
+
+On 2026-10-18, while checking GLISSE's licence (docs/gpu.md), before p9gpu was
+written:
+
+- Downloaded: the archive of the branch `master` of
+  https://github.com/skkestrel/glisse (sha256
+  `d1bbf9615fe555a92d941d5a995d071834011b4844fcc7ed841216d7dda37cb1`), extracted
+  under `build/glisse/` (not committed; deleted on 2026-10-19).
+- Read: `README.md` in full (usage, configuration options, file formats) and the
+  first 50 lines of the `Makefile` (compiler flags, e.g. `-arch=sm_35`,
+  `-maxrregcount 64`).
+- Searched, without reading code: the names of the files that contain the words
+  licence/copyright/GPL/MIT (only file names were shown: files of the bundled
+  docopt library, `src/util.h`, `src/data.cpp`, `sia4/main.cu`,
+  `targets/filter_state.cpp`); the first 30 lines of `src/wh.cu` for a licence
+  line (no match, nothing shown); the number of occurrences of "fma"/"fmad" in
+  the `.cu` files (zero each); the file names in `src/` and `targets/`.
+- Not done: no source file (`.cu`, `.cuh`, `.cpp`, `.h`) was opened or read, no
+  code was copied, the code was not built or run.
+
+p9gpu follows the paper's method description (source 4) and the other
+publications listed above.
+
 ## Design
 
 - Coordinates: positions relative to the Sun, barycentric velocities
