@@ -139,9 +139,10 @@ def build(n_tp, seed, tp_from, tp_to):
     mtot = sum(b[1] for b in bodies)
     com_p = sum(b[1] * b[2] for b in bodies) / mtot
     com_v = sum(b[1] * b[3] for b in bodies) / mtot
-    rows = [(n, m, p - com_p, v - com_v) for n, m, p, v in bodies]
+    rows = [(n, m, p - com_p, v - com_v, k) for k, (n, m, p, v) in enumerate(bodies)]
+    # ids: 0..5 the massive bodies, 6 + i test particle i of the whole set (also in a slice)
     for i in range(tp_from, tp_to):
-        rows.append((f"tp{i:05d}", 0.0, sun[2] + tp_p[i] - com_p, sun[3] + tp_v[i] - com_v))
+        rows.append((f"tp{i:05d}", 0.0, sun[2] + tp_p[i] - com_p, sun[3] + tp_v[i] - com_v, len(bodies) + i))
     return rows
 
 
@@ -160,9 +161,9 @@ def main():
         f.write("# p9sim start values, written by tools/make_ic.py (see its docstring); values are Python repr (exact)\n")
         f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}\n")
         f.write(f"G {G!r}\ndt {args.dt!r}\nN_active 6\ncorrector 0\n")
-        for name, m, p, v in rows:
+        for name, m, p, v, pid in rows:
             vals = [float(m), *map(float, p), *map(float, v)]
-            f.write("p " + name + " " + " ".join(repr(x) for x in vals) + "\n")
+            f.write("p " + name + " " + " ".join(repr(x) for x in vals) + f" {pid}\n")
     print(f"make_ic: {len(rows)} bodies ({len(rows) - 6} test particles) -> {args.out}", file=sys.stderr)
 
 

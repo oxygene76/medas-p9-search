@@ -140,14 +140,21 @@ static int cmd_init(const char* ic, const char* out) {
         else if (!strcmp(key, "p")) {
             char name[32];
             struct reb_particle p = {0};
+            unsigned long long id = 0;
             // strtod reads %.17g exactly (correctly rounded) on every C99 library
-            if (sscanf(line, "%*s %31s %lf %lf %lf %lf %lf %lf %lf", name, &p.m, &p.x, &p.y, &p.z, &p.vx, &p.vy, &p.vz) != 8) {
+            const int n = sscanf(line, "%*s %31s %lf %lf %lf %lf %lf %lf %lf %llu", name, &p.m, &p.x, &p.y, &p.z, &p.vx, &p.vy, &p.vz, &id);
+            if (n != 8 && n != 9) {
                 fprintf(stderr, "bad particle line: %s", line);
                 return 2;
             }
-            p.r = (double)r->N;  // particle id: its line number among the particles, 0-based
+            // particle id: given in the file, else its line number among the particles (0-based)
+            p.r = n == 9 ? (double)id : (double)r->N;
             reb_simulation_add(r, p);
-            reb_particle_set_name(&r->particles[r->N - 1], name);
+            // Names only for the massive bodies: REBOUND restores names when it
+            // loads an archive by comparing every particle with every name
+            // (O(N^2): a minute for 256,000 test particles). Test particles are
+            // identified by their id; dump prints them as tp<id - N_active>.
+            if (p.m > 0.0) reb_particle_set_name(&r->particles[r->N - 1], name);
         }
     }
     fclose(f);
@@ -285,7 +292,11 @@ static int cmd_dump(const char* in, long snap) {
     printf("t %.17g\n", r->t);
     for (size_t i = 0; i < r->N; i++) {
         const struct reb_particle* p = &r->particles[i];
-        printf("%s %.0f %.17g %.17g %.17g %.17g %.17g %.17g %.17g\n", p->name ? p->name : "-", p->r, p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz);
+        char nm[32];
+        if (p->name) snprintf(nm, sizeof nm, "%s", p->name);
+        else if (i >= r->N_active) snprintf(nm, sizeof nm, "tp%05.0f", p->r - (double)r->N_active);
+        else snprintf(nm, sizeof nm, "-");
+        printf("%s %.0f %.17g %.17g %.17g %.17g %.17g %.17g %.17g\n", nm, p->r, p->m, p->x, p->y, p->z, p->vx, p->vy, p->vz);
     }
     reb_simulation_free(r);
     return 0;
