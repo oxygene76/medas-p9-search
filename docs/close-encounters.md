@@ -147,3 +147,22 @@ would still be resolved by the time step, but deeper encounters would not; the
 same rule for every planet keeps the criterion simple and identical in both
 programs. Particles removed this way are counted, so their number can be
 reported with every result.
+
+## Results of the evidence (2026-10-19)
+
+1. **Half the step** (`runs/val/dt05`, `runs/val/dt025`; 5,000 test
+   particles, seed 9, 10 Myr, the radii of dt = 0.5 yr in both):
+
+   | at 10 Myr | dt = 0.5 yr | dt = 0.25 yr |
+   |---|---|---|
+   | surviving | 4,629 | 4,630 |
+   | removed at Neptune / Planet Nine | 356 / 15 | 349 / 21 |
+   | Δϖ: R, mean (distant, a > 230 au, q > 42 au) | 0.293, 307° | 0.291, 308° |
+   | ΔΩ: R, mean | 0.526, 93° | 0.522, 93° |
+
+   Two-sample KS tests of a, q, i, Δϖ and ΔΩ at 2, 5 and 10 Myr: p ≥ 0.97.
+   The radii hold; the corrected 4-Gyr run was started with them
+   (2026-10-19 18:50). For comparison, with Planet Nine's Hill radius (7 au)
+   only 3,477 of the same 5,000 survived the 10 Myr.
+2. MERCURIUS control: running (2,000 test particles, 50 Myr).
+3. J2 comparison: running.
