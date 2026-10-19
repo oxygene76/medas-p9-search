@@ -39,11 +39,14 @@ integrators was looked at or taken over.
 ## Design
 
 - Coordinates: positions relative to the Sun, barycentric velocities
-  (democratic heliocentric). One step of length dt: kick dt/2 (planets acting
-  on the body) – jump dt/2 (velocity w = Σ m_j u_j / m_Sun of the planets) –
-  Kepler drift dt around G m_Sun – jump dt/2 (w after the planets' drift) –
-  kick dt/2 with the planets' positions at the end of the step
-  (`gpu/whdh.h`).
+  (democratic heliocentric). One step of length dt, drift-kick-drift: Kepler
+  drift dt/2 around G m_Sun – jump dt/2 (velocity w = Σ m_j u_j / m_Sun of the
+  planets) – kick dt (planets acting on the body) – jump dt/2 – Kepler drift
+  dt/2 (`gpu/whdh.h`). The Kepler halves of consecutive steps are done as one
+  drift of dt; the state is kept half a drift ahead and synchronised with a
+  drift of −dt/2 for outputs and removal checks. A first version
+  (kick-drift-kick, commit feb930b) had twice the phase error of WHFast against
+  IAS15; drift-kick-drift has the same (below).
 - Planets (all massive bodies but the Sun) are integrated on the CPU with the
   same map, in blocks of `P9GPU_BLOCK` steps (default 2,000). For each block the
   CPU writes a table: the planets' positions at all step boundaries and the
@@ -75,6 +78,43 @@ integrators was looked at or taken over.
   particles to 3 × 10⁻⁶ relative, Jupiter to 1.4 × 10⁻⁴, a phase drift that
   grows linearly with time), with energy errors of the same size (about 10⁻⁶,
   bounded). Their results are compared statistically (`tools/compare_stats.py`).
+
+## Measurements (2026-10-19, RTX 5080 Laptop GPU, CUDA 13.4, test case of Brown & Batygin 2021)
+
+Accuracy against IAS15 (REBOUND's adaptive 15th-order integrator), planets after
+1,000 years, distance in au:
+
+| | Jupiter | Saturn | Uranus | Neptune | Planet Nine |
+|---|---|---|---|---|---|
+| REBOUND WHFast (DH, dt = 0.5 yr) | 2.58e-3 | 7.44e-3 | 2.10e-3 | 4.65e-4 | 2.49e-5 |
+| p9gpu kick-drift-kick (feb930b) | 4.97e-3 | 1.49e-2 | 4.18e-3 | 9.18e-4 | 4.95e-5 |
+| p9gpu drift-kick-drift (ce19c2d) | 2.58e-3 | 7.44e-3 | 2.10e-3 | 4.65e-4 | 2.49e-5 |
+
+Relative energy error of the massive bodies, control job (100,000 years):
+REBOUND −4.802e-7, p9gpu −4.802e-7.
+
+Speed (job of 10,000 years = 20,000 steps; wall time; the machine's CPU cores
+were busy with the REBOUND long run, which also limits the laptop GPU's power):
+
+| Test particles | REBOUND, 1 core | p9gpu CPU build, 1 core | p9gpu GPU | particle-steps/s on the GPU |
+|---|---|---|---|---|
+| 4,000 | 13.6 s | 11.3 s | 0.317 s | 2.5e8 |
+| 20,000 | – | – | 0.95 s | 4.2e8 |
+
+Long runs, all 4,000 test particles, 300 Myr, 600 million steps, one snapshot
+per Myr (110 MB): kick-drift-kick 3.46 h (with a busy-waiting CPU core, fixed
+since), drift-kick-drift 2.73 h (110 Myr per hour; the host used 5.8 % of one
+core). The REBOUND long run of the same particles needed 16 CPU cores for about
+45 Myr per hour.
+
+Statistics against REBOUND (`tools/compare_stats.py`, barycentric elements,
+`runs/compare-*.txt`): at 2, 20, 50, 100, 150, 200, 250 and 300 Myr the number
+of survivors, the distributions of a, q and i (Kolmogorov-Smirnov p ≥ 0.18), and
+the clustering of Δϖ and ΔΩ of the distant particles (R and mean direction;
+KS p ≥ 0.08) agree. Example at 300 Myr: survivors 2,695 (REBOUND) and 2,672
+(p9gpu); Δϖ R = 0.38 / 0.40, mean 200.0° / 199.0°; ΔΩ R = 0.73 / 0.72, mean
+357.5° / 359.5°. Single orbits diverge (median relative difference in a about
+10 % after 100 Myr; chaotic encounters with Neptune), as expected.
 
 ## Build
 
