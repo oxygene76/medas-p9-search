@@ -19,6 +19,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analyze import at_time, barycentric, dump, elements  # noqa: E402
 from compare_stats import ks  # noqa: E402
+from pair_losses import mcnemar, survivors  # noqa: E402
 
 N_BOOT = 2000
 
@@ -88,18 +89,32 @@ def main():
     ap.add_argument("--gpu", required=True)
     ap.add_argument("--times", nargs="+", type=float, default=[1e7, 2e7, 3e7, 5e7])
     ap.add_argument("--n0", type=int, default=2000)
+    ap.add_argument("--mcnemar", action="store_true", help="also: losses paired by test particle, exact McNemar p >= 0.05 "
+                                                            "(docs/validation-mercurius-200myr.md)")
+    ap.add_argument("--n-rule", type=int, default=None, help="removals by the rule in the p9gpu run (default: from its result.json)")
     a = ap.parse_args()
     res = json.loads((Path(a.gpu) / "result.json").read_text())
-    n_rule = int(res["removed_encounter"])
+    n_rule = int(res["removed_encounter"]) if a.n_rule is None else a.n_rule
     results = {}
     for T in a.times:
         r = evaluate(load(a.merc, a.p9sim, T), load([a.gpu], a.p9sim, T), n_rule, a.n0)
+        if a.mcnemar:
+            ids = set(range(6, 6 + a.n0))
+            lm, lg = ids - survivors(a.merc, a.p9sim, T), ids - survivors([a.gpu], a.p9sim, T)
+            b, c = len(lg - lm), len(lm - lg)
+            p = mcnemar(b, c)
+            r["mcnemar"] = {"lost_only_p9gpu": b, "lost_only_mercurius": c, "lost_both": len(lm & lg), "p": p, "pass": p >= 0.05}
+            r["pass"] = r["pass"] and p >= 0.05
         results[f"{T:g}"] = r
         s = r["survivors"]
         print(f"t = {T / 1e6:g} Myr  {'PASS' if r['pass'] else 'FAIL'}" + ("  (criteria apply at the last time)" if T != a.times[-1] else "  <- criteria"))
         print(f"  survivors: MERCURIUS {s['mercurius']}, p9gpu {s['p9gpu']}, |diff| {s['difference']} <= n_rule {s['n_rule']} + 2 sigma "
               f"({2 * s['sigma']:.1f}) = {s['limit']}: {'pass' if s['pass'] else 'FAIL'}")
         print("  KS (all survivors): " + ", ".join(f"{k} p={v['p']:.3g}{'' if v['pass'] else ' FAIL'}" for k, v in r["ks"].items()))
+        if "mcnemar" in r:
+            m = r["mcnemar"]
+            print(f"  losses paired: only p9gpu {m['lost_only_p9gpu']}, only MERCURIUS {m['lost_only_mercurius']}, both {m['lost_both']}; "
+                  f"McNemar p = {m['p']:.3g} >= 0.05: {'pass' if m['pass'] else 'FAIL'}")
         for k, v in r["R"].items():
             print(f"  R {k}: {v['R'][0]:.4f} vs {v['R'][1]:.4f} (n {v['n'][0]}/{v['n'][1]}), |diff| {v['difference']:.4f} <= 2 SE {v['limit']:.4f}: "
                   f"{'pass' if v['pass'] else 'FAIL'}")
