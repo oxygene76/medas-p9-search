@@ -39,6 +39,28 @@ to Planet Nine in the same run and snapshot.
 All three must hold. Tool: `tools/eval_mercurius.py`; output in
 `runs/val/eval-mercurius.txt` and below.
 
-## Result
+## Result (2026-10-19, `runs/val/eval-mercurius.txt`): **criteria missed**
 
-(added by the evaluation)
+At 50 Myr:
+
+| criterion | MERCURIUS | p9gpu, rule | limit | |
+|---|---|---|---|---|
+| survivors | 1,933 | 1,521 | \|diff\| 412 ≤ 472 + 2σ (41.4) = 513 | pass |
+| KS a / i / Ω (all survivors) | | | p ≥ 0.01 | pass (0.117 / 0.126 / 0.171) |
+| KS q | | | p ≥ 0.01 | **fail** (p = 1.8e-14; already at 10 Myr: 0.0028) |
+| KS ϖ | | | p ≥ 0.01 | **fail** (p = 0.0019) |
+| R(Δϖ), distant (a > 230, q > 42) | 0.624 (n 793) | 0.629 (n 753) | ≤ 0.040 | pass (0.004) |
+| R(ΔΩ), distant | 0.709 | 0.700 | ≤ 0.036 | pass (0.009) |
+| R(Δϖ), all survivors | 0.095 | 0.192 | ≤ 0.048 | **fail** (0.097) |
+| R(ΔΩ), all survivors | 0.551 | 0.622 | ≤ 0.034 | **fail** (0.071) |
+
+Reading: the removal at Neptune (its Hill radius, 389 of the 472 removals)
+takes out the particles that MERCURIUS follows through their encounters; the
+perihelion distribution of the survivors changes and **the whole surviving
+population appears more strongly clustered than with MERCURIUS** (R(Δϖ) twice
+as large). The distant population (a > 230 au, q > 42 au), on which the
+clustering analyses here are based, agrees within the noise.
+
+Consequence as specified: the corrected 4-Gyr run (`runs/gpu-4gyr-b`, started
+2026-10-19 18:50) continues, **marked provisional**; the page "Simulations"
+stays empty; decision with the project lead on 2026-10-20.
