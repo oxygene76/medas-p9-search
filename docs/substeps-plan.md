@@ -1,6 +1,7 @@
 # Sub-steps for too short flybys (plan, not implemented)
 
-Prepared 2026-10-19 for the decision of 2026-10-20. Goal: follow close
+Prepared 2026-10-19 for the decision of 2026-10-20; implementation only after
+the project lead's OK. Goal: follow close
 encounters correctly instead of removing them or integrating them with the
 fixed step. Only the particle concerned computes the step in sub-steps, so
 that its flyby lasts at least about four sub-steps; the planets' positions in
@@ -10,13 +11,20 @@ code.
 
 ## What changes
 
-1. **Detection, before the step.** With method "step" every kick already
-   knows, per planet, the closest approach within the step from relative
-   position and velocity. For sub-steps the decision must come before the
-   step: at the kick of step k the prediction for step k+1 (closest approach
-   within [dt/2, 3dt/2] after this kick, same formula) marks the particle and
-   planet for sub-steps if d_min / (|w| dt) < 2 or d_min < f_in R_H (inner
-   zone, below). Deterministic, from + − × ÷ and √ only.
+1. **Trigger: the predicted closest distance within the step**, not the
+   distances at the step points, so that no flyby slips through between two
+   of them. Linear approximation from relative position d and relative
+   velocity w (planet minus particle): d(τ) = d + w τ, closest at
+   τ* = −(d·w)/(w·w), clipped to the step's interval. The decision is a
+   comparison of squared distances: sub-steps if |d + w τ*|² < r_sub², and,
+   for the number of sub-steps, |d + w τ*|² < (4 |w| dt / n)² (the flyby lasts
+   fewer than 4 sub-steps of dt/n). No square root, no division other than
+   the one for τ*, so CPU and GPU decide identically. The decision comes
+   before the step: at the kick of step k the prediction covers step k+1
+   (τ in [dt/2, 3dt/2] after this kick); a particle whose closest approach
+   falls into the current step's second half is caught by the same test one
+   step earlier. r_sub per planet: the outer zone (a few Hill radii; for
+   Planet Nine at least 1.5 v99 dt). Deterministic, from + − × ÷ only.
 2. **The marked step** (only that particle): n sub-steps of dt/n, n from
    d_min / (|w| dt) so that the flyby lasts ≥ 4 sub-steps (n a power of two up
    to a limit, e.g. 256; chosen with comparisons only, no log or pow).
@@ -62,7 +70,12 @@ with many encounters (control in the GPU check package).
    like `tools/flyby_p9gpu.py`): Neptune, v_rel 0.6 and 1.0 au/yr, dt 0.5 yr,
    d_min 0.02–0.78 au, 8 phases × 10 geometries: median kick ratio within
    1 ± 0.01 and all ratios within 1 ± 0.05 for every d_min, no spurious
-   unbinding. Also Planet Nine.
+   unbinding. **The same for Planet Nine** (preset p9: d_min 0.02–7 au,
+   v_rel 0.2–0.5 au/yr, dt 0.5 yr, and the speeds up to v99), with the same
+   limits.
+   Plus a trigger test: flybys whose closest approach lies exactly between
+   two step points (phase 0.5 of the grid) at the highest speeds must be
+   sub-stepped, for Neptune and Planet Nine.
 2. **flyby_check run**: error relative to the kick ≤ 1e-3 in every cell of
    both presets at dt = 0.5 yr, including the cells below 1.5 steps per flyby
    (now 2e-3 … 1e+0).
