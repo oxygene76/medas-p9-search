@@ -178,7 +178,7 @@ def removed_by(job, text):
     """Removals by close encounter per planet name, from the programs' "removed_by=id:n,..."."""
     ids = job["params"].get("removal", {}).get("encounter", {}).get("body_ids", {})
     names = {str(i): n for n, i in ids.items()}
-    return {names.get(i, f"id {i}"): int(n) for i, n in (x.split(":") for x in text.split(",") if x)}
+    return {names.get(i, f"id {i}"): int(n) for i, n in (x.split(":") for x in text.split(",") if x and x != "-")}
 
 
 def check_encounter_report(job, stdout):
@@ -234,8 +234,12 @@ def cmd_make(a):
               **({"r_crit_hill": 3} if a.integrator == "mercurius" else {}),
               "t_start_yr": 0.0, "t_end_yr": a.t_end, "snapshots": a.snapshots,
               "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
-                          "encounter": {"criterion": "removed when closer to a planet than its encounter radius at the kick of a step "
-                                                     "(positions of the middle of the step); src/p9encounter.h",
+                          "encounter": {"criterion": ("removed when the closest approach to a planet within a step (from relative position "
+                                                      "and velocity at the kick) is below its encounter radius; gpu/whdh.h p9_kick_tp_step"
+                                                      if a.encounter_method == "step" else
+                                                      "removed when closer to a planet than its encounter radius at the kick of a step "
+                                                      "(positions of the middle of the step); src/p9encounter.h"),
+                                        **({"method": a.encounter_method} if a.encounters else {}),
                                         **(encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
@@ -281,6 +285,8 @@ def cmd_run(a):
             sys.exit("model j2 needs p9gpu")
         env["P9_J2"] = ",".join([model["mu_j2r2"], *model["axis"], model["r_remove_au"]])
     enc = encounter_env(job)
+    method = job["params"].get("removal", {}).get("encounter", {}).get("method", "kick")  # jobs before the method: at the kick
+    env["P9_ENCOUNTER_METHOD"] = method
     if enc:
         env["P9_ENCOUNTER_RADII"] = enc
     build_flags = (p9sim.parent / "BUILD-FLAGS").read_text().strip() if (p9sim.parent / "BUILD-FLAGS").exists() else str(p9sim)
@@ -296,6 +302,8 @@ def cmd_run(a):
     line = [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1]
     used = check_encounter_report(job, p.stdout) if enc else {}
     kv = dict(x.split("=", 1) for x in line.split())
+    if enc and kv.get("encounter_method", "kick") != method:
+        sys.exit(f"the program used encounter method {kv.get('encounter_method', 'kick')}, the job needs {method}")
     if kv.get("model", "full") != model["name"]:
         sys.exit(f"the program integrated model {kv.get('model', 'full')}, the job needs {model['name']}")
     if kv.get("real", "double") != real:
@@ -309,7 +317,9 @@ def cmd_run(a):
               "platform": {"machine": platform.machine(), "system": platform.system(), "node_hash": hashlib.sha256(platform.node().encode()).hexdigest()[:12],
                            "python": platform.python_version()},
               "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used, "real": real, "model": model["name"],
-              "removed_inner": int(kv.get("removed_inner", 0)), "removed_by_encounter": removed_by(job, kv.get("removed_by", ""))}
+              "removed_inner": int(kv.get("removed_inner", 0)), "removed_by_encounter": removed_by(job, kv.get("removed_by", "")),
+              **({"encounter_method": method, "flybys_within_3_radii": removed_by(job, kv.get("flybys", "")),
+                  "flybys_under_1_5_steps": removed_by(job, kv.get("fast_flybys", ""))} if enc and method == "step" else {})}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -355,6 +365,8 @@ def main():
                    help="encounter radius of a planet instead of the rule (e.g. the radii of another job); repeatable")
     m.add_argument("--v99", action="append", default=[], metavar="NAME=AU_PER_YR",
                    help="99th percentile of the encounter speed at a planet: the radius is at least 1.5 v99 dt; repeatable")
+    m.add_argument("--encounter-method", choices=["step", "kick"], default="step",
+                   help="close encounters by the closest approach within a step (step, default) or at the kick (kick, before 2026-10-19 evening)")
     m.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
                    help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",

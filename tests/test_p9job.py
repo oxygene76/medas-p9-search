@@ -129,8 +129,13 @@ class EndToEnd(unittest.TestCase):
             env = dict(os.environ, P9GPU_MODE="cpu")
             subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "run", str(job), "--p9sim", str(prog), "--any-version"],
                            check=True, stdout=subprocess.DEVNULL, env=env)
-            used = json.loads((job / "result.json").read_text())["encounter_radii_used_au"]
-            self.assertEqual(used, {n: float(r) for n, r in RULE_05.items()})
+            res = json.loads((job / "result.json").read_text())
+            self.assertEqual(res["encounter_radii_used_au"], {n: float(r) for n, r in RULE_05.items()})
+            # new jobs: closest approach within the step, with flyby counts per planet
+            self.assertEqual(j["params"]["removal"]["encounter"]["method"], "step")
+            self.assertEqual(res["encounter_method"], "step")
+            self.assertEqual(set(res["flybys_within_3_radii"]), set(IDS))
+            self.assertEqual(set(res["flybys_under_1_5_steps"]), set(IDS))
 
     @unittest.skipUnless(program("P9TEST_P9SIM"), "P9TEST_P9SIM not set")
     def test_p9sim(self):

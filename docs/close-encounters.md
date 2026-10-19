@@ -58,6 +58,37 @@ the distances are computed in different coordinates (REBOUND: inertial, p9gpu:
 heliocentric), so a particle exactly at a radius could be decided differently by
 one rounding; statistically the criterion is the same.
 
+## Method "step" (since 2026-10-19 evening; default for new jobs)
+
+Checking the distance only at the kicks lets a fast particle pass through a
+removal sphere between two kicks. Jobs made since then
+(`params.removal.encounter.method = "step"`; `p9job make --encounter-method
+kick` keeps the old way, and jobs without the field are run the old way):
+
+- At each kick, d = planet minus particle position and w = planet minus
+  particle velocity (in democratic heliocentric coordinates the difference of
+  the barycentric velocities; the planets' velocities at the kick are now part
+  of the table p9gpu's CPU part computes). The closest approach within the
+  step is that of d + w τ for τ in [−dt/2, dt/2]; the particle is removed when
+  it is below the planet's radius. It is never larger than the distance at the
+  kick, so every particle removed the old way is also removed now.
+- Counted per planet (result line `flybys=` and `fast_flybys=`, result.json
+  `flybys_within_3_radii` and `flybys_under_1_5_steps`): the closest
+  approaches that fall into the step (τ* in (−dt/2, dt/2]) within three
+  removal radii, and among them those with d_min / (|w| dt) < 1.5, i.e. flybys
+  shorter than 1.5 steps, for which the radius rule does not hold.
+- p9gpu (GPU and CPU twin, the same bits and counts) and p9sim (REBOUND's
+  WHFast; `force_is_velocity_dependent` makes REBOUND provide the velocities
+  at the kick, the integration is unchanged by it). The same 5,000 test
+  particles over 20,000 years: both programs 60 flybys and 6 removals at
+  Neptune, none fast. So far only for model full in double (not j2, df64).
+- Tests: `tests/test_step_encounter.c` (a particle that passes through the
+  sphere between two kicks is removed by "step" and missed at the kick;
+  counters), `tests/test_p9job.py` end to end with both programs. Jobs of
+  the old method give the same bits as before (checked).
+- The runs started before (the 4-Gyr run of 2026-10-19 18:50, the J2
+  comparison of the second GPU lane) use the method at the kick.
+
 ## Error: radii in the wrong order (2026-10-19, fixed)
 
 From d598a04 until the fix, `p9job run` passed the radii as a plain list in

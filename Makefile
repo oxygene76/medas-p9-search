@@ -113,16 +113,20 @@ build/gpu-wasm/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 # build/gpu-cpu; leaves the other builds alone.
 PY ?= build/venv/bin/python
 .PHONY: test
-test: build/test/test_encounter build/test/test_j2 gpu-cpu
+test: build/test/test_encounter build/test/test_j2 build/test/test_step_encounter gpu-cpu
 	$(MAKE) VARIANT=test
 	build/test/test_encounter
 	build/test/test_j2
+	build/test/test_step_encounter
 	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_p9job.py -v
 	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_flyby.py -v
 .PHONY: test-resume
 test-resume:
 	$(MAKE) VARIANT=test
 	P9SIM=build/test/p9sim PY=$(PY) sh tests/test_campaign_resume.sh
+build/test/test_step_encounter: tests/test_step_encounter.c gpu/whdh.h
+	@mkdir -p build/test
+	$(CC) -std=c99 -O2 -Wall -Wextra -ffp-contract=off -Igpu -o $@ tests/test_step_encounter.c -lm
 build/test/test_j2: tests/test_j2.c gpu/whdh.h
 	@mkdir -p build/test
 	$(CC) -std=c99 -O2 -Wall -Wextra -ffp-contract=off -Igpu -o $@ tests/test_j2.c -lm

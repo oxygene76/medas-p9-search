@@ -144,6 +144,53 @@ P9_HD int p9_kick_tp(p9_body* p, const double* q, const double* gm, const double
     return enc;
 }
 
+// Encounter method "step" (since 2026-10-19 evening, docs/close-encounters.md):
+// instead of the distance at the kick, the closest approach within the step,
+// from the relative position d (planet minus particle) and relative velocity w
+// at the kick: d(tau) = d + w tau for tau in [-dt/2, dt/2] around the kick (in
+// democratic heliocentric coordinates the relative velocity is the difference
+// of the barycentric velocities; the jump term cancels). Removal when that
+// closest distance is below the planet's radius, so that no particle passes
+// through the sphere between two kicks. Also counts, per planet, the closest
+// approaches that fall into this step (tau* in (-dt/2, dt/2]) within three
+// removal radii (near[j]), and among them those with d_min / (|w| dt) < 1.5,
+// shorter than 1.5 steps (fast[j]); the counters may be NULL.
+P9_HD int p9_kick_tp_step(p9_body* p, const double* q, const double* uq, const double* gm, const double* r2enc, int np, double h, double dt,
+                          int* near, int* fast) {
+    double ax = 0.0, ay = 0.0, az = 0.0;
+    int enc = -1;
+    for (int j = 0; j < np; j++) {
+        const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
+        const double d2 = dx * dx + dy * dy + dz * dz;
+        if (r2enc[j] > 0.0) {
+            const double wx = uq[3 * j] - p->vx, wy = uq[3 * j + 1] - p->vy, wz = uq[3 * j + 2] - p->vz;
+            const double w2 = wx * wx + wy * wy + wz * wz;
+            const double dw = dx * wx + dy * wy + dz * wz;
+            double tau = w2 > 0.0 ? -dw / w2 : 0.0;
+            const int inside = tau > -0.5 * dt && tau <= 0.5 * dt;
+            if (tau < -0.5 * dt) tau = -0.5 * dt;
+            if (tau > 0.5 * dt) tau = 0.5 * dt;
+            const double ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+            const double m2 = ex * ex + ey * ey + ez * ez;
+            if (m2 < r2enc[j] && enc < 0) enc = j;
+            if (inside && near && m2 < 9.0 * r2enc[j]) {
+                near[j]++;
+                // d_min / (|w| dt) < 1.5  <=>  m2 < 2.25 w2 dt^2
+                if (m2 < 2.25 * w2 * dt * dt) fast[j]++;
+            }
+        }
+        const double d = sqrt(d2);
+        const double k = gm[j] / (d2 * d);
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+    return enc;
+}
+
 // J2 of the central body (model "j2": the Sun with Jupiter, Saturn and Uranus
 // absorbed, Batygin & Brown 2016, AJ 151, 22, sec. 5.2). Potential of the
 // quadrupole Phi = mu J2 R^2 (3 s^2 - r^2) / (2 r^5), s = r . n with n the
@@ -214,6 +261,17 @@ P9_HD int p9_step_tp_j2(p9_body* p, const double* q, const double* wa, const dou
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
     const int enc = p9_kick_tp_j2(p, q, gm, r2enc, np, dt, j2);
+    p9_jump(p, wb, h);
+    p9_kepler(p, mu0, dt);
+    return enc;
+}
+
+// p9_step_tp with the encounter method "step" (uq: the planets' barycentric velocities at the kick).
+P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const double* wa, const double* wb, const double* gm, const double* r2enc,
+                          int np, double mu0, double dt, int* near, int* fast) {
+    const double h = 0.5 * dt;
+    p9_jump(p, wa, h);
+    const int enc = p9_kick_tp_step(p, q, uq, gm, r2enc, np, dt, dt, near, fast);
     p9_jump(p, wb, h);
     p9_kepler(p, mu0, dt);
     return enc;

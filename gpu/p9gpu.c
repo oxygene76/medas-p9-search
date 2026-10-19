@@ -10,6 +10,9 @@
 //                        on the GPU; cpu: the same code on one CPU core (the
 //                        reference: it must give the same bits as the GPU)
 //   P9GPU_BLOCK=2000     steps per GPU launch (planets computed ahead per block)
+//   P9_ENCOUNTER_METHOD=kick|step  close encounters judged at the kick (kick,
+//                        the default for jobs without a method) or by the
+//                        closest approach within the step (step; whdh.h)
 //   P9_J2="muJ2R2,nx,ny,nz,r_remove"   model "j2" (whdh.h): the central body
 //                        has a J2 (tools/p9job.py sets it from params.model);
 //                        test particles within r_remove of the Sun are removed
@@ -110,24 +113,28 @@ static void planets_positions(const planets* P, double* q) {
 // One step of the planets, kept half a drift ahead like the test particles
 // (whdh.h); writes the jump velocities (wa, wb) and the planets' positions at
 // the kick (q).
-static void planets_step(planets* P, double dt, double* wa, double* q, double* wb) {
+static void planets_step(planets* P, double dt, double* wa, double* q, double* wb, double* uq) {
     const double h = 0.5 * dt;
     planets_w(P, wa);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wa, h);
     planets_positions(P, q);
+    for (int i = 0; i < P->np; i++) uq[3 * i] = P->b[i].vx, uq[3 * i + 1] = P->b[i].vy, uq[3 * i + 2] = P->b[i].vz;
     planets_kick(P, dt);
     planets_w(P, wb);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wb, h);
     for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, dt);
 }
 
-// Fills a table for nb steps: q[nb*np*3], then wa[nb*3], then wb[nb*3].
+// Fills a table for nb steps: q[nb*np*3], then wa[nb*3], then wb[nb*3], then
+// uq[nb*np*3] (the planets' barycentric velocities at the kick, for the
+// encounter method "step").
 static void planets_block(planets* P, double dt, int nb, double* tab) {
     const int np = P->np;
     double* q = tab;
     double* wa = tab + (size_t)nb * np * 3;
     double* wb = wa + (size_t)nb * 3;
-    for (int k = 0; k < nb; k++) planets_step(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k);
+    double* uq = wb + (size_t)nb * 3;
+    for (int k = 0; k < nb; k++) planets_step(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k, uq + (size_t)k * np * 3);
 }
 
 // ------------------------------------------------------------------ conversions
@@ -209,17 +216,20 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 // ------------------------------------------------------------------ test particles on the CPU (reference)
 
 static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* tab, int nb, unsigned long long step0,
-                      double dt) {
+                      double dt, int step_method, int* near, int* fast) {
     const int np = P->np;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
+    const double* uq = wb + (size_t)nb * 3;
     for (int i = 0; i < ntp; i++) {
         if (alive[i] != 1) continue;
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
-            const int enc = P->j2 ? p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, P->j2v)
+            const int enc = step_method ? p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np,
+                                                          P->mu0, dt, near + (size_t)i * np, fast + (size_t)i * np)
+                          : P->j2 ? p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, P->j2v)
                                   : p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
             if (enc >= 0) {
                 a = -1 - enc;
@@ -265,6 +275,16 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
 #endif
     const int max_nb = getenv("P9GPU_BLOCK") ? atoi(getenv("P9GPU_BLOCK")) : 2000;
     const int real = p9_real_parse(getenv("P9GPU_REAL"));
+    const char* method_env = getenv("P9_ENCOUNTER_METHOD");
+    if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step")) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick or step\n");
+        return 2;
+    }
+    const int step_method = method_env && !strcmp(method_env, "step");
+    if (step_method && (real != P9_REAL_DOUBLE || getenv("P9_J2"))) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD=step: model full, double only (so far)\n");
+        return 2;
+    }
     if (real < 0) {
         fprintf(stderr, "P9GPU_REAL: double, double-t, float or df64 (this build: %s)\n", p9_real_parse("df64") < 0 ? "double only" : "all");
         return 2;
@@ -321,7 +341,9 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     unsigned long long steps = r->steps_done;
     const unsigned long long steps0 = steps;
     double t = r->t;
-    const size_t tab_doubles = (size_t)max_nb * P.np * 3 + (size_t)max_nb * 6;
+    const size_t tab_doubles = (size_t)max_nb * P.np * 6 + (size_t)max_nb * 6;
+    int* near = calloc((size_t)(ntp > 0 ? ntp : 1) * P.np, sizeof(int));
+    int* fast = calloc((size_t)(ntp > 0 ? ntp : 1) * P.np, sizeof(int));
     double* cpu_tab = use_gpu ? NULL : malloc(sizeof(double) * tab_doubles);
     char err[256] = "";
 #ifndef P9_NO_CUDA
@@ -333,6 +355,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             return 3;
         }
         fprintf(stderr, "device: %s\n", p9g_name(g));
+        if (step_method && p9g_set_step_method(g, err, sizeof err)) {
+            fprintf(stderr, "GPU: %s\n", err);
+            return 3;
+        }
         if (P.j2 && p9g_set_j2(g, P.j2v, err, sizeof err)) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
@@ -370,7 +396,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
                 if (real == P9_REAL_DOUBLE)
-                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt);
+                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method, near, fast);
                 else
                     p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT);
             }
@@ -418,11 +444,27 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     char by_text[256] = "";
     for (int j = 0; j < P.np; j++)
         snprintf(by_text + strlen(by_text), sizeof by_text - strlen(by_text), "%s%.0f:%zu", j ? "," : "", ids[j], by[j]);
+    // method "step": closest approaches within three removal radii, and those shorter than 1.5 steps
+#ifndef P9_NO_CUDA
+    if (use_gpu && step_method && p9g_counts(g, near, fast, err, sizeof err)) {
+        fprintf(stderr, "GPU: %s\n", err);
+        return 3;
+    }
+#endif
+    char near_text[256] = "", fast_text[256] = "";
+    for (int j = 0; j < P.np; j++) {
+        long long sn = 0, sf = 0;
+        for (int i = 0; i < ntp; i++) sn += near[(size_t)i * P.np + j], sf += fast[(size_t)i * P.np + j];
+        snprintf(near_text + strlen(near_text), sizeof near_text - strlen(near_text), "%s%.0f:%lld", j ? "," : "", ids[j], sn);
+        snprintf(fast_text + strlen(fast_text), sizeof fast_text - strlen(fast_text), "%s%.0f:%lld", j ? "," : "", ids[j], sf);
+    }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s planet_s=%.3f program=p9gpu version=%s\n",
+           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s encounter_method=%s flybys=%s fast_flybys=%s planet_s=%.3f program=p9gpu "
+           "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, by_text, planet_s, P9_VERSION);
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, by_text, step_method ? "step" : "kick",
+           step_method ? near_text : "-", step_method ? fast_text : "-", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
@@ -432,6 +474,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     free(alive);
     free(was_alive);
     free(cpu_tab);
+    free(near);
+    free(fast);
     reb_simulation_free(r);
     return 0;
 }

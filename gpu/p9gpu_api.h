@@ -16,6 +16,10 @@ p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const doub
 const char* p9g_name(p9g* g);
 // Model "j2" (whdh.h): j2[0] = mu J2 R^2, j2[1..3] = axis, j2[4] = r_remove^2.
 int p9g_set_j2(p9g* g, const double* j2, char* err, int errlen);
+// Encounter method "step" (whdh.h): closest approach within the step; counts flybys per particle and planet.
+int p9g_set_step_method(p9g* g, char* err, int errlen);
+// The counters of method "step", summed over the run: near and fast, ntp x np each.
+int p9g_counts(p9g* g, int* near, int* fast, char* err, int errlen);
 // Host table to fill for the next launch (pinned memory; waits for its last upload).
 double* p9g_next_table(p9g* g);
 // Uploads that table and starts the block of nb steps (steps step0+1 .. step0+nb); returns at once.

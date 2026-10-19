@@ -67,6 +67,13 @@
 static size_t n_removed = 0;
 static size_t n_removed_encounter = 0;
 static size_t n_removed_by[16];  // removals by close encounter per massive body after the Sun
+// Encounter method "step" (P9_ENCOUNTER_METHOD=step, gpu/whdh.h p9_kick_tp_step):
+// the closest approach within the step from relative position and velocity at
+// the kick; per planet the flybys within three removal radii and those shorter
+// than 1.5 steps. Needs the velocities at the kick: force_is_velocity_dependent
+// makes REBOUND convert them too (the integration is not changed by it).
+static int enc_step = 0;
+static long long n_near_by[16], n_fast_by[16];
 
 // MERCURIUS (integrator "mercurius" in the start file): it takes twice a
 // particle's radius as a lower bound of its switching distance, so the ids
@@ -98,14 +105,32 @@ static void encounter_check(struct reb_simulation* r) {
         enc_flag = realloc(enc_flag, sizeof(int) * r->N);
         enc_flag_n = r->N;
     }
+    const double dt = r->dt;
     for (size_t i = r->N_active; i < r->N; i++) {
         const struct reb_particle* p = &r->particles[i];
         int hit = 0;
-        for (size_t j = 1; j < r->N_active && !hit; j++) {
+        for (size_t j = 1; j < r->N_active && (enc_step || !hit); j++) {
             if (enc_r2[j - 1] == 0.0) continue;
             const struct reb_particle* q = &r->particles[j];
             const double dx = q->x - p->x, dy = q->y - p->y, dz = q->z - p->z;
-            if (dx * dx + dy * dy + dz * dz < enc_r2[j - 1]) hit = (int)j;
+            if (!enc_step) {
+                if (dx * dx + dy * dy + dz * dz < enc_r2[j - 1]) hit = (int)j;
+                continue;
+            }
+            const double wx = q->vx - p->vx, wy = q->vy - p->vy, wz = q->vz - p->vz;
+            const double w2 = wx * wx + wy * wy + wz * wz;
+            const double dw = dx * wx + dy * wy + dz * wz;
+            double tau = w2 > 0.0 ? -dw / w2 : 0.0;
+            const int inside = tau > -0.5 * dt && tau <= 0.5 * dt;
+            if (tau < -0.5 * dt) tau = -0.5 * dt;
+            if (tau > 0.5 * dt) tau = 0.5 * dt;
+            const double ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+            const double m2 = ex * ex + ey * ey + ez * ez;
+            if (m2 < enc_r2[j - 1] && !hit) hit = (int)j;
+            if (inside && m2 < 9.0 * enc_r2[j - 1]) {
+                n_near_by[j - 1]++;
+                if (m2 < 2.25 * w2 * dt * dt) n_fast_by[j - 1]++;
+            }
         }
         enc_flag[i] = hit;
     }
@@ -235,8 +260,15 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
     for (size_t j = 0; j + 1 < r->N_active; j++) enc_ids[j] = r->particles[j + 1].r;  // ids of the massive bodies after the Sun
     if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_ids, enc_r, enc_r2)) return 2;
     if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, enc_ids, enc_r);
+    const char* method = getenv("P9_ENCOUNTER_METHOD");
+    if (method && *method && strcmp(method, "kick") && strcmp(method, "step")) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick or step\n");
+        return 2;
+    }
+    enc_step = method && !strcmp(method, "step");
     for (size_t j = 0; j + 1 < r->N_active; j++)
         if (enc_r2[j] > 0.0) r->additional_forces = encounter_check;
+    if (enc_step && r->additional_forces) r->force_is_velocity_dependent = 1;
     if (r->integrator.name && !strcmp(r->integrator.name, "mercurius")) {
         ids_kept = malloc(sizeof(double) * (r->N > 0 ? r->N : 1));
         for (size_t i = 0; i < r->N; i++) ids_kept[i] = r->particles[i].r;
@@ -281,12 +313,16 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         p9_hex(d2, hs);
     }
     const double e1 = p9_energy_massive(r);
-    char by_text[256] = "";
-    for (size_t j = 0; j + 1 < r->N_active && j < 16; j++)
+    char by_text[256] = "", near_text[256] = "", fast_text[256] = "";
+    for (size_t j = 0; j + 1 < r->N_active && j < 16; j++) {
         snprintf(by_text + strlen(by_text), sizeof by_text - strlen(by_text), "%s%.0f:%zu", j ? "," : "", enc_ids[j], n_removed_by[j]);
+        snprintf(near_text + strlen(near_text), sizeof near_text - strlen(near_text), "%s%.0f:%lld", j ? "," : "", enc_ids[j], n_near_by[j]);
+        snprintf(fast_text + strlen(fast_text), sizeof fast_text - strlen(fast_text), "%s%.0f:%lld", j ? "," : "", enc_ids[j], n_fast_by[j]);
+    }
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e removed_by=%s program=p9sim version=%s\n",
-           h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, by_text, P9_VERSION);
+           "dE_rel=%.3e removed_by=%s encounter_method=%s flybys=%s fast_flybys=%s program=p9sim version=%s\n",
+           h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, by_text, enc_step ? "step" : "kick",
+           enc_step ? near_text : "-", enc_step ? fast_text : "-", P9_VERSION);
     reb_simulation_free(r);
     return 0;
 }
