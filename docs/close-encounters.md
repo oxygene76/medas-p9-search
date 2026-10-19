@@ -164,5 +164,27 @@ reported with every result.
    The radii hold; the corrected 4-Gyr run was started with them
    (2026-10-19 18:50). For comparison, with Planet Nine's Hill radius (7 au)
    only 3,477 of the same 5,000 survived the 10 Myr.
-2. MERCURIUS control: running (2,000 test particles, 50 Myr).
+2. **MERCURIUS control** (`runs/val/merc`, 16 slices of 125, 50 Myr, 64,141
+   CPU-seconds, no removal at the planets) against p9gpu with the rule
+   (`runs/val/gpu-2000`), the same 2,000 test particles:
+
+   | at 50 Myr | MERCURIUS | p9gpu, rule |
+   |---|---|---|
+   | surviving | 1,933 | 1,521 |
+   | removed | 67 (distance rules only) | 479 (Neptune 389, Planet Nine 82, Uranus 1, distance 7) |
+   | distant (a > 230 au, q > 42 au) | 793 | 753 |
+   | Δϖ: R, mean | 0.624, 282° | 0.629, 285° |
+   | ΔΩ: R, mean | 0.709, 46° | 0.700, 48° |
+
+   KS tests at 50 Myr: Δϖ p = 0.72, ΔΩ p = 0.92, a p = 0.12, i p = 0.13,
+   **q p < 0.01** (also at 10, 20, 30 Myr). The clustering of the distant
+   particles agrees within the noise at every time; the whole population does
+   not: 21 % fewer survivors and another perihelion distribution, because the
+   rule removes the particles that come close to Neptune (its Hill radius, 0.78
+   au), which MERCURIUS follows and mostly keeps. A larger radius would remove
+   more, not fewer: the difference is the removal itself, not the resolution.
+   **Open decision** (2026-10-19): keep the rule (clustering of the distant
+   population unchanged, total population biased), or follow encounters
+   with Neptune instead of removing them (diagnostic without removal running:
+   `runs/val/gpu-2000-noenc`), or a hybrid integrator on the GPU.
 3. J2 comparison: running.
