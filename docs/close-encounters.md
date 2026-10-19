@@ -7,6 +7,20 @@ there the planet's pull dominates and the step is far too long for the orbit
 around the planet. Instead of following such particles with wrong orbits, both
 remove them by the same criterion.
 
+> **Status 2026-10-19 22:45 (decision for the night; the basic decision
+> follows on 2026-10-20):** removal at the planets is suspended. Runs remove
+> only by the distance rules (10,000 au, 5 au); close encounters are counted
+> (`p9job make --no-removal`, method "step", `flybys.tsv`). Reason: against
+> REBOUND's MERCURIUS (2,000 test particles, 50 Myr) the removal at the rule's
+> radii missed the acceptance criteria (`docs/validation-mercurius.md`), while
+> p9gpu without removal met all of them. **All results below that were
+> obtained with removal radii are biased** (fewer survivors, other perihelion
+> distribution, the whole surviving population more strongly clustered; the
+> distant population a > 230 au, q > 42 au agreed within the noise). Marked
+> [biased: removal] where they appear. Not affected: runs without encounter
+> removal (the REBOUND pilot of 18/19 October, `gpu-long*`, the df64
+> comparison, the reproducibility checks).
+
 ## The criterion (since commit d598a04, 2026-10-19)
 
 A test particle is removed when, **at the kick of a step**, it is **closer to a
@@ -48,7 +62,7 @@ The other removal rule is unchanged: every 1000 steps (counted over the whole
 run), a test particle farther than 10,000 au or closer than 5 au to the Sun is
 removed (synchronous positions).
 
-## Check
+## Check [biased: removal; only the agreement of the two programs holds]
 
 The same job (4,000 test particles, 100,000 years, `runs/enc-test`) with p9sim
 and p9gpu: both removed the same three particles by the encounter criterion and
@@ -130,7 +144,7 @@ particles were followed through encounters, inaccurately, and only removed by
 the distance rules. Both integrators did the same there too, so the statistical
 comparison remains valid; new runs use the criterion.
 
-## The radius rule (2026-10-19)
+## The radius rule (2026-10-19) [rule kept for the counting zones; its removals biased the results]
 
 Until the fix of the radius order, every planet's radius was meant to be its
 Hill radius. With the correct order that removes, at Planet Nine's 7 au,
@@ -197,7 +211,7 @@ au/yr (1.3 steps per flyby): 2.0e-3, maximum 2.8e-2. Tables:
 `tests/test_flyby.py` in `make test` (needs the Python package rebound 5.2.2,
 installed from `third_party/rebound-5.2.2.tar.gz`).
 
-v99 in the corrected 4-Gyr run (`tools/encounter_speeds.py`: orbits within 2
+v99 in the corrected 4-Gyr run [biased: removal; the run was stopped at 160 Myr] (`tools/encounter_speeds.py`: orbits within 2
 au of the planet's orbit; relative speed at the closest approach of the two
 orbits, and Öpik's U from the Tisserand parameter):
 
@@ -238,7 +252,7 @@ same rule for every planet keeps the criterion simple and identical in both
 programs. Particles removed this way are counted, so their number can be
 reported with every result.
 
-## Results of the evidence (2026-10-19)
+## Results of the evidence (2026-10-19) [biased: removal, except the statements about the step and the program comparison]
 
 1. **Half the step** (`runs/val/dt05`, `runs/val/dt025`; 5,000 test
    particles, seed 9, 10 Myr, the radii of dt = 0.5 yr in both):
