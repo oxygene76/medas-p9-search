@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <cuda_runtime.h>
 #include "whdh.h"
 #include "p9gpu_api.h"
@@ -65,8 +66,6 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
     g->np = np;
     g->max_nb = max_nb;
     g->tab_doubles = (size_t)(max_nb + 1) * np * 3 + (size_t)max_nb * 6;
-    // The host thread sleeps while it waits for the GPU (no busy-waiting on a CPU core).
-    if (fail(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync), "device flags", err, errlen)) return NULL;
     cudaDeviceProp prop;
     if (fail(cudaGetDeviceProperties(&prop, 0), "device", err, errlen)) return NULL;
     snprintf(g->name, sizeof g->name, "%s sm_%d%d", prop.name, prop.major, prop.minor);
@@ -89,9 +88,27 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
 
 extern "C" const char* p9g_name(p9g* g) { return g->name; }
 
+// Waiting without occupying a CPU core: CUDA's own waits spin, and with
+// "blocking sync" the WSL2 driver still keeps a core busy in system calls.
+// Polling with a 1 ms sleep costs at most 1 ms per block of steps.
+static void nap(void) {
+    struct timespec ts = {0, 1000000};
+    nanosleep(&ts, NULL);
+}
+static cudaError_t wait_event(cudaEvent_t e) {
+    cudaError_t r;
+    while ((r = cudaEventQuery(e)) == cudaErrorNotReady) nap();
+    return r;
+}
+static cudaError_t wait_stream(cudaStream_t s) {
+    cudaError_t r;
+    while ((r = cudaStreamQuery(s)) == cudaErrorNotReady) nap();
+    return r;
+}
+
 // The host table to fill next; waits until its previous upload is done.
 extern "C" double* p9g_next_table(p9g* g) {
-    cudaEventSynchronize(g->copied[g->cur]);
+    wait_event(g->copied[g->cur]);
     return g->h_tab[g->cur];
 }
 
@@ -114,7 +131,7 @@ extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, d
 }
 
 extern "C" int p9g_download(p9g* g, p9_body* st, int* alive, char* err, int errlen) {
-    if (fail(cudaStreamSynchronize(g->stream), "kernel", err, errlen)) return 1;
+    if (fail(wait_stream(g->stream), "kernel", err, errlen)) return 1;
     if (g->ntp == 0) return 0;
     if (fail(cudaMemcpy(st, g->d_st, sizeof(p9_body) * g->ntp, cudaMemcpyDeviceToHost), "download", err, errlen)) return 1;
     if (fail(cudaMemcpy(alive, g->d_alive, sizeof(int) * g->ntp, cudaMemcpyDeviceToHost), "download", err, errlen)) return 1;
