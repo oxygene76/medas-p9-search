@@ -12,9 +12,9 @@
 //   P9GPU_BLOCK=2000     steps per GPU launch (planets computed ahead per block)
 //
 // Method (docs/gpu-integrator.md): Wisdom-Holman in democratic heliocentric
-// coordinates, gpu/whdh.h. The planets (all massive bodies but the Sun) are
-// integrated on the CPU with the same splitting; for every block of steps
-// their positions at the step boundaries and the jump velocities are stored
+// coordinates, drift-kick-drift, gpu/whdh.h. The planets (all massive bodies
+// but the Sun) are integrated on the CPU with the same splitting; for every
+// block of steps their positions at the kicks and the jump velocities are stored
 // in a table, which the GPU uses for all test particles while the CPU
 // computes the next block. This is not REBOUND's WHFast: the operator order
 // differs, so results agree with p9sim statistically, not bit for bit.
@@ -96,29 +96,27 @@ static void planets_positions(const planets* P, double* q) {
     }
 }
 
-// One step of the planets; writes the jump velocities used (wa, wb) and the
-// positions at the end of the step (q1). The positions at the start are
-// those at the end of the step before.
-static void planets_step(planets* P, double dt, double* wa, double* wb, double* q1) {
+// One step of the planets, kept half a drift ahead like the test particles
+// (whdh.h); writes the jump velocities (wa, wb) and the planets' positions at
+// the kick (q).
+static void planets_step(planets* P, double dt, double* wa, double* q, double* wb) {
     const double h = 0.5 * dt;
-    planets_kick(P, h);
     planets_w(P, wa);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wa, h);
-    for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, dt);
+    planets_positions(P, q);
+    planets_kick(P, dt);
     planets_w(P, wb);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wb, h);
-    planets_positions(P, q1);
-    planets_kick(P, h);
+    for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, dt);
 }
 
-// Fills a table for nb steps: q[(nb+1)*np*3], then wa[nb*3], then wb[nb*3].
+// Fills a table for nb steps: q[nb*np*3], then wa[nb*3], then wb[nb*3].
 static void planets_block(planets* P, double dt, int nb, double* tab) {
     const int np = P->np;
     double* q = tab;
-    double* wa = tab + (size_t)(nb + 1) * np * 3;
+    double* wa = tab + (size_t)nb * np * 3;
     double* wb = wa + (size_t)nb * 3;
-    planets_positions(P, q);
-    for (int k = 0; k < nb; k++) planets_step(P, dt, wa + 3 * k, wb + 3 * k, q + (size_t)(k + 1) * np * 3);
+    for (int k = 0; k < nb; k++) planets_step(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k);
 }
 
 // ------------------------------------------------------------------ conversions
@@ -202,16 +200,17 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* tab, int nb, unsigned long long step0, double dt) {
     const int np = P->np;
     const double* q = tab;
-    const double* wa = tab + (size_t)(nb + 1) * np * 3;
+    const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     for (int i = 0; i < ntp; i++) {
         if (!alive[i]) continue;
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
-            p9_step_tp(&p, q + (size_t)k * np * 3, q + (size_t)(k + 1) * np * 3, wa + 3 * k, wb + 3 * k, P->gm, np, P->mu0, dt);
+            p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, np, P->mu0, dt);
             if ((step0 + k + 1) % CHECK_EVERY == 0) {
-                const double r2 = p.x * p.x + p.y * p.y + p.z * p.z;
+                const p9_body x = p9_synchronous(p, P->mu0, dt);
+                const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
                 if (r2 > R_OUT * R_OUT || r2 < R_IN * R_IN) {
                     a = 0;
                     break;
@@ -256,11 +255,15 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     for (int i = 0; i < ntp; i++) alive[i] = was_alive[i] = 1;
     to_dh(r, &P, tp, ntp, &com);
     const double e0 = reb_simulation_energy(r);
+    // keep every body half a drift ahead (whdh.h)
+    for (int i = 0; i < P.np; i++) p9_kepler(&P.b[i], P.mu0, 0.5 * dt);
+    for (int i = 0; i < ntp; i++) p9_kepler(&tp[i], P.mu0, 0.5 * dt);
+    p9_body* sync_tp = malloc(sizeof(p9_body) * (ntp > 0 ? ntp : 1));
     const double t0 = r->t;
     unsigned long long steps = r->steps_done;
     const unsigned long long steps0 = steps;
     double t = r->t;
-    const size_t tab_doubles = (size_t)(max_nb + 1) * P.np * 3 + (size_t)max_nb * 6;
+    const size_t tab_doubles = (size_t)max_nb * P.np * 3 + (size_t)max_nb * 6;
     double* cpu_tab = use_gpu ? NULL : malloc(sizeof(double) * tab_doubles);
     char err[256] = "";
 #ifndef P9_NO_CUDA
@@ -316,7 +319,11 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         }
 #endif
         drop_dead(r, alive, was_alive, ntp);
-        from_dh(r, &P, tp, alive, ntp, &com, t - t0);
+        // the synchronous states for the output; the integration continues from the others
+        planets Ps = P;
+        for (int i = 0; i < P.np; i++) Ps.b[i] = p9_synchronous(P.b[i], P.mu0, dt);
+        for (int i = 0; i < ntp; i++) sync_tp[i] = alive[i] ? p9_synchronous(tp[i], P.mu0, dt) : tp[i];
+        from_dh(r, &Ps, sync_tp, alive, ntp, &com, t - t0);
         r->t = t;
         r->steps_done = steps;
         reb_simulation_save_to_file(r, out);
@@ -348,6 +355,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     if (g) p9g_free(g);
 #endif
     free(tp);
+    free(sync_tp);
     free(alive);
     free(was_alive);
     free(cpu_tab);

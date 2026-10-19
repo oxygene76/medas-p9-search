@@ -10,12 +10,18 @@
 // fixed number of iterations.
 //
 // Coordinates: Q = position relative to the Sun, u = barycentric velocity.
-// One step of length dt (h = dt/2):
-//   kick(h)   u += h * sum_j G m_j (Q_j - Q) / |Q_j - Q|^3   (planets j, not the Sun)
-//   jump(h)   Q += h * w_a,  w = (sum_j m_j u_j) / m_Sun      (planets' momentum)
-//   kepler(dt) Kepler orbit around G m_Sun for (Q, u)
-//   jump(h)   Q += h * w_b                                      (after the planets' Kepler step)
-//   kick(h)   with the planets' positions at the end of the step
+// One step of length dt (h = dt/2), drift-kick-drift with the Kepler parts
+// outside (Wisdom & Holman 1991; the default order of WHFast):
+//   kepler(h)  Kepler orbit around G m_Sun for (Q, u)
+//   jump(h)    Q += h * w_a,  w = (sum_j m_j u_j) / m_Sun     (planets' momentum)
+//   kick(dt)   u += dt * sum_j G m_j (Q_j - Q) / |Q_j - Q|^3  (planets j, not the Sun)
+//   jump(h)    Q += h * w_b
+//   kepler(h)
+// The two Kepler halves of consecutive steps are done as one Kepler step of
+// dt: the state is kept half a drift ahead ("Y = kepler(h) X") and brought
+// back to the synchronous state X with kepler(-h) for outputs and checks.
+// (An earlier version used kick-drift-kick; its phase errors were twice as
+// large, measured against IAS15.)
 //
 // Reproducibility: only + - * / and sqrt, all correctly rounded in IEEE-754
 // binary64 on the CPU (-ffp-contract=off) and on NVIDIA GPUs (nvcc
@@ -138,16 +144,20 @@ P9_HD void p9_jump(p9_body* p, const double* w, double h) {
     p->z += h * w[2];
 }
 
-// One full step of a test particle; q0 and q1 are the planets' positions at
-// the start and the end of the step, wa and wb the jump velocities.
-P9_HD void p9_step_tp(p9_body* p, const double* q0, const double* q1, const double* wa, const double* wb, const double* gm, int np, double mu0,
-                      double dt) {
+// One step of a test particle in the half-drift-ahead form: Y_k -> Y_{k+1}.
+// q are the planets' positions at the kick, wa and wb the jump velocities.
+P9_HD void p9_step_tp(p9_body* p, const double* q, const double* wa, const double* wb, const double* gm, int np, double mu0, double dt) {
     const double h = 0.5 * dt;
-    p9_kick_tp(p, q0, gm, np, h);
     p9_jump(p, wa, h);
-    p9_kepler(p, mu0, dt);
+    p9_kick_tp(p, q, gm, np, dt);
     p9_jump(p, wb, h);
-    p9_kick_tp(p, q1, gm, np, h);
+    p9_kepler(p, mu0, dt);
+}
+
+// The synchronous state of a body kept half a drift ahead.
+P9_HD p9_body p9_synchronous(p9_body y, double mu0, double dt) {
+    p9_kepler(&y, mu0, -0.5 * dt);
+    return y;
 }
 
 #endif

@@ -17,21 +17,24 @@
 __constant__ double c_gm[P9_MAX_PLANETS];
 
 // Table of a block of nb steps (layout shared with p9gpu.c):
-//   q[(nb+1) * np * 3]  planets' positions relative to the Sun at the step boundaries
-//   wa[nb * 3], wb[nb * 3]  jump velocities before and after the Kepler step
+//   q[nb * np * 3]          planets' positions relative to the Sun at the kick of each step
+//   wa[nb * 3], wb[nb * 3]  jump velocities before and after the kick
+// Particles are kept half a drift ahead (whdh.h); removal is checked on the
+// synchronous state.
 __global__ void p9_advance(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const double* __restrict__ tab, int np, int nb,
                            unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= ntp || !alive[i]) return;
     const double* q = tab;
-    const double* wa = tab + (size_t)(nb + 1) * np * 3;
+    const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     p9_body p = st[i];
     int a = 1;
     for (int k = 0; k < nb; k++) {
-        p9_step_tp(&p, q + (size_t)k * np * 3, q + (size_t)(k + 1) * np * 3, wa + 3 * k, wb + 3 * k, c_gm, np, mu0, dt);
+        p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, np, mu0, dt);
         if ((step0 + k + 1) % (unsigned long long)check_every == 0) {
-            const double r2 = p.x * p.x + p.y * p.y + p.z * p.z;
+            const p9_body x = p9_synchronous(p, mu0, dt);
+            const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
             if (r2 > rout2 || r2 < rin2) {
                 a = 0;
                 break;
@@ -65,7 +68,7 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
     g->ntp = ntp;
     g->np = np;
     g->max_nb = max_nb;
-    g->tab_doubles = (size_t)(max_nb + 1) * np * 3 + (size_t)max_nb * 6;
+    g->tab_doubles = (size_t)max_nb * np * 3 + (size_t)max_nb * 6;
     cudaDeviceProp prop;
     if (fail(cudaGetDeviceProperties(&prop, 0), "device", err, errlen)) return NULL;
     snprintf(g->name, sizeof g->name, "%s sm_%d%d", prop.name, prop.major, prop.minor);
@@ -116,7 +119,7 @@ extern "C" double* p9g_next_table(p9g* g) {
 extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, char* err,
                           int errlen) {
     const int b = g->cur;
-    const size_t n = (size_t)(nb + 1) * g->np * 3 + (size_t)nb * 6;
+    const size_t n = (size_t)nb * g->np * 3 + (size_t)nb * 6;
     // the table is packed for nb steps: q, then wa, then wb (p9gpu.c writes it that way)
     if (fail(cudaMemcpyAsync(g->d_tab[b], g->h_tab[b], sizeof(double) * n, cudaMemcpyHostToDevice, g->stream), "upload table", err, errlen)) return 1;
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
