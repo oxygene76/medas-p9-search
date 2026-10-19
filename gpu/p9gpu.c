@@ -10,6 +10,8 @@
 //                        on the GPU; cpu: the same code on one CPU core (the
 //                        reference: it must give the same bits as the GPU)
 //   P9GPU_BLOCK=2000     steps per GPU launch (planets computed ahead per block)
+//   P9GPU_REAL=double    number type of the test particles' integrator:
+//                        double (default), double-t, float, df64 (gpu/p9gpu_real.h)
 //
 // Method (docs/gpu-integrator.md): Wisdom-Holman in democratic heliocentric
 // coordinates, drift-kick-drift, gpu/whdh.h. The planets (all massive bodies
@@ -32,6 +34,7 @@
 #include "p9state.h"
 #include "p9encounter.h"
 #include "whdh.h"
+#include "p9gpu_real.h"
 #ifndef P9_NO_CUDA
 #include "p9gpu_api.h"
 #endif
@@ -228,6 +231,17 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
     }
 }
 
+#ifdef P9_NO_REAL_T
+// Builds without C++ (WebAssembly): double only.
+int p9_real_parse(const char* text) { return !text || !*text || !strcmp(text, "double") ? P9_REAL_DOUBLE : -1; }
+const char* p9_real_name(int real) { return real == P9_REAL_DOUBLE ? "double" : "?"; }
+void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, double mu0, const double* tab, int nb,
+                    unsigned long long step0, double dt, int check_every, double rin2, double rout2) {
+    (void)real, (void)tp, (void)alive, (void)ntp, (void)np, (void)gm, (void)r2enc, (void)mu0, (void)tab, (void)nb, (void)step0, (void)dt,
+        (void)check_every, (void)rin2, (void)rout2;
+}
+#endif
+
 // ------------------------------------------------------------------ run
 
 static int run(const char* in, double t_end, long n_snap, const char* out, const char* state_out) {
@@ -242,6 +256,11 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     const int use_gpu = !(mode_env && strcmp(mode_env, "cpu") == 0);
 #endif
     const int max_nb = getenv("P9GPU_BLOCK") ? atoi(getenv("P9GPU_BLOCK")) : 2000;
+    const int real = p9_real_parse(getenv("P9GPU_REAL"));
+    if (real < 0) {
+        fprintf(stderr, "P9GPU_REAL: double, double-t, float or df64 (this build: %s)\n", p9_real_parse("df64") < 0 ? "double only" : "all");
+        return 2;
+    }
     struct reb_simulation* r = reb_simulation_create_from_file((char*)in, -1);
     if (!r) {
         fprintf(stderr, "%s: can not load\n", in);
@@ -279,7 +298,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
 #ifndef P9_NO_CUDA
     p9g* g = NULL;
     if (use_gpu) {
-        g = p9g_create(ntp, tp, alive, P.np, P.gm, r2enc, max_nb, err, sizeof err);
+        g = p9g_create(ntp, tp, alive, P.np, P.gm, r2enc, max_nb, real, err, sizeof err);
         if (!g) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
@@ -317,7 +336,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             {
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
-                cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt);
+                if (real == P9_REAL_DOUBLE)
+                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt);
+                else
+                    p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT);
             }
             steps += (unsigned long long)nb;
             need -= nb;
@@ -358,9 +380,9 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0;
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s planet_s=%.3f program=p9gpu version=%s\n",
+           "dE_rel=%.3e mode=%s real=%s planet_s=%.3f program=p9gpu version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", planet_s, P9_VERSION);
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);

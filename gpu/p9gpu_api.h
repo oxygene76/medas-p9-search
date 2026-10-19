@@ -3,13 +3,16 @@
 #ifndef P9GPU_API_H
 #define P9GPU_API_H
 #include "whdh.h"
+#include "p9gpu_real.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 typedef struct p9g p9g;
 // Uploads the test particles; max_nb is the largest block (steps per launch).
 // r2enc: squared close-encounter radii of the planets (0: no check).
-p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, char* err, int errlen);
+// real: the number type of the kernel (P9_REAL_*, p9gpu_real.h).
+p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, int real, char* err,
+                int errlen);
 const char* p9g_name(p9g* g);
 // Host table to fill for the next launch (pinned memory; waits for its last upload).
 double* p9g_next_table(p9g* g);

@@ -71,23 +71,30 @@ counterexamples:
 # as p9sim. PTX for compute_75 is embedded so that other GPUs can JIT it.
 CUDA ?= build/cuda-venv/lib/python3.14/site-packages/nvidia/cu13
 NVCC ?= $(CUDA)/bin/nvcc
+CUDA_LIB ?= $(CUDA)/lib
 GPU_ARCH ?= -gencode arch=compute_120,code=sm_120 -gencode arch=compute_75,code=compute_75
 GPU_SRC := gpu/p9gpu.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_stub.c
+GPU_HDR := gpu/whdh.h gpu/whdh_t.h gpu/df64.h gpu/p9gpu_api.h gpu/p9gpu_real.h
+CXX ?= g++
+# the templated integrator on the CPU (gpu/cpu_t.cpp): same flags as the C code
+GPU_CXXFLAGS := -std=c++17 -fno-fast-math -O3 -ffp-contract=off -Isrc -Igpu -w
 GPU_CFLAGS := -std=c99 -fno-fast-math -O3 -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -DP9_VERSION='"$(P9_VERSION)"' -I$(REBOUND)/src -Isrc -Igpu -w
 
 .PHONY: gpu gpu-cpu
 gpu: build/gpu/p9gpu
-build/gpu/p9gpu: gpu/kernel.cu gpu/whdh.h gpu/p9gpu_api.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
+build/gpu/p9gpu: gpu/kernel.cu gpu/cpu_t.cpp $(GPU_HDR) $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu
-	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o build/gpu/kernel.o
-	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) build/gpu/kernel.o -L$(CUDA)/lib -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
+	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Isrc -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o build/gpu/kernel.o
+	$(CXX) $(GPU_CXXFLAGS) -c gpu/cpu_t.cpp -o build/gpu/cpu_t.o
+	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) build/gpu/kernel.o build/gpu/cpu_t.o -L$(CUDA_LIB) -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
 	@echo "gpu: $(NVCC) --fmad=false $(GPU_ARCH); host gcc $(GPU_CFLAGS)" > build/gpu/BUILD-FLAGS
 
 # The same integrator without CUDA (P9GPU_MODE=cpu only): reference and CPU speed.
 gpu-cpu: build/gpu-cpu/p9gpu
-build/gpu-cpu/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
+build/gpu-cpu/p9gpu: gpu/cpu_t.cpp $(GPU_HDR) $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu-cpu
-	$(CC) $(GPU_CFLAGS) -DP9_NO_CUDA -o $@ $(GPU_SRC) $(REB_SRC) -lm
+	$(CXX) $(GPU_CXXFLAGS) -c gpu/cpu_t.cpp -o build/gpu-cpu/cpu_t.o
+	$(CC) $(GPU_CFLAGS) -DP9_NO_CUDA -o $@ $(GPU_SRC) $(REB_SRC) build/gpu-cpu/cpu_t.o -lstdc++ -lm
 	@echo "gpu-cpu: $(CC) $(GPU_CFLAGS) -DP9_NO_CUDA" > build/gpu-cpu/BUILD-FLAGS
 
 # p9gpu's integrator without CUDA as WebAssembly (WASI): the same bits as on the GPU.
@@ -95,7 +102,7 @@ build/gpu-cpu/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 gpu-wasm: build/gpu-wasm/p9gpu
 build/gpu-wasm/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu-wasm
-	$(ZIG) cc -target wasm32-wasi $(GPU_CFLAGS) -DP9_NO_CUDA -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS \
+	$(ZIG) cc -target wasm32-wasi $(GPU_CFLAGS) -DP9_NO_CUDA -DP9_NO_REAL_T -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS \
 	  -o $@ $(GPU_SRC) $(REB_SRC) -lwasi-emulated-signal -lwasi-emulated-process-clocks
 
 # ------------------------------------------------------------------ tests

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <cuda_runtime.h>
 #include "whdh.h"
+#include "whdh_t.h"
 #include "p9gpu_api.h"
 
 __constant__ double c_gm[P9_MAX_PLANETS];
@@ -52,12 +53,57 @@ __global__ void p9_advance(p9_body* __restrict__ st, int* __restrict__ alive, in
     alive[i] = a;
 }
 
+// The same kernel over the number type T (gpu/whdh_t.h; P9GPU_REAL, see
+// p9gpu.c): the state stays double in memory and is converted at the start
+// and end of a block (exact for df64), the table is converted once per block.
+template <class T>
+struct p9t_consts {
+    T gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS];
+};
+
+template <class T>
+__global__ void p9_convert(const double* __restrict__ src, T* __restrict__ dst, size_t n) {
+    const size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) dst[i] = L<T>(src[i]);
+}
+
+template <class T>
+__global__ void p9_advance_t(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const T* __restrict__ tab, int np, int nb,
+                             unsigned long long step0, T dt, T mu0, int check_every, T rin2, T rout2, p9t_consts<T> c) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= ntp || alive[i] != 1) return;
+    const T* q = tab;
+    const T* wa = tab + (size_t)nb * np * 3;
+    const T* wb = wa + (size_t)nb * 3;
+    p9t_body<T> p = p9t_load<T>(st[i]);
+    int a = 1;
+    for (int k = 0; k < nb; k++) {
+        const int enc = p9t_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm, c.r2enc, np, mu0, dt);
+        if (enc >= 0) {
+            a = -1 - enc;
+            break;
+        }
+        if ((step0 + k + 1) % (unsigned long long)check_every == 0) {
+            const p9t_body<T> x = p9t_synchronous(p, mu0, dt);
+            const T r2 = x.x * x.x + x.y * x.y + x.z * x.z;
+            if (r2 > rout2 || r2 < rin2) {
+                a = 0;
+                break;
+            }
+        }
+    }
+    st[i] = p9t_store(p);
+    alive[i] = a;
+}
+
 struct p9g {
-    int ntp, np, max_nb, cur;
+    int ntp, np, max_nb, cur, real;
     p9_body* d_st;
     int* d_alive;
     double* d_tab[2];
     double* h_tab[2];  // pinned
+    void* d_tab_t;     // the table converted to T (P9GPU_REAL other than double)
+    double gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS];
     size_t tab_doubles;
     cudaStream_t stream;
     cudaEvent_t copied[2];
@@ -70,12 +116,14 @@ static int fail(cudaError_t e, const char* what, char* err, int errlen) {
     return 1;
 }
 
-extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, char* err,
-                           int errlen) {
+extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, int real,
+                           char* err, int errlen) {
     p9g* g = (p9g*)calloc(1, sizeof(p9g));
     g->ntp = ntp;
     g->np = np;
     g->max_nb = max_nb;
+    g->real = real;
+    for (int j = 0; j < np; j++) g->gm[j] = gm[j], g->r2enc[j] = r2enc[j];
     g->tab_doubles = (size_t)max_nb * np * 3 + (size_t)max_nb * 6;
     cudaDeviceProp prop;
     if (fail(cudaGetDeviceProperties(&prop, 0), "device", err, errlen)) return NULL;
@@ -89,6 +137,7 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
         if (fail(cudaEventCreateWithFlags(&g->copied[b], cudaEventDisableTiming), "event", err, errlen)) return NULL;
         if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return NULL;
     }
+    if (real != P9_REAL_DOUBLE && fail(cudaMalloc(&g->d_tab_t, sizeof(double) * g->tab_doubles), "malloc table", err, errlen)) return NULL;
     if (fail(cudaMemcpyToSymbol(c_gm, gm, sizeof(double) * np), "gm", err, errlen)) return NULL;
     if (fail(cudaMemcpyToSymbol(c_r2enc, r2enc, sizeof(double) * np), "r2enc", err, errlen)) return NULL;
     if (ntp > 0) {
@@ -124,6 +173,17 @@ extern "C" double* p9g_next_table(p9g* g) {
     return g->h_tab[g->cur];
 }
 
+template <class T>
+static void launch_t(p9g* g, int b, size_t n, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2) {
+    T* tab = (T*)g->d_tab_t;
+    p9_convert<T><<<(unsigned)((n + 255) / 256), 256, 0, g->stream>>>(g->d_tab[b], tab, n);
+    p9t_consts<T> c;
+    for (int j = 0; j < P9_MAX_PLANETS; j++) c.gm[j] = L<T>(g->gm[j]), c.r2enc[j] = L<T>(g->r2enc[j]);
+    const int threads = 128;
+    p9_advance_t<T><<<(g->ntp + threads - 1) / threads, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, tab, g->np, nb, step0, L<T>(dt), L<T>(mu0),
+                                                                                  check_every, L<T>(rin2), L<T>(rout2), c);
+}
+
 // Uploads the table filled last and launches the kernel; returns at once.
 extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, char* err,
                           int errlen) {
@@ -133,9 +193,22 @@ extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, d
     if (fail(cudaMemcpyAsync(g->d_tab[b], g->h_tab[b], sizeof(double) * n, cudaMemcpyHostToDevice, g->stream), "upload table", err, errlen)) return 1;
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
     if (g->ntp > 0) {
-        const int threads = 128;
-        p9_advance<<<(g->ntp + threads - 1) / threads, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0,
-                                                                                 check_every, rin2, rout2);
+        const int threads = 128, blocks = (g->ntp + threads - 1) / threads;
+        switch (g->real) {
+            case P9_REAL_DOUBLE:
+                p9_advance<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
+                                                              rout2);
+                break;
+            case P9_REAL_DOUBLE_T:
+                launch_t<double>(g, b, n, nb, step0, dt, mu0, check_every, rin2, rout2);
+                break;
+            case P9_REAL_FLOAT:
+                launch_t<float>(g, b, n, nb, step0, dt, mu0, check_every, rin2, rout2);
+                break;
+            case P9_REAL_DF64:
+                launch_t<df64>(g, b, n, nb, step0, dt, mu0, check_every, rin2, rout2);
+                break;
+        }
         if (fail(cudaGetLastError(), "launch", err, errlen)) return 1;
     }
     g->cur ^= 1;
@@ -158,6 +231,7 @@ extern "C" void p9g_free(p9g* g) {
         cudaFreeHost(g->h_tab[b]);
         cudaEventDestroy(g->copied[b]);
     }
+    if (g->d_tab_t) cudaFree(g->d_tab_t);
     cudaFree(g->d_st);
     cudaFree(g->d_alive);
     cudaStreamDestroy(g->stream);
