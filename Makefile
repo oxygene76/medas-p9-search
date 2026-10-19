@@ -118,3 +118,13 @@ test: build/test/test_encounter gpu-cpu
 build/test/test_encounter: tests/test_encounter.c src/p9encounter.c src/p9encounter.h
 	@mkdir -p build/test
 	$(CC) -std=c99 -O2 -Wall -Wextra -Isrc -o $@ tests/test_encounter.c src/p9encounter.c
+
+# ------------------------------------------------------------------ GPU probes (docs/gpu-performance.md)
+.PHONY: gpu-probe
+gpu-probe: build/probe/count_ops build/probe/peak
+build/probe/count_ops: gpu/probe/count_ops.cpp $(GPU_HDR)
+	@mkdir -p build/probe
+	$(CXX) $(GPU_CXXFLAGS) -o $@ gpu/probe/count_ops.cpp
+build/probe/peak: gpu/probe/peak.cu
+	@mkdir -p build/probe
+	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -o $@ gpu/probe/peak.cu

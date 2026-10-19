@@ -162,6 +162,7 @@ def cmd_make(a):
     params = {"case": "Brown & Batygin (2021): Sun (+ inner planets), Jupiter-Neptune (DE440s, JD 2458270.0), Planet Nine, test particles",
               "ic": {"generator": "tools/make_ic.py", "n_tp": a.n_tp, "seed": a.seed, "tp_from": a.tp_from,
                      "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic)},
+              **({"real": a.real} if a.real != "double" else {}),
               "integrator": "whfast", "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
               "t_start_yr": 0.0, "t_end_yr": a.t_end, "snapshots": a.snapshots,
               "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
@@ -201,6 +202,11 @@ def cmd_run(a):
         sys.exit(f"{p9sim} is version {have}, the job needs {want} (--any-version to run it anyway)")
     env = dict(os.environ)
     env.pop("P9_ENCOUNTER_RADII", None)
+    # number type of p9gpu's integrator (params.real, default double); part of the job, never taken from outside
+    real = job["params"].get("real", "double")
+    if real != "double" and job["code"].get("program") != "p9gpu":
+        sys.exit(f"params.real={real} needs p9gpu")
+    env["P9GPU_REAL"] = real
     enc = encounter_env(job)
     if enc:
         env["P9_ENCOUNTER_RADII"] = enc
@@ -217,6 +223,8 @@ def cmd_run(a):
     line = [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1]
     used = check_encounter_report(job, p.stdout) if enc else {}
     kv = dict(x.split("=", 1) for x in line.split())
+    if kv.get("real", "double") != real:
+        sys.exit(f"the program integrated in {kv.get('real')}, the job needs {real}")
     result = {"job_id": job["id"], "result_sha256": kv["result_sha256"], "final_state_sha256": kv["final_state_sha256"],
               "t_end": float(kv["t"]), "steps": int(kv["steps"]), "particles_start": int(kv["N_start"]), "particles_end": int(kv["N_end"]),
               "removed": int(kv["removed"]), "removed_encounter": int(kv.get("removed_encounter", 0)), "dE_rel_massive": float(kv["dE_rel"]),
@@ -225,7 +233,7 @@ def cmd_run(a):
               "input_bytes": job["input"]["bytes"], "output_bytes": (d / a.output).stat().st_size,
               "platform": {"machine": platform.machine(), "system": platform.system(), "node_hash": hashlib.sha256(platform.node().encode()).hexdigest()[:12],
                            "python": platform.python_version()},
-              "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used}
+              "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used, "real": real}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -265,6 +273,8 @@ def main():
     m.add_argument("--p9sim", default=str(DEFAULT_P9SIM), help="the program that will run the job (its binary is hashed into the job)")
     m.add_argument("--program", choices=["p9sim", "p9gpu"], default="p9sim")
     m.add_argument("--no-encounters", dest="encounters", action="store_false", help="no close-encounter removal (as before 2026-10-19)")
+    m.add_argument("--real", choices=["double", "df64", "float", "double-t"], default="double",
+                   help="number type of p9gpu's integrator (default double; df64: double-float, see docs/gpu-precision.md)")
     m.add_argument("--allow-dirty", action="store_true", help="tests only: allow uncommitted changes (the job's commit gets \"-dirty\")")
     n = sub.add_parser("next")
     n.add_argument("--prev", required=True)
