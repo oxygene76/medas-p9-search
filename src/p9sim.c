@@ -52,6 +52,7 @@
 #include "rebound.h"
 #include "sha256.h"
 #include "p9state.h"
+#include "p9encounter.h"
 
 
 // Test particles are removed when they leave this region (au): beyond
@@ -64,8 +65,45 @@
 #define CHECK_EVERY 1000
 
 static size_t n_removed = 0;
+static size_t n_removed_encounter = 0;
+static double enc_r2[16];        // squared encounter radii of the massive bodies 1..N_active-1 (0: no check)
+static int* enc_flag = NULL;     // per particle index: planet index + 1 of an encounter at the last kick
+static size_t enc_flag_n = 0;
+
+// Called by REBOUND inside every WHFast step, right before the kick, with the
+// positions of the middle of the step (after the first jump): the
+// close-encounter criterion of p9encounter.h. It only marks particles; the
+// heartbeat after the step removes them. Forces are not changed.
+static void encounter_check(struct reb_simulation* r) {
+    if (enc_flag_n < r->N) {
+        enc_flag = realloc(enc_flag, sizeof(int) * r->N);
+        enc_flag_n = r->N;
+    }
+    for (size_t i = r->N_active; i < r->N; i++) {
+        const struct reb_particle* p = &r->particles[i];
+        int hit = 0;
+        for (size_t j = 1; j < r->N_active && !hit; j++) {
+            if (enc_r2[j - 1] == 0.0) continue;
+            const struct reb_particle* q = &r->particles[j];
+            const double dx = q->x - p->x, dy = q->y - p->y, dz = q->z - p->z;
+            if (dx * dx + dy * dy + dz * dz < enc_r2[j - 1]) hit = (int)j;
+        }
+        enc_flag[i] = hit;
+    }
+}
 
 static void heartbeat(struct reb_simulation* r) {
+    if (enc_flag) {
+        // encounters found at this step's kick (from the end, so indices stay valid)
+        for (size_t i = r->N; i-- > r->N_active;) {
+            if (i < enc_flag_n && enc_flag[i]) {
+                reb_simulation_remove_particle(r, i);
+                n_removed++;
+                n_removed_encounter++;
+            }
+        }
+        for (size_t i = 0; i < enc_flag_n; i++) enc_flag[i] = 0;
+    }
     if (r->steps_done % CHECK_EVERY != 0) return;
     // test particles only (index >= N_active), from the end so indices stay valid
     for (size_t i = r->N; i-- > r->N_active;) {
@@ -150,6 +188,9 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         return 2;
     }
     r->heartbeat = heartbeat;
+    if (r->N_active - 1 > 16 || p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_r2)) return 2;
+    for (size_t j = 0; j + 1 < r->N_active; j++)
+        if (enc_r2[j] > 0.0) r->additional_forces = encounter_check;
     const double e0 = reb_simulation_energy(r);  // test particles are massless: the planets' energy
     remove(out);
     struct sha256_ctx ctx;
@@ -187,8 +228,9 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         p9_hex(d2, hs);
     }
     const double e1 = reb_simulation_energy(r);
-    printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu wall_s=%.3f dE_rel=%.3e\n", h, hs, r->t,
-           (unsigned long long)r->steps_done, N0, r->N, n_removed, now_s() - w0, (e1 - e0) / e0);
+    printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
+           "dE_rel=%.3e program=p9sim version=%s\n",
+           h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, P9_VERSION);
     reb_simulation_free(r);
     return 0;
 }
@@ -253,6 +295,7 @@ int main(int argc, char* argv[]) {
     if (argc == 4 && !strcmp(argv[1], "init")) return cmd_init(argv[2], argv[3]);
     if ((argc == 6 || argc == 7) && !strcmp(argv[1], "run")) return cmd_run(argv[2], strtod(argv[3], NULL), strtol(argv[4], NULL, 10), argv[5], argc == 7 ? argv[6] : NULL);
     if (argc == 4 && !strcmp(argv[1], "state")) return cmd_state(argv[2], strtol(argv[3], NULL, 10));
+    if (argc == 2 && !strcmp(argv[1], "version")) return printf("program=p9sim version=%s\n", P9_VERSION) < 0;
     if (argc == 4 && !strcmp(argv[1], "last")) return cmd_last(argv[2], argv[3]);
     if (argc == 3 && !strcmp(argv[1], "sha256")) return cmd_sha256(argv[2]);
     if (argc == 4 && !strcmp(argv[1], "dump")) return cmd_dump(argv[2], strtol(argv[3], NULL, 10));

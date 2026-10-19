@@ -122,11 +122,16 @@ P9_HD void p9_kepler(p9_body* p, double mu, double dt) {
 }
 
 // Kick of a test particle by the planets (positions q[3*j], G m_j in gm[j]).
-P9_HD void p9_kick_tp(p9_body* p, const double* q, const double* gm, int np, double h) {
+// Returns the index of a planet closer than its encounter radius (squared in
+// r2enc[j]; 0 = no check), or -1: the close-encounter criterion, evaluated at
+// the kick, i.e. on the positions of the middle of the step.
+P9_HD int p9_kick_tp(p9_body* p, const double* q, const double* gm, const double* r2enc, int np, double h) {
     double ax = 0.0, ay = 0.0, az = 0.0;
+    int enc = -1;
     for (int j = 0; j < np; j++) {
         const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
         const double d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < r2enc[j] && enc < 0) enc = j;
         const double d = sqrt(d2);
         const double k = gm[j] / (d2 * d);
         ax += k * dx;
@@ -136,6 +141,7 @@ P9_HD void p9_kick_tp(p9_body* p, const double* q, const double* gm, int np, dou
     p->vx += h * ax;
     p->vy += h * ay;
     p->vz += h * az;
+    return enc;
 }
 
 P9_HD void p9_jump(p9_body* p, const double* w, double h) {
@@ -146,12 +152,15 @@ P9_HD void p9_jump(p9_body* p, const double* w, double h) {
 
 // One step of a test particle in the half-drift-ahead form: Y_k -> Y_{k+1}.
 // q are the planets' positions at the kick, wa and wb the jump velocities.
-P9_HD void p9_step_tp(p9_body* p, const double* q, const double* wa, const double* wb, const double* gm, int np, double mu0, double dt) {
+// Returns the planet of a close encounter at the kick, or -1 (the step is completed either way).
+P9_HD int p9_step_tp(p9_body* p, const double* q, const double* wa, const double* wb, const double* gm, const double* r2enc, int np, double mu0,
+                     double dt) {
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
-    p9_kick_tp(p, q, gm, np, dt);
+    const int enc = p9_kick_tp(p, q, gm, r2enc, np, dt);
     p9_jump(p, wb, h);
     p9_kepler(p, mu0, dt);
+    return enc;
 }
 
 // The synchronous state of a body kept half a drift ahead.

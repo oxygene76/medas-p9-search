@@ -24,9 +24,12 @@ OUT := build/$(VARIANT)
 # WHFast512 (AVX-512 assembly; replaced by src/whfast512_stub.c). display.c is
 # needed for its settings; its OpenGL part is off without -DOPENGL.
 REB_SRC := $(filter-out %/glad.c %/communication_mpi.c %/server.c %/integrator_whfast512.c,$(wildcard $(REBOUND)/src/*.c))
-SRC := src/p9sim.c src/p9state.c src/sha256.c src/whfast512_stub.c
+SRC := src/p9sim.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_stub.c
+# Version compiled into the programs (printed with every result): the VERSION
+# file of a package, else git describe.
+P9_VERSION ?= $(shell cat VERSION 2>/dev/null || git describe --always --dirty 2>/dev/null || echo unknown)
 
-CFLAGS := -std=c99 -fno-fast-math $(OPT) -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -I$(REBOUND)/src -Isrc -w $(CFLAGS_EXTRA)
+CFLAGS := -std=c99 -fno-fast-math $(OPT) -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -DP9_VERSION='"$(P9_VERSION)"' -I$(REBOUND)/src -Isrc -w $(CFLAGS_EXTRA)
 LDLIBS := -lm $(LDFLAGS_EXTRA)
 
 $(OUT)/p9sim: $(SRC) $(REB_SRC) Makefile
@@ -64,8 +67,8 @@ counterexamples:
 CUDA ?= build/cuda-venv/lib/python3.14/site-packages/nvidia/cu13
 NVCC ?= $(CUDA)/bin/nvcc
 GPU_ARCH ?= -gencode arch=compute_120,code=sm_120 -gencode arch=compute_75,code=compute_75
-GPU_SRC := gpu/p9gpu.c src/p9state.c src/sha256.c src/whfast512_stub.c
-GPU_CFLAGS := -std=c99 -fno-fast-math -O3 -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -I$(REBOUND)/src -Isrc -Igpu -w
+GPU_SRC := gpu/p9gpu.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_stub.c
+GPU_CFLAGS := -std=c99 -fno-fast-math -O3 -ffp-contract=off -D_GNU_SOURCE -DLIBREBOUND -DP9_VERSION='"$(P9_VERSION)"' -I$(REBOUND)/src -Isrc -Igpu -w
 
 .PHONY: gpu gpu-cpu
 gpu: build/gpu/p9gpu

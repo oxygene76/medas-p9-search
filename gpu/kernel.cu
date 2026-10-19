@@ -15,23 +15,30 @@
 #include "p9gpu_api.h"
 
 __constant__ double c_gm[P9_MAX_PLANETS];
+__constant__ double c_r2enc[P9_MAX_PLANETS];  // squared encounter radii (0: no check)
 
 // Table of a block of nb steps (layout shared with p9gpu.c):
 //   q[nb * np * 3]          planets' positions relative to the Sun at the kick of each step
 //   wa[nb * 3], wb[nb * 3]  jump velocities before and after the kick
-// Particles are kept half a drift ahead (whdh.h); removal is checked on the
-// synchronous state.
+// Particles are kept half a drift ahead (whdh.h). Status per particle: 1
+// alive; 0 removed beyond R_OUT or within R_IN (checked every check_every
+// steps on the synchronous state); -1-j removed at a close encounter with
+// planet j (checked at every kick, see whdh.h).
 __global__ void p9_advance(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const double* __restrict__ tab, int np, int nb,
                            unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= ntp || !alive[i]) return;
+    if (i >= ntp || alive[i] != 1) return;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     p9_body p = st[i];
     int a = 1;
     for (int k = 0; k < nb; k++) {
-        p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, np, mu0, dt);
+        const int enc = p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, c_r2enc, np, mu0, dt);
+        if (enc >= 0) {
+            a = -1 - enc;
+            break;
+        }
         if ((step0 + k + 1) % (unsigned long long)check_every == 0) {
             const p9_body x = p9_synchronous(p, mu0, dt);
             const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
@@ -63,7 +70,8 @@ static int fail(cudaError_t e, const char* what, char* err, int errlen) {
     return 1;
 }
 
-extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, int max_nb, char* err, int errlen) {
+extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, char* err,
+                           int errlen) {
     p9g* g = (p9g*)calloc(1, sizeof(p9g));
     g->ntp = ntp;
     g->np = np;
@@ -82,6 +90,7 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
         if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return NULL;
     }
     if (fail(cudaMemcpyToSymbol(c_gm, gm, sizeof(double) * np), "gm", err, errlen)) return NULL;
+    if (fail(cudaMemcpyToSymbol(c_r2enc, r2enc, sizeof(double) * np), "r2enc", err, errlen)) return NULL;
     if (ntp > 0) {
         if (fail(cudaMemcpy(g->d_st, st, sizeof(p9_body) * ntp, cudaMemcpyHostToDevice), "upload", err, errlen)) return NULL;
         if (fail(cudaMemcpy(g->d_alive, alive, sizeof(int) * ntp, cudaMemcpyHostToDevice), "upload", err, errlen)) return NULL;

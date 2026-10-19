@@ -30,6 +30,7 @@
 #include "rebound.h"
 #include "sha256.h"
 #include "p9state.h"
+#include "p9encounter.h"
 #include "whdh.h"
 #ifndef P9_NO_CUDA
 #include "p9gpu_api.h"
@@ -173,7 +174,7 @@ static void from_dh(struct reb_simulation* r, const planets* P, const p9_body* t
     }
     size_t k = r->N_active;
     for (int i = 0; i < ntp; i++) {
-        if (!alive[i]) continue;
+        if (alive[i] != 1) continue;
         struct reb_particle* p = &ps[k++];
         p->x = tp[i].x + sx, p->y = tp[i].y + sy, p->z = tp[i].z + sz;
         p->vx = tp[i].vx + com->V[0], p->vy = tp[i].vy + com->V[1], p->vz = tp[i].vz + com->V[2];
@@ -186,8 +187,8 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
     int* idx = malloc(sizeof(int) * (ntp > 0 ? ntp : 1));
     int n = 0;
     for (int i = 0; i < ntp; i++) {
-        if (!was_alive[i]) continue;
-        if (!alive[i]) idx[n++] = (int)k;
+        if (was_alive[i] != 1) continue;
+        if (alive[i] != 1) idx[n++] = (int)k;
         k++;
     }
     for (int j = n - 1; j >= 0; j--) reb_simulation_remove_particle(r, (size_t)idx[j]);
@@ -197,17 +198,22 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 
 // ------------------------------------------------------------------ test particles on the CPU (reference)
 
-static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* tab, int nb, unsigned long long step0, double dt) {
+static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* tab, int nb, unsigned long long step0,
+                      double dt) {
     const int np = P->np;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     for (int i = 0; i < ntp; i++) {
-        if (!alive[i]) continue;
+        if (alive[i] != 1) continue;
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
-            p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, np, P->mu0, dt);
+            const int enc = p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
+            if (enc >= 0) {
+                a = -1 - enc;
+                break;
+            }
             if ((step0 + k + 1) % CHECK_EVERY == 0) {
                 const p9_body x = p9_synchronous(p, P->mu0, dt);
                 const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
@@ -247,6 +253,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const int ntp = (int)(r->N - r->N_active);
     const double dt = r->dt;
+    double r2enc[P9_MAX_PLANETS] = {0};
+    if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, r2enc)) return 2;
     planets P;
     com_t com;
     p9_body* tp = malloc(sizeof(p9_body) * (ntp > 0 ? ntp : 1));
@@ -269,7 +277,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
 #ifndef P9_NO_CUDA
     p9g* g = NULL;
     if (use_gpu) {
-        g = p9g_create(ntp, tp, alive, P.np, P.gm, max_nb, err, sizeof err);
+        g = p9g_create(ntp, tp, alive, P.np, P.gm, r2enc, max_nb, err, sizeof err);
         if (!g) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
@@ -307,7 +315,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             {
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
-                cpu_block(tp, alive, ntp, &P, cpu_tab, nb, steps, dt);
+                cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt);
             }
             steps += (unsigned long long)nb;
             need -= nb;
@@ -322,7 +330,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         // the synchronous states for the output; the integration continues from the others
         planets Ps = P;
         for (int i = 0; i < P.np; i++) Ps.b[i] = p9_synchronous(P.b[i], P.mu0, dt);
-        for (int i = 0; i < ntp; i++) sync_tp[i] = alive[i] ? p9_synchronous(tp[i], P.mu0, dt) : tp[i];
+        for (int i = 0; i < ntp; i++) sync_tp[i] = alive[i] == 1 ? p9_synchronous(tp[i], P.mu0, dt) : tp[i];
         from_dh(r, &Ps, sync_tp, alive, ntp, &com, t - t0);
         r->t = t;
         r->steps_done = steps;
@@ -344,12 +352,13 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         sha256_final(&c2, d2);
         p9_hex(d2, hs);
     }
-    size_t removed = 0;
-    for (int i = 0; i < ntp; i++) removed += !alive[i];
+    size_t removed = 0, removed_enc = 0;
+    for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0;
     const double e1 = reb_simulation_energy(r);
-    printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu wall_s=%.3f dE_rel=%.3e mode=%s planet_s=%.3f\n",
-           h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, now_s() - w0, (e1 - e0) / e0, use_gpu ? "gpu" : "cpu",
-           planet_s);
+    printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
+           "dE_rel=%.3e mode=%s planet_s=%.3f program=p9gpu version=%s\n",
+           h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
+           use_gpu ? "gpu" : "cpu", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
@@ -364,6 +373,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
 }
 
 int main(int argc, char* argv[]) {
+    if (argc == 2 && !strcmp(argv[1], "version")) return printf("program=p9gpu version=%s\n", P9_VERSION) < 0;
     if ((argc == 6 || argc == 7) && !strcmp(argv[1], "run")) return run(argv[2], strtod(argv[3], NULL), strtol(argv[4], NULL, 10), argv[5], argc == 7 ? argv[6] : NULL);
     fprintf(stderr, "usage: p9gpu run <in.sa> <t_end> <n_snapshots> <out.sa> [<out.state>]   (P9GPU_MODE=gpu|cpu, P9GPU_BLOCK=steps)\n");
     return 1;

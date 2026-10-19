@@ -8,7 +8,8 @@ extern "C" {
 #endif
 typedef struct p9g p9g;
 // Uploads the test particles; max_nb is the largest block (steps per launch).
-p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, int max_nb, char* err, int errlen);
+// r2enc: squared close-encounter radii of the planets (0: no check).
+p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np, const double* gm, const double* r2enc, int max_nb, char* err, int errlen);
 const char* p9g_name(p9g* g);
 // Host table to fill for the next launch (pinned memory; waits for its last upload).
 double* p9g_next_table(p9g* g);
