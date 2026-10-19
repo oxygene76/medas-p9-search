@@ -10,6 +10,9 @@ last snapshot of the previous one; p9job.py next), with a snapshot every
 --snap-every years in its SimulationArchive. A segment is only started if it
 should end before --deadline (estimated from the chain's last segment);
 whatever runs at the deadline + --grace is stopped (its snapshots so far stay).
+With --t-end the chains stop at that time. Restarting the same command
+continues a campaign: finished segments are kept, an interrupted one is made
+again from the last finished one (same bits as without the interruption).
 
   python tools/campaign.py --root runs/long --chains 16 --n-tp 4000 \
       --segment 2e7 --snap-every 1e6 --deadline 2026-10-19T06:55
@@ -43,13 +46,42 @@ def log(root, msg):
             f.write(line + "\n")
 
 
+def finished(d):
+    """A segment is finished when its result.json belongs to its job.json."""
+    try:
+        return json.loads((d / "result.json").read_text())["job_id"] == json.loads((d / "job.json").read_text())["id"]
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def resume_point(root, c):
+    """(k, t) of the first segment of chain c still to run. Finished segments are kept (they are the
+    checkpoints); a segment that was interrupted is moved aside, to be made again from the last
+    finished one, so that its job names the current code. The jobs are deterministic: the
+    continued run gives the same bits as one without interruption."""
+    k, t = 0, 0.0
+    while finished(root / f"chain{c:02d}" / f"seg{k:03d}"):
+        t = float(json.loads((root / f"chain{c:02d}" / f"seg{k:03d}" / "job.json").read_text())["params"]["t_end_yr"])
+        k += 1
+    d = root / f"chain{c:02d}" / f"seg{k:03d}"
+    if d.exists():
+        aside = d.with_name(f"{d.name}.interrupted-{time.strftime('%Y%m%dT%H%M%S')}")
+        d.rename(aside)
+        log(root, f"chain{c:02d} {d.name} was interrupted: moved to {aside.name}, made again")
+    if k:
+        log(root, f"chain{c:02d} resumes at seg{k:03d} (t = {t:.4g} yr)")
+    return k, t
+
+
 def chain(root, c, a, deadline, procs):
     per = a.n_tp // a.chains
     lo, hi = c * per, (c + 1) * per
     seg_wall = None
-    k = 0
-    t = 0.0
+    k, t = resume_point(root, c)
     while True:
+        if a.t_end is not None and t >= a.t_end * (1 - 1e-12):
+            log(root, f"chain{c:02d} reached t = {t:.4g} yr (--t-end)")
+            return
         d = root / f"chain{c:02d}" / f"seg{k:03d}"
         t_end = t + a.segment
         snaps = int(round(a.segment / a.snap_every))
@@ -111,6 +143,7 @@ def main():
     ap.add_argument("--seed", type=int, default=9)
     ap.add_argument("--segment", type=float, default=2e7)
     ap.add_argument("--snap-every", type=float, default=1e6)
+    ap.add_argument("--t-end", type=float, default=None, help="years: no segment after this time (else segments until the deadline)")
     ap.add_argument("--deadline", required=True, help="local time, e.g. 2026-10-19T06:55")
     ap.add_argument("--grace", type=float, default=180, help="seconds after the deadline before running segments are stopped")
     ap.add_argument("--program", choices=["p9sim", "p9gpu"], default="p9sim")

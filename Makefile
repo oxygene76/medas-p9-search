@@ -118,6 +118,10 @@ test: build/test/test_encounter build/test/test_j2 gpu-cpu
 	build/test/test_encounter
 	build/test/test_j2
 	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_p9job.py -v
+.PHONY: test-resume
+test-resume:
+	$(MAKE) VARIANT=test
+	P9SIM=build/test/p9sim PY=$(PY) sh tests/test_campaign_resume.sh
 build/test/test_j2: tests/test_j2.c gpu/whdh.h
 	@mkdir -p build/test
 	$(CC) -std=c99 -O2 -Wall -Wextra -ffp-contract=off -Igpu -o $@ tests/test_j2.c -lm
