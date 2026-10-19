@@ -76,13 +76,16 @@ def main():
     ap.add_argument("--time", type=float, required=True)
     ap.add_argument("--n0", type=int, default=2000)
     ap.add_argument("--dt", type=float, default=0.5)
+    ap.add_argument("--label-a", default="MERCURIUS", help="name of the run(s) of --merc")
+    ap.add_argument("--label-b", default="p9gpu", help="name of the run(s) of --gpu")
     a = ap.parse_args()
     all_ids = set(range(6, 6 + a.n0))
     sm, sg = survivors(a.merc, a.p9sim, a.time), survivors(a.gpu, a.p9sim, a.time)
     lm, lg = all_ids - sm, all_ids - sg
     b, c = sorted(lg - lm), sorted(lm - lg)
-    print(f"t = {a.time / 1e6:g} Myr: lost in MERCURIUS {len(lm)}, in p9gpu {len(lg)}, in both {len(lm & lg)}")
-    print(f"  lost only in p9gpu b = {len(b)}, only in MERCURIUS c = {len(c)}; McNemar exact p = {mcnemar(len(b), len(c)):.3g}")
+    A, B = a.label_a, a.label_b
+    print(f"t = {a.time / 1e6:g} Myr: lost in {A} {len(lm)}, in {B} {len(lg)}, in both {len(lm & lg)}")
+    print(f"  lost only in {B} b = {len(b)}, only in {A} c = {len(c)}; McNemar exact p = {mcnemar(len(b), len(c)):.3g}")
     rec = flybys(a.gpu, a.dt)
     if not rec:
         print("  (no flybys.tsv: the p9gpu run did not count flybys)")

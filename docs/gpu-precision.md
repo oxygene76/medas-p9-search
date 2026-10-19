@@ -60,4 +60,17 @@ Details and the FP64 limit: `docs/gpu-performance.md`.
 Single orbits diverge (chaos; median relative difference in a 11 % after
 100 Myr, as between any two integrations), the distributions agree.
 
+Setup: both runs **without removal at the planets** (jobs made with
+`--no-encounters`; only the distance rules, 10,000 au and 5 au, remove), so
+the comparison is not affected by the biased removal radii.
+
+**Losses paired by test particle** (`tools/pair_losses.py`, exact McNemar
+test of the particles lost only in one of the runs):
+
+| t | lost FP64 / df64 / both | only FP64 / only df64 | McNemar p |
+|---|---|---|---|
+| 100 Myr | 485 / 481 / 224 | 261 / 257 | 0.90 |
+| 200 Myr | 1,045 / 1,018 / 678 | 367 / 340 | 0.33 |
+| 300 Myr | 1,328 / 1,297 / 956 | 372 / 341 | 0.26 |
+
 **Energy error** (pure Kepler orbits, `tools/kepler_energy.py`): running.
