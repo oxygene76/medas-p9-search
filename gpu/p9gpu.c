@@ -13,6 +13,10 @@
 //   P9_ENCOUNTER_METHOD=kick|step  close encounters judged at the kick (kick,
 //                        the default for jobs without a method) or by the
 //                        closest approach within the step (step; whdh.h)
+//   P9_ENCOUNTER_REMOVE=0  with method step: close encounters are counted, not
+//                        removed (only the distance rules remove)
+//   P9_FLYBY_OUT=file    with method step: the flyby records per test particle
+//                        (tab-separated, see write_flybys)
 //   P9_J2="muJ2R2,nx,ny,nz,r_remove"   model "j2" (whdh.h): the central body
 //                        has a J2 (tools/p9job.py sets it from params.model);
 //                        test particles within r_remove of the Sun are removed
@@ -216,7 +220,7 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 // ------------------------------------------------------------------ test particles on the CPU (reference)
 
 static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* tab, int nb, unsigned long long step0,
-                      double dt, int step_method, int* near, int* fast) {
+                      double dt, int step_method, int enc_remove, p9_flybys* F) {
     const int np = P->np;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
@@ -227,12 +231,17 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
+            int fj = -1;
+            double fd = 0.0;
             const int enc = step_method ? p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np,
-                                                          P->mu0, dt, near + (size_t)i * np, fast + (size_t)i * np)
+                                                          P->mu0, dt, F->near + (size_t)i * np, F->fast + (size_t)i * np,
+                                                          F->close + (size_t)i * np, &fj, &fd)
                           : P->j2 ? p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, P->j2v)
                                   : p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
-            if (enc >= 0) {
+            if (fj >= 0) F->last_step[i] = step0 + k + 1, F->last_j[i] = fj + 1, F->last_d[i] = fd;
+            if (enc >= 0 && (enc_remove || !step_method)) {
                 a = -1 - enc;
+                if (step_method) F->rm_step[i] = step0 + k + 1;
                 break;
             }
             if ((step0 + k + 1) % CHECK_EVERY == 0) {
@@ -240,6 +249,7 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
                 const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
                 if (r2 > R_OUT * R_OUT || r2 < R_IN * R_IN) {
                     a = 0;
+                    if (step_method) F->rm_step[i] = step0 + k + 1;
                     break;
                 }
             }
@@ -259,6 +269,27 @@ void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const do
         (void)check_every, (void)rin2, (void)rout2;
 }
 #endif
+
+// Flyby records (method step), one line per test particle of the input:
+// id, removed_step (0: alive), then per planet near/fast/close (planet ids in
+// the header), last_fast_step, last_fast_planet_id (0: none), last_fast_dmin_au.
+static int write_flybys(const char* path, const p9_flybys* F, const double* tp_ids, const int* alive, int ntp, int np, const double* ids) {
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        perror(path);
+        return 1;
+    }
+    fprintf(f, "id\tremoved_step");
+    for (int j = 0; j < np; j++) fprintf(f, "\tnear_%.0f\tfast_%.0f\tclose_%.0f", ids[j], ids[j], ids[j]);
+    fprintf(f, "\tlast_fast_step\tlast_fast_planet\tlast_fast_dmin_au\n");
+    for (int i = 0; i < ntp; i++) {
+        fprintf(f, "%.0f\t%llu", tp_ids[i], alive[i] == 1 ? 0ULL : F->rm_step[i]);
+        for (int j = 0; j < np; j++)
+            fprintf(f, "\t%d\t%d\t%d", F->near[(size_t)i * np + j], F->fast[(size_t)i * np + j], F->close[(size_t)i * np + j]);
+        fprintf(f, "\t%llu\t%.0f\t%.6g\n", F->last_step[i], F->last_j[i] ? ids[F->last_j[i] - 1] : 0.0, F->last_d[i]);
+    }
+    return fclose(f) != 0;
+}
 
 // ------------------------------------------------------------------ run
 
@@ -281,6 +312,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         return 2;
     }
     const int step_method = method_env && !strcmp(method_env, "step");
+    const char* remove_env = getenv("P9_ENCOUNTER_REMOVE");
+    const int enc_remove = !(remove_env && !strcmp(remove_env, "0"));
+    if (!enc_remove && !step_method) {
+        fprintf(stderr, "P9_ENCOUNTER_REMOVE=0 needs P9_ENCOUNTER_METHOD=step\n");
+        return 2;
+    }
     if (step_method && (real != P9_REAL_DOUBLE || getenv("P9_J2"))) {
         fprintf(stderr, "P9_ENCOUNTER_METHOD=step: model full, double only (so far)\n");
         return 2;
@@ -310,6 +347,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     int* alive = malloc(sizeof(int) * (ntp > 0 ? ntp : 1));
     int* was_alive = malloc(sizeof(int) * (ntp > 0 ? ntp : 1));
     for (int i = 0; i < ntp; i++) alive[i] = was_alive[i] = 1;
+    double* tp_ids = malloc(sizeof(double) * (ntp > 0 ? ntp : 1));  // ids of the test particles in input order
+    for (int i = 0; i < ntp; i++) tp_ids[i] = r->particles[r->N_active + i].r;
     to_dh(r, &P, tp, ntp, &com);
     P.j2 = 0;
     const char* j2env = getenv("P9_J2");
@@ -342,8 +381,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     const unsigned long long steps0 = steps;
     double t = r->t;
     const size_t tab_doubles = (size_t)max_nb * P.np * 6 + (size_t)max_nb * 6;
-    int* near = calloc((size_t)(ntp > 0 ? ntp : 1) * P.np, sizeof(int));
-    int* fast = calloc((size_t)(ntp > 0 ? ntp : 1) * P.np, sizeof(int));
+    const size_t m1 = (size_t)(ntp > 0 ? ntp : 1);
+    p9_flybys F = {calloc(m1 * P.np, sizeof(int)), calloc(m1 * P.np, sizeof(int)), calloc(m1 * P.np, sizeof(int)), calloc(m1, sizeof(int)),
+                   calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(double))};
+    int *near = F.near, *fast = F.fast;
     double* cpu_tab = use_gpu ? NULL : malloc(sizeof(double) * tab_doubles);
     char err[256] = "";
 #ifndef P9_NO_CUDA
@@ -355,7 +396,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             return 3;
         }
         fprintf(stderr, "device: %s\n", p9g_name(g));
-        if (step_method && p9g_set_step_method(g, err, sizeof err)) {
+        if (step_method && p9g_set_step_method(g, enc_remove, err, sizeof err)) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
         }
@@ -396,7 +437,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
                 if (real == P9_REAL_DOUBLE)
-                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method, near, fast);
+                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method, enc_remove, &F);
                 else
                     p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT);
             }
@@ -446,25 +487,29 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         snprintf(by_text + strlen(by_text), sizeof by_text - strlen(by_text), "%s%.0f:%zu", j ? "," : "", ids[j], by[j]);
     // method "step": closest approaches within three removal radii, and those shorter than 1.5 steps
 #ifndef P9_NO_CUDA
-    if (use_gpu && step_method && p9g_counts(g, near, fast, err, sizeof err)) {
+    if (use_gpu && step_method && p9g_counts(g, &F, err, sizeof err)) {
         fprintf(stderr, "GPU: %s\n", err);
         return 3;
     }
 #endif
-    char near_text[256] = "", fast_text[256] = "";
+    char near_text[256] = "", fast_text[256] = "", close_text[256] = "";
     for (int j = 0; j < P.np; j++) {
-        long long sn = 0, sf = 0;
-        for (int i = 0; i < ntp; i++) sn += near[(size_t)i * P.np + j], sf += fast[(size_t)i * P.np + j];
+        long long sn = 0, sf = 0, sc = 0;
+        for (int i = 0; i < ntp; i++) sn += near[(size_t)i * P.np + j], sf += fast[(size_t)i * P.np + j], sc += F.close[(size_t)i * P.np + j];
         snprintf(near_text + strlen(near_text), sizeof near_text - strlen(near_text), "%s%.0f:%lld", j ? "," : "", ids[j], sn);
         snprintf(fast_text + strlen(fast_text), sizeof fast_text - strlen(fast_text), "%s%.0f:%lld", j ? "," : "", ids[j], sf);
+        snprintf(close_text + strlen(close_text), sizeof close_text - strlen(close_text), "%s%.0f:%lld", j ? "," : "", ids[j], sc);
     }
+    if (step_method && getenv("P9_FLYBY_OUT") && *getenv("P9_FLYBY_OUT") && write_flybys(getenv("P9_FLYBY_OUT"), &F, tp_ids, alive, ntp, P.np, ids))
+        return 2;
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s encounter_method=%s flybys=%s fast_flybys=%s planet_s=%.3f program=p9gpu "
+           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s encounter_method=%s encounter_remove=%d flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
+           "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
            use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, by_text, step_method ? "step" : "kick",
-           step_method ? near_text : "-", step_method ? fast_text : "-", planet_s, P9_VERSION);
+           enc_remove, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
@@ -474,8 +519,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     free(alive);
     free(was_alive);
     free(cpu_tab);
-    free(near);
-    free(fast);
+    free(F.near), free(F.fast), free(F.close), free(F.last_j), free(F.last_step), free(F.rm_step), free(F.last_d);
+    free(tp_ids);
     reb_simulation_free(r);
     return 0;
 }

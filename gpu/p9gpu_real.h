@@ -11,6 +11,12 @@
 #define P9GPU_REAL_H
 #include "whdh.h"
 enum { P9_REAL_DOUBLE = 0, P9_REAL_DOUBLE_T = 1, P9_REAL_FLOAT = 2, P9_REAL_DF64 = 3 };
+// Flyby records of the encounter method "step" (p9gpu_api.h p9g_counts, p9gpu.c).
+typedef struct {
+    int *near, *fast, *close, *last_j;
+    unsigned long long *last_step, *rm_step;
+    double* last_d;
+} p9_flybys;
 #ifdef __cplusplus
 extern "C" {
 #endif

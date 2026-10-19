@@ -14,11 +14,15 @@ static int failures = 0;
     } while (0)
 
 // one planet at the origin with velocity uq; particle at x, v; dt = 1; radius 0.1
+static int close_[1], fj;
+static double fd;
 static int kick(double x, double y, double vx, double vy, double uqx, int* near, int* fast) {
     p9_body p = {x, y, 0, vx, vy, 0};
     const double q[3] = {0, 0, 0}, uq[3] = {uqx, 0, 0}, gm[1] = {1e-12}, r2[1] = {0.01};
-    near[0] = fast[0] = 0;
-    return p9_kick_tp_step(&p, q, uq, gm, r2, 1, 1.0, 1.0, near, fast);
+    near[0] = fast[0] = close_[0] = 0;
+    fj = -1;
+    fd = 0;
+    return p9_kick_tp_step(&p, q, uq, gm, r2, 1, 1.0, 1.0, near, fast, close_, &fj, &fd);
 }
 
 int main(void) {
@@ -26,6 +30,7 @@ int main(void) {
     // passes through the sphere between two kicks: 0.60 au away at the kick, closest 0.05 au half a step later
     CHECK(kick(0.6, 0.05, -1.2, 0, 0, near, fast) == 0, "fast pass through the sphere not removed");
     CHECK(near[0] == 1 && fast[0] == 1, "fast pass not counted as a flyby shorter than 1.5 steps");
+    CHECK(close_[0] == 1 && fj == 0 && fabs(fd - 0.05) < 1e-12, "closest distance of the fast flyby (0.05 au, below 0.1 au)");
     {
         p9_body p = {0.6, 0.05, 0, -1.2, 0, 0};
         const double q[3] = {0, 0, 0}, gm[1] = {1e-12}, r2[1] = {0.01};
@@ -38,7 +43,7 @@ int main(void) {
     // closest approach outside this step: no removal, no count
     CHECK(kick(10.0, 0.05, -0.1, 0, 0, near, fast) == -1 && near[0] == 0, "approach in a later step counted");
     // flyby at 0.25 au (within 3 radii, not removed), 0.25 / (1.0 * 1) < 1.5: counted as fast
-    CHECK(kick(0.3, 0.25, -1.0, 0, 0, near, fast) == -1 && near[0] == 1 && fast[0] == 1, "fast flyby within three radii");
+    CHECK(kick(0.3, 0.25, -1.0, 0, 0, near, fast) == -1 && near[0] == 1 && fast[0] == 1 && close_[0] == 0, "fast flyby within three radii");
     // beyond three radii: not counted
     CHECK(kick(0.3, 0.35, -1.0, 0, 0, near, fast) == -1 && near[0] == 0, "flyby beyond three radii counted");
     // closest distance within the step never exceeds the distance at the kick
@@ -58,7 +63,7 @@ int main(void) {
         p9_body p = {0.6, 0.05, 0, -1.2, 0, 0};
         const double q[3] = {0, 0, 0}, uq[3] = {0, 0, 0}, gm[1] = {1e-12}, r2[1] = {0.0};
         near[0] = fast[0] = 0;
-        CHECK(p9_kick_tp_step(&p, q, uq, gm, r2, 1, 1.0, 1.0, near, fast) == -1 && near[0] == 0, "radius 0 must disable the check");
+        CHECK(p9_kick_tp_step(&p, q, uq, gm, r2, 1, 1.0, 1.0, near, fast, close_, &fj, &fd) == -1 && near[0] == 0, "radius 0 must disable the check");
     }
     if (failures) return 1;
     printf("test_step_encounter: ok\n");

@@ -153,10 +153,12 @@ P9_HD int p9_kick_tp(p9_body* p, const double* q, const double* gm, const double
 // closest distance is below the planet's radius, so that no particle passes
 // through the sphere between two kicks. Also counts, per planet, the closest
 // approaches that fall into this step (tau* in (-dt/2, dt/2]) within three
-// removal radii (near[j]), and among them those with d_min / (|w| dt) < 1.5,
-// shorter than 1.5 steps (fast[j]); the counters may be NULL.
+// removal radii (near[j]), among them those with d_min / (|w| dt) < 1.5,
+// shorter than 1.5 steps (fast[j]), and those closer than 0.1 au (close[j]);
+// a flyby shorter than 1.5 steps also sets *fast_j (planet) and *fast_d
+// (closest distance). The counters may be NULL (then nothing is counted).
 P9_HD int p9_kick_tp_step(p9_body* p, const double* q, const double* uq, const double* gm, const double* r2enc, int np, double h, double dt,
-                          int* near, int* fast) {
+                          int* near, int* fast, int* close, int* fast_j, double* fast_d) {
     double ax = 0.0, ay = 0.0, az = 0.0;
     int enc = -1;
     for (int j = 0; j < np; j++) {
@@ -175,8 +177,13 @@ P9_HD int p9_kick_tp_step(p9_body* p, const double* q, const double* uq, const d
             if (m2 < r2enc[j] && enc < 0) enc = j;
             if (inside && near && m2 < 9.0 * r2enc[j]) {
                 near[j]++;
+                if (m2 < 0.01) close[j]++;
                 // d_min / (|w| dt) < 1.5  <=>  m2 < 2.25 w2 dt^2
-                if (m2 < 2.25 * w2 * dt * dt) fast[j]++;
+                if (m2 < 2.25 * w2 * dt * dt) {
+                    fast[j]++;
+                    *fast_j = j;
+                    *fast_d = sqrt(m2);
+                }
             }
         }
         const double d = sqrt(d2);
@@ -268,10 +275,10 @@ P9_HD int p9_step_tp_j2(p9_body* p, const double* q, const double* wa, const dou
 
 // p9_step_tp with the encounter method "step" (uq: the planets' barycentric velocities at the kick).
 P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const double* wa, const double* wb, const double* gm, const double* r2enc,
-                          int np, double mu0, double dt, int* near, int* fast) {
+                          int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d) {
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
-    const int enc = p9_kick_tp_step(p, q, uq, gm, r2enc, np, dt, dt, near, fast);
+    const int enc = p9_kick_tp_step(p, q, uq, gm, r2enc, np, dt, dt, near, fast, close, fast_j, fast_d);
     p9_jump(p, wb, h);
     p9_kepler(p, mu0, dt);
     return enc;

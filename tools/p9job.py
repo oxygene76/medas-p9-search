@@ -215,6 +215,8 @@ def cmd_make(a):
     ic = out / "ic.txt"
     cmd = [sys.executable, "-I", str(ROOT / "tools/make_ic.py"), "--out", str(ic), "--n-tp", str(a.n_tp), "--seed", str(a.seed),
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
+    if a.no_removal and (a.encounter_method != "step" or not a.encounters or a.program != "p9gpu"):
+        sys.exit("--no-removal needs --program p9gpu, the encounter method step and the radii (they define the counting zone)")
     if a.integrator != "whfast":
         if a.program != "p9sim":
             sys.exit("--integrator mercurius needs --program p9sim")
@@ -240,6 +242,8 @@ def cmd_make(a):
                                                       "removed when closer to a planet than its encounter radius at the kick of a step "
                                                       "(positions of the middle of the step); src/p9encounter.h"),
                                         **({"method": a.encounter_method} if a.encounters else {}),
+                                        **({"remove": False, "note": "close encounters are counted (flybys.tsv), not removed; only the "
+                                                                     "distance rules remove"} if a.no_removal else {}),
                                         **(encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
@@ -287,6 +291,11 @@ def cmd_run(a):
     enc = encounter_env(job)
     method = job["params"].get("removal", {}).get("encounter", {}).get("method", "kick")  # jobs before the method: at the kick
     env["P9_ENCOUNTER_METHOD"] = method
+    remove = job["params"].get("removal", {}).get("encounter", {}).get("remove", True)
+    env["P9_ENCOUNTER_REMOVE"] = "1" if remove else "0"
+    env.pop("P9_FLYBY_OUT", None)
+    if method == "step" and enc:
+        env["P9_FLYBY_OUT"] = str(d / "flybys.tsv")
     if enc:
         env["P9_ENCOUNTER_RADII"] = enc
     build_flags = (p9sim.parent / "BUILD-FLAGS").read_text().strip() if (p9sim.parent / "BUILD-FLAGS").exists() else str(p9sim)
@@ -302,6 +311,8 @@ def cmd_run(a):
     line = [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1]
     used = check_encounter_report(job, p.stdout) if enc else {}
     kv = dict(x.split("=", 1) for x in line.split())
+    if enc and int(kv.get("encounter_remove", 1)) != (1 if remove else 0):
+        sys.exit(f"the program used encounter_remove={kv.get('encounter_remove', 1)}, the job needs {remove}")
     if enc and kv.get("encounter_method", "kick") != method:
         sys.exit(f"the program used encounter method {kv.get('encounter_method', 'kick')}, the job needs {method}")
     if kv.get("model", "full") != model["name"]:
@@ -319,7 +330,10 @@ def cmd_run(a):
               "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used, "real": real, "model": model["name"],
               "removed_inner": int(kv.get("removed_inner", 0)), "removed_by_encounter": removed_by(job, kv.get("removed_by", "")),
               **({"encounter_method": method, "flybys_within_3_radii": removed_by(job, kv.get("flybys", "")),
-                  "flybys_under_1_5_steps": removed_by(job, kv.get("fast_flybys", ""))} if enc and method == "step" else {})}
+                  "flybys_under_1_5_steps": removed_by(job, kv.get("fast_flybys", "")),
+                  "flybys_under_0_1_au": removed_by(job, kv.get("close_flybys", "")), "encounter_remove": remove,
+                  **({"flybys_file": {"file": "flybys.tsv", "sha256": sha256_file(d / "flybys.tsv")}} if (d / "flybys.tsv").exists() else {})}
+                 if enc and method == "step" else {})}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -367,6 +381,8 @@ def main():
                    help="99th percentile of the encounter speed at a planet: the radius is at least 1.5 v99 dt; repeatable")
     m.add_argument("--encounter-method", choices=["step", "kick"], default="step",
                    help="close encounters by the closest approach within a step (step, default) or at the kick (kick, before 2026-10-19 evening)")
+    m.add_argument("--no-removal", action="store_true",
+                   help="with method step: count close encounters (flybys.tsv) instead of removing them; only the distance rules remove")
     m.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
                    help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",
