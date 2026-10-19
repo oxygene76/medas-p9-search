@@ -18,8 +18,8 @@ p = subprocess.Popen(sys.argv[1:], start_new_session=True, stdout=subprocess.DEV
 print(p.pid)' $PY -I tools/campaign.py $(args b))
 until [ -s "$T/b/chain00/seg002/output.sa" ]; do sleep 0.1; done
 sleep 0.2
-kill -TERM -- "-$pid"
-while kill -0 -- "-$pid" 2>/dev/null; do sleep 0.1; done
+/usr/bin/kill -TERM -- "-$pid"
+while /usr/bin/kill -0 -- "-$pid" 2>/dev/null; do sleep 0.1; done
 [ -f "$T/b/chain00/seg002/result.json" ] && { echo "seg002 finished before the stop: rerun the test"; exit 2; }
 $PY -I tools/campaign.py $(args b) >/dev/null 2>&1
 ls -d "$T"/b/chain00/seg002.interrupted-* >/dev/null || { echo "FAIL: no interrupted segment kept aside"; exit 1; }
