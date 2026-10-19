@@ -253,8 +253,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const int ntp = (int)(r->N - r->N_active);
     const double dt = r->dt;
-    double r2enc[P9_MAX_PLANETS] = {0};
-    if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, r2enc)) return 2;
+    double r2enc[P9_MAX_PLANETS] = {0}, renc[P9_MAX_PLANETS] = {0}, ids[P9_MAX_PLANETS];
+    for (size_t j = 0; j + 1 < r->N_active; j++) ids[j] = r->particles[j + 1].r;  // ids of the massive bodies after the Sun
+    if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, ids, renc, r2enc)) return 2;
+    if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, ids, renc);
     planets P;
     com_t com;
     p9_body* tp = malloc(sizeof(p9_body) * (ntp > 0 ? ntp : 1));

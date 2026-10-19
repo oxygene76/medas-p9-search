@@ -22,13 +22,24 @@ planet than that planet's encounter radius**.
   heliocentric osculating semi-major axis of the start values, rounded to
   1e-4 au. For the test case: Jupiter 0.3552, Saturn 0.4374, Uranus 0.4672,
   Neptune 0.7759, Planet Nine 6.9836 au.
-- The radii are part of the job description
-  (`params.removal.encounter.radii_au`), so the criterion is fixed by the job
-  and covered by its id. `tools/p9job.py run` hands them to the program in
-  `P9_ENCOUNTER_RADII` as exact decimals; the programs square them and compare
-  squared distances (no cube root or other libm function on the running
-  machine). Parsing: `src/p9encounter.c`, shared by both programs.
+- The radii are part of the job description, by planet name
+  (`params.removal.encounter.radii_au`, and `body_ids`: the id of each named
+  body in the start file), so the criterion is fixed by the job and covered by
+  its id. `tools/p9job.py run` hands them to the program in
+  `P9_ENCOUNTER_RADII` as `id=radius` pairs (exact decimals); the programs
+  assign each radius to the body with that id, whatever the order, square the
+  radii and compare squared distances (no cube root or other libm function on
+  the running machine). Parsing: `src/p9encounter.c`, shared by both programs;
+  it rejects a list without ids, an unknown id, a body named twice and a body
+  left out. (Ids, not names, because REBOUND's names do not survive an archive
+  read on 32-bit WebAssembly; the ids are stored with every body.)
+- The programs print the radii they use (`encounter_radius id=… au=…`);
+  `p9job run` checks them against the job by name and stores them in
+  result.json (`encounter_radii_used_au`). A difference stops the run.
 - Results: `removed_encounter` in the result line and in result.json.
+- Tests: `make test` (`tests/test_encounter.c`, `tests/test_p9job.py`, the
+  latter also end to end with both programs on a small job). Rebuilding the old
+  error into `p9job.py` makes four of the tests fail.
 
 The other removal rule is unchanged: every 1000 steps (counted over the whole
 run), a test particle farther than 10,000 au or closer than 5 au to the Sun is
@@ -43,6 +54,39 @@ time). The removals are deterministic in each program; between the two programs
 the distances are computed in different coordinates (REBOUND: inertial, p9gpu:
 heliocentric), so a particle exactly at a radius could be decided differently by
 one rounding; statistically the criterion is the same.
+
+## Error: radii in the wrong order (2026-10-19, fixed)
+
+From d598a04 until the fix, `p9job run` passed the radii as a plain list in
+the order in which they stood in job.json, which is written with sorted keys
+(Jupiter, Neptune, P9, Saturn, Uranus), while the programs took the list in
+the order of the bodies (Jupiter, Saturn, Uranus, Neptune, P9). Every run with
+the criterion therefore used:
+
+| Body | used (au) | intended (au) |
+|---|---|---|
+| Jupiter | 0.3552 | 0.3552 |
+| Saturn | 0.7759 | 0.4374 |
+| Uranus | 6.9836 | 0.4672 |
+| Neptune | 0.4374 | 0.7759 |
+| Planet Nine | 0.4672 | 6.9836 |
+
+Both programs got the same wrong list, so their agreement (the check above,
+the scaling runs) and the bitwise reproducibility are unaffected, and run
+times are comparable; but the removals are not those of the intended
+criterion: too many near Uranus, almost none near Planet Nine. Affected, all
+in `runs/` (not published anywhere):
+
+- `enc-test` (the check above), `ctest-gpu` (campaign test, 520,000 years);
+- the scaling runs `scale/gpu-*`, `scale/sweep-*`, `scale/cpu-*` (run times
+  valid; numbers of survivors and removals not);
+- the 4-Gyr GPU run of 2026-10-19 (stopped at 260 Myr, kept as
+  `gpu-4gyr-invalid-radii-order`, not used).
+
+Not affected (no encounter criterion): the REBOUND pilot run of 18/19 October,
+the GPU comparison runs `gpu-long*`, the reproducibility matrix and the check
+package. Jobs made before the fix are refused by `p9job run` (radii without
+body ids).
 
 ## Earlier runs
 

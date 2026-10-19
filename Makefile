@@ -97,3 +97,17 @@ build/gpu-wasm/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu-wasm
 	$(ZIG) cc -target wasm32-wasi $(GPU_CFLAGS) -DP9_NO_CUDA -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS \
 	  -o $@ $(GPU_SRC) $(REB_SRC) -lwasi-emulated-signal -lwasi-emulated-process-clocks
+
+# ------------------------------------------------------------------ tests
+# The encounter radii parser (C) and tools/p9job.py, end to end with p9sim and
+# the CPU build of p9gpu (no GPU needed). Builds into build/test and
+# build/gpu-cpu; leaves the other builds alone.
+PY ?= build/venv/bin/python
+.PHONY: test
+test: build/test/test_encounter gpu-cpu
+	$(MAKE) VARIANT=test
+	build/test/test_encounter
+	P9TEST_P9SIM=build/test/p9sim P9TEST_P9GPU=build/gpu-cpu/p9gpu $(PY) -I tests/test_p9job.py -v
+build/test/test_encounter: tests/test_encounter.c src/p9encounter.c src/p9encounter.h
+	@mkdir -p build/test
+	$(CC) -std=c99 -O2 -Wall -Wextra -Isrc -o $@ tests/test_encounter.c src/p9encounter.c

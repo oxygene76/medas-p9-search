@@ -195,7 +195,11 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         return 2;
     }
     r->heartbeat = heartbeat;
-    if (r->N_active - 1 > 16 || p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_r2)) return 2;
+    if (r->N_active - 1 > 16) return 2;
+    double enc_ids[16], enc_r[16];
+    for (size_t j = 0; j + 1 < r->N_active; j++) enc_ids[j] = r->particles[j + 1].r;  // ids of the massive bodies after the Sun
+    if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_ids, enc_r, enc_r2)) return 2;
+    if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, enc_ids, enc_r);
     for (size_t j = 0; j + 1 < r->N_active; j++)
         if (enc_r2[j] > 0.0) r->additional_forces = encounter_check;
     const double e0 = p9_energy_massive(r);  // test particles are massless: the planets' energy

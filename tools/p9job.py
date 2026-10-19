@@ -62,11 +62,13 @@ def program_version(binary):
     return m.group(1) if m else None
 
 
-def code_version(program, binary):
+def code_version(program, binary, allow_dirty=False):
     rev = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()
-    if dirty:
+    if dirty and not allow_dirty:
         sys.exit("commit first: a job names the exact code it was made with")
+    if dirty:
+        rev += "-dirty"  # tests only (--allow-dirty): never a job of a run
     return {"commit": rev, "rebound": REBOUND, "program": program,
             "reference_binary": {"path": str(Path(binary).name), "sha256": sha256_file(binary)},
             "build": "make (see Makefile): -std=c99 -fno-fast-math -ffp-contract=off, any -O level and compiler; p9gpu: nvcc --fmad=false"}
@@ -74,24 +76,65 @@ def code_version(program, binary):
 
 def hill_radii(ic_path):
     """Encounter radii: one Hill radius a (m / 3 M_sun)^(1/3) per massive body but the Sun, from the
-    heliocentric osculating semi-major axis of the start values, as decimals rounded to 1e-4 au."""
+    heliocentric osculating semi-major axis of the start values, as decimals rounded to 1e-4 au.
+    Returns {name: (radius, id)}; the id is the body's number in the start file (its 9th column, else
+    its position), which p9sim stores with the body."""
     G = None
     bodies = []
-    for line in open(ic_path):
+    k = 0
+    for line in open(ic_path).read().splitlines():
         f = line.split()
         if f and f[0] == "G":
             G = float(f[1])
-        if f and f[0] == "p" and float(f[2]) > 0:
-            bodies.append((f[1], float(f[2]), [float(x) for x in f[3:9]]))
+        if f and f[0] == "p":
+            if float(f[2]) > 0:
+                bodies.append((f[1], float(f[2]), [float(x) for x in f[3:9]], int(f[9]) if len(f) > 9 else k))
+            k += 1
     sun = bodies[0]
-    out = []
-    for name, m, s in bodies[1:]:
+    out = {}
+    for name, m, s, pid in bodies[1:]:
+        if name in out:
+            raise SystemExit(f"{ic_path}: body {name} twice")
         r = [s[k] - sun[2][k] for k in range(6)]
         rr = sum(x * x for x in r[:3]) ** 0.5
         v2 = sum(x * x for x in r[3:])
         a = 1 / (2 / rr - v2 / (G * (sun[1] + m)))
-        out.append((name, f"{a * (m / (3 * sun[1])) ** (1 / 3):.4f}"))
+        out[name] = (f"{a * (m / (3 * sun[1])) ** (1 / 3):.4f}", pid)
     return out
+
+
+def encounter_env(job):
+    """P9_ENCOUNTER_RADII for a job: "id=radius,..." with each radius assigned by the body's name
+    (params.removal.encounter.radii_au and .body_ids). The programs assign by id, so the order of
+    the items does not matter; it is sorted by name here on purpose. Returns None without radii.
+    Jobs from before the fix (radii without ids, joined in the order of job.json, which is
+    sorted by name and so not the order of the bodies) are refused."""
+    enc = job["params"].get("removal", {}).get("encounter", {})
+    radii = enc.get("radii_au", {})
+    if not radii:
+        return None
+    ids = enc.get("body_ids")
+    if not ids:
+        raise SystemExit("job has encounter radii without body ids (made before 2026-10-19 fix): its radii were applied "
+                         "in the wrong order; make the job again")
+    if set(ids) != set(radii):
+        raise SystemExit(f"encounter radii and body ids name different bodies: {sorted(radii)} / {sorted(ids)}")
+    return ",".join(f"{ids[n]}={radii[n]}" for n in sorted(radii))
+
+
+def check_encounter_report(job, stdout):
+    """The radii the program reports (lines "encounter_radius id=… au=…") must be the job's, by name."""
+    enc = job["params"].get("removal", {}).get("encounter", {})
+    radii, ids = enc.get("radii_au", {}), enc.get("body_ids", {})
+    got = {}
+    for line in stdout.splitlines():
+        if line.startswith("encounter_radius "):
+            kv = dict(x.split("=", 1) for x in line.split()[1:])
+            got[int(kv["id"])] = float(kv["au"])
+    want = {ids[n]: float(radii[n]) for n in radii}
+    if got != want:
+        raise SystemExit(f"the program used other encounter radii than the job: {got} instead of {want}")
+    return {n: got[ids[n]] for n in sorted(radii)}
 
 
 def job_id(job):
@@ -99,8 +142,8 @@ def job_id(job):
     return hashlib.sha256(canonical({k: job[k] for k in ("schema", "code", "params", "input")})).hexdigest()
 
 
-def write_job(out: Path, params, input_sa: Path, program="p9sim", binary=DEFAULT_P9SIM):
-    job = {"schema": SCHEMA, "code": code_version(program, binary), "params": params,
+def write_job(out: Path, params, input_sa: Path, program="p9sim", binary=DEFAULT_P9SIM, allow_dirty=False):
+    job = {"schema": SCHEMA, "code": code_version(program, binary, allow_dirty), "params": params,
            "input": {"file": "input.sa", "sha256": sha256_file(input_sa), "bytes": input_sa.stat().st_size}}
     job["id"] = job_id(job)
     (out / "job.json").write_text(json.dumps(job, indent=1, sort_keys=True) + "\n")
@@ -115,6 +158,7 @@ def cmd_make(a):
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
     subprocess.run(cmd, check=True)
     subprocess.run([str(DEFAULT_P9SIM if a.program == "p9gpu" else a.p9sim), "init", str(ic), str(out / "input.sa")], check=True, stdout=subprocess.DEVNULL)
+    radii = hill_radii(ic) if a.encounters else {}
     params = {"case": "Brown & Batygin (2021): Sun (+ inner planets), Jupiter-Neptune (DE440s, JD 2458270.0), Planet Nine, test particles",
               "ic": {"generator": "tools/make_ic.py", "n_tp": a.n_tp, "seed": a.seed, "tp_from": a.tp_from,
                      "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic)},
@@ -123,8 +167,9 @@ def cmd_make(a):
               "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
                           "encounter": {"criterion": "removed when closer to a planet than its encounter radius at the kick of a step "
                                                      "(positions of the middle of the step); src/p9encounter.h",
-                                        "radii_au": dict(hill_radii(ic)) if a.encounters else {}}}}
-    job = write_job(out, params, out / "input.sa", a.program, a.p9sim)
+                                        "radii_au": {n: r for n, (r, _) in radii.items()},
+                                        "body_ids": {n: i for n, (_, i) in radii.items()}}}}
+    job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
 
 
@@ -155,9 +200,10 @@ def cmd_run(a):
     if want and have and have.split("-dirty")[0] != want and not a.any_version:
         sys.exit(f"{p9sim} is version {have}, the job needs {want} (--any-version to run it anyway)")
     env = dict(os.environ)
-    radii = job["params"].get("removal", {}).get("encounter", {}).get("radii_au", {})
-    if radii:
-        env["P9_ENCOUNTER_RADII"] = ",".join(radii.values())
+    env.pop("P9_ENCOUNTER_RADII", None)
+    enc = encounter_env(job)
+    if enc:
+        env["P9_ENCOUNTER_RADII"] = enc
     build_flags = (p9sim.parent / "BUILD-FLAGS").read_text().strip() if (p9sim.parent / "BUILD-FLAGS").exists() else str(p9sim)
     cmd = ([*a.prefix.split()] if a.prefix else []) + [str(p9sim), "run", str(d / "input.sa"), repr(float(job["params"]["t_end_yr"])),
                                                        str(job["params"]["snapshots"]), str(d / a.output), str(d / "final.state")]
@@ -169,6 +215,7 @@ def cmd_run(a):
     if p.returncode:
         sys.exit(f"p9sim failed ({p.returncode}): {p.stderr[-2000:]}")
     line = [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1]
+    used = check_encounter_report(job, p.stdout) if enc else {}
     kv = dict(x.split("=", 1) for x in line.split())
     result = {"job_id": job["id"], "result_sha256": kv["result_sha256"], "final_state_sha256": kv["final_state_sha256"],
               "t_end": float(kv["t"]), "steps": int(kv["steps"]), "particles_start": int(kv["N_start"]), "particles_end": int(kv["N_end"]),
@@ -178,7 +225,7 @@ def cmd_run(a):
               "input_bytes": job["input"]["bytes"], "output_bytes": (d / a.output).stat().st_size,
               "platform": {"machine": platform.machine(), "system": platform.system(), "node_hash": hashlib.sha256(platform.node().encode()).hexdigest()[:12],
                            "python": platform.python_version()},
-              "build": build_flags, "runner": a.prefix or None}
+              "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -218,6 +265,7 @@ def main():
     m.add_argument("--p9sim", default=str(DEFAULT_P9SIM), help="the program that will run the job (its binary is hashed into the job)")
     m.add_argument("--program", choices=["p9sim", "p9gpu"], default="p9sim")
     m.add_argument("--no-encounters", dest="encounters", action="store_false", help="no close-encounter removal (as before 2026-10-19)")
+    m.add_argument("--allow-dirty", action="store_true", help="tests only: allow uncommitted changes (the job's commit gets \"-dirty\")")
     n = sub.add_parser("next")
     n.add_argument("--prev", required=True)
     n.add_argument("--out", required=True)
