@@ -12,14 +12,14 @@ trap 'rm -rf "$T"' EXIT
 args() { echo "--root $T/$1 --chains 1 --n-tp 500 --segment 2e5 --snap-every 1e5 --t-end 8e5 --deadline 2099-01-01T00:00 --program p9sim --p9sim $P9SIM"; }
 $PY -I tools/campaign.py $(args a) >/dev/null 2>&1
 # b: stopped while seg002 runs, then started again
-set -m  # job control: the background job gets its own process group (campaign, p9job, p9sim)
-$PY -I tools/campaign.py $(args b) >/dev/null 2>&1 &
-pid=$!
-set +m
+# in its own session: the process group (campaign, p9job, p9sim) has the campaign's pid
+pid=$($PY -I -c 'import subprocess, sys
+p = subprocess.Popen(sys.argv[1:], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print(p.pid)' $PY -I tools/campaign.py $(args b))
 until [ -s "$T/b/chain00/seg002/output.sa" ]; do sleep 0.1; done
 sleep 0.2
 kill -TERM -- "-$pid"
-wait "$pid" 2>/dev/null || true
+while kill -0 -- "-$pid" 2>/dev/null; do sleep 0.1; done
 [ -f "$T/b/chain00/seg002/result.json" ] && { echo "seg002 finished before the stop: rerun the test"; exit 2; }
 $PY -I tools/campaign.py $(args b) >/dev/null 2>&1
 ls -d "$T"/b/chain00/seg002.interrupted-* >/dev/null || { echo "FAIL: no interrupted segment kept aside"; exit 1; }
