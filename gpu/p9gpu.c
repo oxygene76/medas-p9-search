@@ -409,13 +409,20 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         sha256_final(&c2, d2);
         p9_hex(d2, hs);
     }
-    size_t removed = 0, removed_enc = 0, removed_inner = 0;
-    for (int i = 0; i < ntp; i++) removed += alive[i] != 1, removed_enc += alive[i] < 0, removed_inner += alive[i] == -1 - P.np;
+    size_t removed = 0, removed_enc = 0, removed_inner = 0, by[P9_MAX_PLANETS + 1] = {0};
+    for (int i = 0; i < ntp; i++) {
+        removed += alive[i] != 1, removed_enc += alive[i] < 0, removed_inner += alive[i] == -1 - P.np;
+        if (alive[i] < 0 && -1 - alive[i] < P.np) by[-1 - alive[i]]++;
+    }
+    // removals by close encounter per planet, by body id
+    char by_text[256] = "";
+    for (int j = 0; j < P.np; j++)
+        snprintf(by_text + strlen(by_text), sizeof by_text - strlen(by_text), "%s%.0f:%zu", j ? "," : "", ids[j], by[j]);
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu planet_s=%.3f program=p9gpu version=%s\n",
+           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s planet_s=%.3f program=p9gpu version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, planet_s, P9_VERSION);
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, by_text, planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);

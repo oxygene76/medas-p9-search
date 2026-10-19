@@ -66,6 +66,7 @@
 
 static size_t n_removed = 0;
 static size_t n_removed_encounter = 0;
+static size_t n_removed_by[16];  // removals by close encounter per massive body after the Sun
 static double enc_r2[16];        // squared encounter radii of the massive bodies 1..N_active-1 (0: no check)
 static int* enc_flag = NULL;     // per particle index: planet index + 1 of an encounter at the last kick
 static size_t enc_flag_n = 0;
@@ -100,6 +101,7 @@ static void heartbeat(struct reb_simulation* r) {
                 reb_simulation_remove_particle(r, i);
                 n_removed++;
                 n_removed_encounter++;
+                n_removed_by[enc_flag[i] - 1]++;
             }
         }
         for (size_t i = 0; i < enc_flag_n; i++) enc_flag[i] = 0;
@@ -239,9 +241,12 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         p9_hex(d2, hs);
     }
     const double e1 = p9_energy_massive(r);
+    char by_text[256] = "";
+    for (size_t j = 0; j + 1 < r->N_active && j < 16; j++)
+        snprintf(by_text + strlen(by_text), sizeof by_text - strlen(by_text), "%s%.0f:%zu", j ? "," : "", enc_ids[j], n_removed_by[j]);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e program=p9sim version=%s\n",
-           h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, P9_VERSION);
+           "dE_rel=%.3e removed_by=%s program=p9sim version=%s\n",
+           h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, by_text, P9_VERSION);
     reb_simulation_free(r);
     return 0;
 }

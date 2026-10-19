@@ -122,6 +122,13 @@ def encounter_env(job):
     return ",".join(f"{ids[n]}={radii[n]}" for n in sorted(radii))
 
 
+def removed_by(job, text):
+    """Removals by close encounter per planet name, from the programs' "removed_by=id:n,..."."""
+    ids = job["params"].get("removal", {}).get("encounter", {}).get("body_ids", {})
+    names = {str(i): n for n, i in ids.items()}
+    return {names.get(i, f"id {i}"): int(n) for i, n in (x.split(":") for x in text.split(",") if x)}
+
+
 def check_encounter_report(job, stdout):
     """The radii the program reports (lines "encounter_radius id=… au=…") must be the job's, by name."""
     enc = job["params"].get("removal", {}).get("encounter", {})
@@ -247,7 +254,7 @@ def cmd_run(a):
               "platform": {"machine": platform.machine(), "system": platform.system(), "node_hash": hashlib.sha256(platform.node().encode()).hexdigest()[:12],
                            "python": platform.python_version()},
               "build": build_flags, "runner": a.prefix or None, "encounter_radii_used_au": used, "real": real, "model": model["name"],
-              "removed_inner": int(kv.get("removed_inner", 0))}
+              "removed_inner": int(kv.get("removed_inner", 0)), "removed_by_encounter": removed_by(job, kv.get("removed_by", ""))}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
