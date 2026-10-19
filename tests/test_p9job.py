@@ -102,6 +102,12 @@ class HillRadii(unittest.TestCase):
             self.assertEqual(e["overrides"], ["P9=0.5000", "Neptune=0.7759"])
             with self.assertRaises(SystemExit):
                 p9job.encounter_radii(ic, 0.5, ["Pluto=1"])
+            # flyby term (1.5 v99 dt): J2 comparison of 2026-10-19 with dt = 1 yr
+            e = p9job.encounter_radii(ic, 1.0, [], ["P9=0.6", "Neptune=1.13"])
+            self.assertEqual((e["radii_au"]["P9"], e["radii_au"]["Neptune"]), ("0.9000", "1.6950"))
+            self.assertEqual(e["flyby_au"], {"P9": "0.9000", "Neptune": "1.6950"})
+            # with the speeds measured in the 4-Gyr run the radii at dt = 0.5 yr stay those of the rule
+            self.assertEqual(p9job.encounter_radii(ic, 0.5, [], ["P9=0.50", "Neptune=0.87"])["radii_au"], RULE_05)
 
 
 def program(var):

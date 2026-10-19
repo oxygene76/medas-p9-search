@@ -124,6 +124,50 @@ orbit around the planet:
   `hill_au`, `resolution_au`, `rule`; `--radius NAME=AU` overrides a value and
   is recorded) and in each program's report (`encounter_radius id=… au=…`).
 
+**Extension (2026-10-19 evening): flybys of at least 1.5 steps.** An
+independent check with REBOUND (`flyby_check.py` of the project lead, in the
+development worktree: a test body passes a planet at closest distance d_min
+with relative speed v_rel; error of the kick in orbital energy and angular
+momentum against IAS15, relative to the size of the kick) showed that the
+orbit criterion alone is not enough: the error stays at about 4 (dt/T_orb)^2
+only while a flyby lasts at least about 1.5–2 steps (d_min / (v_rel dt));
+below that it grows to per cent and beyond, whatever the orbital period.
+Medians of the error relative to the kick:
+
+| dt | planet, d_min | error |
+|---|---|---|
+| 0.5 yr | Planet Nine, 0.5 au | 1.5e-4 up to 0.5 au/yr |
+| 0.5 yr | Neptune, 0.78 au | 1e-4 up to 0.8 au/yr; 4e-4 at 1.0 au/yr |
+| 5 yr | Planet Nine, 2.32 au | 2 % at 0.5 au/yr |
+| 5 yr | Neptune, 3.26 au | 10 % at 1.0 au/yr |
+
+The rule is therefore
+
+  r = max(Hill radius [Jupiter to Neptune], r_orbit, 1.5 v99 dt),
+  r_orbit = 0.5 au (m / m_P9)^(1/3) (dt / 0.5 yr)^(2/3),
+
+with v99 the 99th percentile of the encounter speeds at that planet
+(`p9job make --v99 NAME=V`, recorded in the job with the resulting
+`flyby_au`). Model j2 with dt = 5 yr is thereby unsuitable for encounters with
+Neptune and Planet Nine (it would need about 8 and 4.5 au).
+
+v99 in the corrected 4-Gyr run (`tools/encounter_speeds.py`: orbits within 2
+au of the planet's orbit; relative speed at the closest approach of the two
+orbits, and Öpik's U from the Tisserand parameter):
+
+| t | Planet Nine: v99 (MOID / Öpik), n | Neptune: v99 (MOID / Öpik), n |
+|---|---|---|
+| 10 Myr | 0.50 / 0.43 au/yr, 130 | 0.71 / 0.71 au/yr, 143 |
+| 30 Myr | 0.47 / 0.43, 200 | 0.85 / 0.86, 73 |
+| 50 Myr | 0.50 / 0.45, 183 | 0.87 / 0.87, 74 |
+
+At dt = 0.5 yr the flyby term (Planet Nine 0.38 au, Neptune 0.65 au) stays
+below the radii of the run (0.5 and 0.78 au): the run's radii follow the
+extended rule. Limits to report: v99 above 0.65 au/yr at Planet Nine or 1.0
+au/yr at Neptune (then the flyby term exceeds the radius). v99 at Neptune
+rises with time and rests on few bodies; it is checked with every 500-Myr
+report.
+
 Evidence (to hold, the results must not change noticeably; otherwise the
 distance is increased):
 
@@ -187,4 +231,8 @@ reported with every result.
    population unchanged, total population biased), or follow encounters
    with Neptune instead of removing them (diagnostic without removal running:
    `runs/val/gpu-2000-noenc`), or a hybrid integrator on the GPU.
-3. J2 comparison: running.
+3. J2 comparison: the first one (dt = 5 yr) was stopped, the step is too long
+   for the encounters (above). Repeated with dt = 1 yr and the radii of the
+   extended rule with v99 = 0.6 (Planet Nine) and 1.13 au/yr (Neptune), more
+   than measured so far: Planet Nine 0.9000 au, Neptune 1.6950 au; the full
+   model with the same two radii.

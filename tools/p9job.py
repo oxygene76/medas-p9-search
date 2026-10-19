@@ -110,8 +110,9 @@ def hill_radii(ic_path):
 #   r_res = 0.5 au (m / m_P9)^(1/3) (dt / 0.5 yr)^(2/3).
 # Planet Nine: r_res. The others: the larger of their Hill radius and r_res.
 RES_P9_AU, RES_DT_YR = 0.5, 0.5
-RADII_RULE = ("Planet Nine: r_res = 0.5 au (dt / 0.5 yr)^(2/3); the other planets: max(Hill radius, r_res (m / m_P9)^(1/3)), "
-              "i.e. about 164 steps per orbit around the planet at the removal distance (docs/close-encounters.md)")
+RADII_RULE = ("max(Hill radius [not for Planet Nine], r_orbit = 0.5 au (m / m_P9)^(1/3) (dt / 0.5 yr)^(2/3), 1.5 v99 dt): "
+              "about 164 steps per orbit around the planet at the removal distance, and a flyby of at least 1.5 steps at "
+              "the 99th percentile v99 of the encounter speeds (docs/close-encounters.md)")
 
 
 def masses(ic_path):
@@ -123,14 +124,21 @@ def masses(ic_path):
     return out
 
 
-def encounter_radii(ic_path, dt, overrides):
-    """radii_au, body_ids and how they came about, for params.removal.encounter."""
+def encounter_radii(ic_path, dt, overrides, v99=()):
+    """radii_au, body_ids and how they came about, for params.removal.encounter. v99: NAME=au/yr."""
     hill = hill_radii(ic_path)
     m = masses(ic_path)
     if "P9" not in m:
         raise SystemExit(f"{ic_path}: no body P9 (the reference of the radius rule)")
     res = {n: RES_P9_AU * (m[n] / m["P9"]) ** (1 / 3) * (dt / RES_DT_YR) ** (2 / 3) for n in hill}
-    radii = {n: f"{res[n]:.4f}" if n == "P9" else f"{max(float(hill[n][0]), res[n]):.4f}" for n in hill}
+    speeds = {}
+    for o in v99:
+        n, v = o.split("=", 1)
+        if n not in hill:
+            raise SystemExit(f"--v99: no body {n}")
+        speeds[n] = float(v)
+    flyby = {n: 1.5 * speeds.get(n, 0.0) * dt for n in hill}
+    radii = {n: f"{max(res[n], flyby[n], 0.0 if n == 'P9' else float(hill[n][0])):.4f}" for n in hill}
     for o in overrides:
         n, v = o.split("=", 1)
         if n not in hill:
@@ -139,6 +147,9 @@ def encounter_radii(ic_path, dt, overrides):
         radii[n] = v
     enc = {"radii_au": radii, "body_ids": {n: i for n, (_, i) in hill.items()}, "rule": RADII_RULE,
            "hill_au": {n: r for n, (r, _) in hill.items()}, "resolution_au": {n: f"{v:.4f}" for n, v in res.items()}}
+    if v99:
+        enc["v99_au_per_yr"] = {n: f"{v:g}" for n, v in speeds.items()}
+        enc["flyby_au"] = {n: f"{flyby[n]:.4f}" for n in speeds}
     if overrides:
         enc["overrides"] = list(overrides)
     return enc
@@ -225,7 +236,7 @@ def cmd_make(a):
               "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
                           "encounter": {"criterion": "removed when closer to a planet than its encounter radius at the kick of a step "
                                                      "(positions of the middle of the step); src/p9encounter.h",
-                                        **(encounter_radii(ic, a.dt, a.radius) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
+                                        **(encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
 
@@ -342,6 +353,8 @@ def main():
                    help="number type of p9gpu's integrator (default double; df64: double-float, see docs/gpu-precision.md)")
     m.add_argument("--radius", action="append", default=[], metavar="NAME=AU",
                    help="encounter radius of a planet instead of the rule (e.g. the radii of another job); repeatable")
+    m.add_argument("--v99", action="append", default=[], metavar="NAME=AU_PER_YR",
+                   help="99th percentile of the encounter speed at a planet: the radius is at least 1.5 v99 dt; repeatable")
     m.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
                    help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",
