@@ -25,6 +25,8 @@ Presets:  --planet p9       6.2 Earth masses at 400 AU, window +-300 yr
 Usage:    python3 flyby_check.py run --planet p9 --dt 0.5 5 --out p9.json
           python3 flyby_check.py run --planet p9 --dt 5 --dmin 2.32 --vrel 0.2 0.35 0.5 --out x.json
           python3 flyby_check.py summary p9.json
+          python3 flyby_check.py close --planet neptune --dt 0.5
+            (very close flybys: signed kick ratio and spurious unbinding)
 
 Result with REBOUND 5.2.2 (19.10.2026), short form:
   * If the flyby lasts at least two steps (d_min / (v_rel * dt) >= 2), the
@@ -38,6 +40,10 @@ Result with REBOUND 5.2.2 (19.10.2026), short form:
   * Hence: r_remove >= max(Hill radius, r_orbit(dt), 1.5 * v99 * dt), with v99
     the 99th percentile of encounter speeds at that planet.
   * Jacobi and democratic heliocentric coordinates give the same errors.
+  * Very close Neptune flybys at dt = 0.5 yr ("close"): below ~0.1 AU the WH
+    kick ranges from about -136 to +171 times the true kick and 3-15 % of the
+    test bodies end spuriously unbound; at 0.35 AU the ratio is 0.4-1.6, at
+    0.78 AU 1.00. Without removal such flybys need sub-steps.
 Port this test to p9gpu (same initial states, same metrics) before relying on
 these numbers for p9gpu itself.
 """
@@ -72,6 +78,15 @@ def set_whfast_coordinates(sim, coords):
         sim.integrator.coordinates = coords      # REBOUND >= 5
     except AttributeError:
         sim.ri_whfast.coordinates = coords       # REBOUND 4
+
+
+def do_steps(sim, n):
+    """Exactly n fixed steps (older REBOUND versions have no sim.steps)."""
+    if hasattr(sim, "steps"):
+        sim.steps(n)
+    else:
+        for _ in range(n):
+            sim.step()
 
 
 def set_ias15_epsilon(sim, eps):
@@ -152,7 +167,7 @@ def one_window(p, dt, phase, m, rp, vp, bodies):
         wh.integrator = "whfast"
         set_whfast_coordinates(wh, c)
         wh.dt = dt
-        wh.steps(nsteps)
+        do_steps(wh, nsteps)
         wh.synchronize()
         res[c] = energy_and_h(wh)
         t_end = wh.t
@@ -213,6 +228,49 @@ def cmd_summary(args):
                       f" {np.median(h):8.1e} {h.max():8.1e}")
 
 
+def cmd_close(args):
+    """Very close flybys: signed ratio of the WH kick to the true kick and
+    spurious unbinding (WH ends unbound, reference stays bound)."""
+    p = dict(PRESETS[args.planet])
+    p["dmin"] = args.dmin or [0.02, 0.05, 0.1, 0.2, 0.35, 0.78]
+    p["vrel"] = args.vrel or [0.6, 1.0]
+    m, rp, vp, bodies = make_test_bodies(p, seed=7)
+    dt = args.dt
+    rows = []
+    for ph in [k / 8 for k in range(8)]:
+        t_start = -(p["halfwindow_yr"] + ph * dt)
+        nsteps = int(math.ceil((2 * p["halfwindow_yr"] + ph * dt) / dt))
+        sim = base_sim(m, rp, vp, bodies)
+        sim.integrator = "ias15"; sim.dt = -0.001
+        sim.integrate(t_start)
+        start = sim.copy()
+        e0 = energy_and_h(start)[:, 0]
+        wh = start.copy(); wh.integrator = "whfast"; set_whfast_coordinates(wh, "democraticheliocentric")
+        wh.dt = dt; do_steps(wh, nsteps); wh.synchronize()
+        ew = energy_and_h(wh)[:, 0]
+        ref = start.copy(); ref.integrator = "ias15"; ref.dt = 0.001; ref.integrate(wh.t)
+        er = energy_and_h(ref)[:, 0]
+        ref2 = start.copy(); ref2.integrator = "ias15"; set_ias15_epsilon(ref2, 0.0); ref2.dt = 0.0005
+        ref2.integrate(wh.t)
+        er2 = energy_and_h(ref2)[:, 0]
+        for i, (d, v, _, _) in enumerate(bodies):
+            rows.append(dict(d=d, v=v, ratio=(ew[i] - e0[i]) / (er[i] - e0[i]),
+                             unbound_wh=bool(ew[i] > 0), unbound_ref=bool(er[i] > 0),
+                             ref_check=abs(er[i] - er2[i]) / abs(er[i] - e0[i])))
+        print(f"{args.planet} close flybys dt={dt} phase={ph} done", file=sys.stderr)
+    cells = collections.defaultdict(list)
+    for r in rows:
+        cells[(r["d"], r["v"])].append(r)
+    print("max reference disagreement (rel. to kick):", f"{max(r['ref_check'] for r in rows):.1e}")
+    print(f"\n{args.planet}  dt = {dt} yr   (8 step phases x 10 geometries per row)")
+    print("  d_min  v_rel  flyby/dt | WH kick / true kick: median    min     max | spuriously unbound")
+    for (d, v), c in sorted(cells.items()):
+        ra = np.array([x["ratio"] for x in c])
+        spur = sum(1 for x in c if x["unbound_wh"] and not x["unbound_ref"])
+        print(f"  {d:5.2f}  {v:5.2f}  {d / (v * dt):7.2f}  | {np.median(ra):17.2f} {ra.min():7.2f} {ra.max():7.2f} |"
+              f" {spur:3d} of {len(c)}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -221,8 +279,12 @@ def main():
     a.add_argument("--dmin", type=float, nargs="+", help="override the preset's closest-approach distances (AU)")
     a.add_argument("--vrel", type=float, nargs="+", help="override the preset's relative speeds (AU/yr)")
     b = sub.add_parser("summary"); b.add_argument("file")
+    c = sub.add_parser("close", help="very close flybys: kick ratio and spurious unbinding")
+    c.add_argument("--planet", choices=PRESETS, default="neptune")
+    c.add_argument("--dt", type=float, default=0.5)
+    c.add_argument("--dmin", type=float, nargs="+"); c.add_argument("--vrel", type=float, nargs="+")
     args = ap.parse_args()
-    {"run": cmd_run, "summary": cmd_summary}[args.cmd](args)
+    {"run": cmd_run, "summary": cmd_summary, "close": cmd_close}[args.cmd](args)
 
 
 if __name__ == "__main__":
