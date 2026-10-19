@@ -64,3 +64,18 @@ clustering analyses here are based, agrees within the noise.
 Consequence as specified: the corrected 4-Gyr run (`runs/gpu-4gyr-b`, started
 2026-10-19 18:50) continues, **marked provisional**; the page "Simulations"
 stays empty; decision with the project lead on 2026-10-20.
+
+## Additional result for the decision: p9gpu without encounter removal
+
+The same 2,000 test particles with p9gpu **without** any removal at the planets
+(`runs/val/gpu-2000-noenc`: encounters are followed with the fixed step of
+0.5 yr; only the distance rules remove, 88 in 50 Myr), evaluated with the same
+tool and criteria (`runs/val/eval-mercurius-noenc.txt`): **all criteria hold
+at every time** (10, 20, 30, 50 Myr). At 50 Myr: survivors 1,933 / 1,912
+(|diff| 21 ≤ 0 + 2σ = 24.4); KS a, q, i, ϖ, Ω p = 0.83, 0.96, 1.00, 0.94,
+0.91; R(Δϖ) distant 0.624 / 0.624, all 0.095 / 0.092; R(ΔΩ) distant
+0.709 / 0.692, all 0.551 / 0.560. So, statistically, following the encounters
+with the fixed step comes much closer to MERCURIUS than removing them at the
+rule's radii. Not decided here; input for the decision of 2026-10-20 (with
+the flyby check: the encounters below 1.5 steps per flyby are then integrated
+inaccurately, and how many there are is what method "step" counts).
