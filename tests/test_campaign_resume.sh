@@ -9,13 +9,13 @@ P9SIM=${P9SIM:-build/test/p9sim}
 PY=${PY:-build/venv/bin/python}
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
-args() { echo "--root $T/$1 --chains 1 --n-tp 200 --segment 1e5 --snap-every 5e4 --t-end 4e5 --deadline 2099-01-01T00:00 --program p9sim --p9sim $P9SIM"; }
+args() { echo "--root $T/$1 --chains 1 --n-tp 500 --segment 2e5 --snap-every 1e5 --t-end 8e5 --deadline 2099-01-01T00:00 --program p9sim --p9sim $P9SIM"; }
 $PY -I tools/campaign.py $(args a) >/dev/null 2>&1
 # b: stopped while seg002 runs, then started again
 setsid $PY -I tools/campaign.py $(args b) >/dev/null 2>&1 &
 pid=$!
-until [ -f "$T/b/chain00/seg002/job.json" ]; do sleep 0.1; done
-sleep 0.5
+until [ -s "$T/b/chain00/seg002/output.sa" ]; do sleep 0.1; done
+sleep 0.2
 kill -TERM -- "-$pid" 2>/dev/null || true
 wait "$pid" 2>/dev/null || true
 [ -f "$T/b/chain00/seg002/result.json" ] && { echo "seg002 finished before the stop: rerun the test"; exit 2; }
