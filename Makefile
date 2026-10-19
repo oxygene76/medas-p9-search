@@ -89,3 +89,11 @@ build/gpu-cpu/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
 	@mkdir -p build/gpu-cpu
 	$(CC) $(GPU_CFLAGS) -DP9_NO_CUDA -o $@ $(GPU_SRC) $(REB_SRC) -lm
 	@echo "gpu-cpu: $(CC) $(GPU_CFLAGS) -DP9_NO_CUDA" > build/gpu-cpu/BUILD-FLAGS
+
+# p9gpu's integrator without CUDA as WebAssembly (WASI): the same bits as on the GPU.
+.PHONY: gpu-wasm
+gpu-wasm: build/gpu-wasm/p9gpu
+build/gpu-wasm/p9gpu: gpu/whdh.h $(GPU_SRC) $(REB_SRC) Makefile $(VERSION_STAMP)
+	@mkdir -p build/gpu-wasm
+	$(ZIG) cc -target wasm32-wasi $(GPU_CFLAGS) -DP9_NO_CUDA -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS \
+	  -o $@ $(GPU_SRC) $(REB_SRC) -lwasi-emulated-signal -lwasi-emulated-process-clocks
