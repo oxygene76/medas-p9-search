@@ -18,10 +18,13 @@ planet than that planet's encounter radius**.
   in p9sim REBOUND calls `additional_forces` at exactly this point of its WHFast
   step (`encounter_check` in `src/p9sim.c`, which only marks particles; the
   heartbeat removes them after the step). Checked at every step.
-- Encounter radius: one Hill radius, R_H = a (m / 3 M_Sun)^(1/3), from the
-  heliocentric osculating semi-major axis of the start values, rounded to
-  1e-4 au. For the test case: Jupiter 0.3552, Saturn 0.4374, Uranus 0.4672,
-  Neptune 0.7759, Planet Nine 6.9836 au.
+- Encounter radius (since 2026-10-19 evening, see "The radius rule" below):
+  Planet Nine r_res = 0.5 au (dt / 0.5 yr)^(2/3); Jupiter to Neptune the
+  larger of their Hill radius R_H = a (m / 3 M_Sun)^(1/3) (heliocentric
+  osculating a of the start values) and r_res (m / m_P9)^(1/3). Rounded to
+  1e-4 au. For the test case with dt = 0.5 yr: Jupiter 1.8575, Saturn 1.2427,
+  Uranus 0.6643, Neptune 0.7759 (its Hill radius), Planet Nine 0.5000 au; for
+  model j2 (dt = 5 yr): Neptune 3.2579, Planet Nine 2.3208 au.
 - The radii are part of the job description, by planet name
   (`params.removal.encounter.radii_au`, and `body_ids`: the id of each named
   body in the start file), so the criterion is fixed by the job and covered by
@@ -96,7 +99,46 @@ particles were followed through encounters, inaccurately, and only removed by
 the distance rules. Both integrators did the same there too, so the statistical
 comparison remains valid; new runs use the criterion.
 
-## Why the Hill radius, and why also for Planet Nine
+## The radius rule (2026-10-19)
+
+Until the fix of the radius order, every planet's radius was meant to be its
+Hill radius. With the correct order that removes, at Planet Nine's 7 au,
+about 25 % of the test particles within 10 Myr and most within 300 Myr
+(5,000 test particles, 10 Myr: 1,240 removed at Planet Nine, 283 at Neptune,
+none at Jupiter to Uranus). Batygin & Brown (2016, AJ 151, 22) removed
+particles within one Hill radius of Planet Nine; Brown & Batygin (2021, AJ
+162, 219), whose test case this is, integrated with mercury6's hybrid
+integrator, which resolves close encounters, and kept such particles. To
+follow the scattering by Planet Nine as they did, the radius is no longer the
+Hill radius but the distance down to which the time step still resolves the
+orbit around the planet:
+
+- At 0.5 au from Planet Nine (6.2 Earth masses) the orbit around it takes
+  2 pi sqrt(d^3 / G m) = 82 years, 164 steps of 0.5 years. The same number
+  of steps per orbit for any planet and step gives
+  r_res = 0.5 au (m / m_P9)^(1/3) (dt / 0.5 yr)^(2/3).
+- Planet Nine: r_res (0.5 au at dt = 0.5 yr; 2.32 au at 5 yr, model j2).
+- Jupiter to Neptune: the larger of r_res for their mass and their Hill
+  radius (for the giant planets r_res is larger, except for Neptune at 0.5 yr).
+- The values are in the job (`params.removal.encounter`: `radii_au`, and
+  `hill_au`, `resolution_au`, `rule`; `--radius NAME=AU` overrides a value and
+  is recorded) and in each program's report (`encounter_radius id=… au=…`).
+
+Evidence (to hold, the results must not change noticeably; otherwise the
+distance is increased):
+
+1. The same job over 10 Myr with half the step (0.25 yr) and the same radii:
+   survivors, Δϖ and ΔΩ.
+2. A control run with REBOUND's MERCURIUS (`p9sim`, `--integrator mercurius`:
+   WHFast in democratic heliocentric coordinates, IAS15 within 3 Hill radii
+   of a planet, like mercury6's hybrid integrator), 2,000 test particles over
+   50 Myr on the CPU, without encounter removal, against p9gpu with the rule.
+3. The J2 comparison repeated with the same radii for Neptune and Planet Nine
+   in both models, so that only the J2 approximation differs.
+
+Results: see the end of this file.
+
+## Why the Hill radius, and why also for Planet Nine (until 2026-10-19)
 
 The Hill radius is the usual measure of where a planet's gravity dominates over
 the Sun's; GLISSE (Zhang & Gladman 2022) likewise removes particles close to a

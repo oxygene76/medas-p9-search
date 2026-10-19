@@ -187,6 +187,8 @@ def main():
     ap.add_argument("--tp-from", type=int, default=0)
     ap.add_argument("--tp-to", type=int, default=None)
     ap.add_argument("--dt", type=float, default=0.5)
+    ap.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
+                    help="p9sim's integrator (mercurius: hybrid, resolves close encounters with IAS15)")
     ap.add_argument("--j2", default=None, help='model "j2": planets merged into the central body, e.g. Jupiter,Saturn,Uranus')
     ap.add_argument("--j2-out", default=None, help="file for the J2 parameters (JSON)")
     args = ap.parse_args()
@@ -199,6 +201,8 @@ def main():
         f.write("# p9sim start values, written by tools/make_ic.py (see its docstring); values are Python repr (exact)\n")
         f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}\n")
         f.write(f"G {G!r}\ndt {args.dt!r}\nN_active {sum(1 for r in rows if r[1] > 0)}\ncorrector 0\n")
+        if args.integrator != "whfast":
+            f.write(f"integrator {args.integrator}\n")
         for name, m, p, v, pid in rows:
             vals = [float(m), *map(float, p), *map(float, v)]
             f.write("p " + name + " " + " ".join(repr(x) for x in vals) + f" {pid}\n")

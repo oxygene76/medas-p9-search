@@ -67,6 +67,24 @@
 static size_t n_removed = 0;
 static size_t n_removed_encounter = 0;
 static size_t n_removed_by[16];  // removals by close encounter per massive body after the Sun
+
+// MERCURIUS (integrator "mercurius" in the start file): it takes twice a
+// particle's radius as a lower bound of its switching distance, so the ids
+// (kept in r, see above) must not be in r while it integrates. They are kept
+// in ids_kept, shifted with every removal (p9sim does all removals), and
+// written back into r only for the snapshots and hashes.
+static double* ids_kept = NULL;
+
+static void remove_particle(struct reb_simulation* r, size_t i) {
+    if (ids_kept) memmove(ids_kept + i, ids_kept + i + 1, sizeof(double) * (r->N - i - 1));
+    reb_simulation_remove_particle(r, i);  // keeps the order of the others
+}
+
+// ids into r (for outputs) or out of it (for integration)
+static void ids_in_r(struct reb_simulation* r, int in) {
+    if (!ids_kept) return;
+    for (size_t i = 0; i < r->N; i++) r->particles[i].r = in ? ids_kept[i] : 0.0;
+}
 static double enc_r2[16];        // squared encounter radii of the massive bodies 1..N_active-1 (0: no check)
 static int* enc_flag = NULL;     // per particle index: planet index + 1 of an encounter at the last kick
 static size_t enc_flag_n = 0;
@@ -98,7 +116,7 @@ static void heartbeat(struct reb_simulation* r) {
         // encounters found at this step's kick (from the end, so indices stay valid)
         for (size_t i = r->N; i-- > r->N_active;) {
             if (i < enc_flag_n && enc_flag[i]) {
-                reb_simulation_remove_particle(r, i);
+                remove_particle(r, i);
                 n_removed++;
                 n_removed_encounter++;
                 n_removed_by[enc_flag[i] - 1]++;
@@ -114,7 +132,7 @@ static void heartbeat(struct reb_simulation* r) {
         const double dx = p->x - s->x, dy = p->y - s->y, dz = p->z - s->z;
         const double d2 = dx * dx + dy * dy + dz * dz;
         if (d2 > R_OUT * R_OUT || d2 < R_IN * R_IN) {
-            reb_simulation_remove_particle(r, i);  // keeps the order of the others
+            remove_particle(r, i);
             n_removed++;
         }
     }
@@ -131,6 +149,7 @@ static int cmd_init(const char* ic, const char* out) {
     double G = 0, dt = 0;
     long n_active = -1;
     unsigned corrector = 0;
+    char integrator[32] = "whfast";
     char line[512];
     while (fgets(line, sizeof line, f)) {
         if (line[0] == '#' || line[0] == '\n') continue;
@@ -139,6 +158,7 @@ static int cmd_init(const char* ic, const char* out) {
         else if (!strcmp(key, "dt")) sscanf(line, "%*s %lf", &dt);
         else if (!strcmp(key, "N_active")) sscanf(line, "%*s %ld", &n_active);
         else if (!strcmp(key, "corrector")) sscanf(line, "%*s %u", &corrector);
+        else if (!strcmp(key, "integrator")) sscanf(line, "%*s %31s", integrator);
         else if (!strcmp(key, "p")) {
             char name[32];
             struct reb_particle p = {0};
@@ -169,11 +189,24 @@ static int cmd_init(const char* ic, const char* out) {
     r->N_active = (size_t)n_active;
     r->testparticle_type = 0;  // massive bodies do not feel test particles
     r->force_is_velocity_dependent = 0;
-    reb_simulation_set_integrator(r, "whfast");
-    struct reb_integrator_whfast_state* w = r->integrator.state;
-    w->coordinates = REB_INTEGRATOR_WHFAST_COORDINATES_DEMOCRATICHELIOCENTRIC;
-    w->safe_mode = 1;
-    w->corrector = corrector;
+    if (!strcmp(integrator, "mercurius")) {
+        // hybrid: WH in democratic heliocentric coordinates, IAS15 within
+        // 3 Hill radii of a planet (REBOUND's defaults; as mercury6's hybrid
+        // integrator used by Brown & Batygin 2021)
+        reb_simulation_set_integrator(r, "mercurius");
+        struct reb_integrator_mercurius_state* m = r->integrator.state;
+        m->safe_mode = 1;
+        m->r_crit_hill = 3;
+    } else if (!strcmp(integrator, "whfast")) {
+        reb_simulation_set_integrator(r, "whfast");
+        struct reb_integrator_whfast_state* w = r->integrator.state;
+        w->coordinates = REB_INTEGRATOR_WHFAST_COORDINATES_DEMOCRATICHELIOCENTRIC;
+        w->safe_mode = 1;
+        w->corrector = corrector;
+    } else {
+        fprintf(stderr, "%s: integrator whfast or mercurius\n", ic);
+        return 2;
+    }
     reb_simulation_save_to_file(r, out);
     printf("init: N=%zu N_active=%zu G=%.17g dt=%.17g -> %s\n", r->N, r->N_active, r->G, r->dt, out);
     reb_simulation_free(r);
@@ -204,6 +237,11 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
     if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, enc_ids, enc_r);
     for (size_t j = 0; j + 1 < r->N_active; j++)
         if (enc_r2[j] > 0.0) r->additional_forces = encounter_check;
+    if (r->integrator.name && !strcmp(r->integrator.name, "mercurius")) {
+        ids_kept = malloc(sizeof(double) * (r->N > 0 ? r->N : 1));
+        for (size_t i = 0; i < r->N; i++) ids_kept[i] = r->particles[i].r;
+        ids_in_r(r, 0);
+    }
     const double e0 = p9_energy_massive(r);  // test particles are massless: the planets' energy
     remove(out);
     struct sha256_ctx ctx;
@@ -221,8 +259,10 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
             return 3;
         }
         reb_simulation_synchronize(r);
+        ids_in_r(r, 1);
         reb_simulation_save_to_file(r, out);
         p9_state_hash(r, &ctx, NULL);
+        if (k < n_snap) ids_in_r(r, 0);
         fprintf(stderr, "snapshot %ld/%ld t=%.6g N=%zu removed=%zu wall=%.1fs\n", k, n_snap, r->t, r->N, n_removed, now_s() - w0);
     }
     uint8_t d[32];

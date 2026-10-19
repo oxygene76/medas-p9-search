@@ -103,6 +103,47 @@ def hill_radii(ic_path):
     return out
 
 
+# Encounter radii (docs/close-encounters.md): the time step must resolve the
+# orbit around a planet at the removal distance. Reference: Planet Nine at 0.5
+# au with dt = 0.5 yr (orbit around it about 82 yr, 164 steps); the same number
+# of steps per orbit for any planet and step gives
+#   r_res = 0.5 au (m / m_P9)^(1/3) (dt / 0.5 yr)^(2/3).
+# Planet Nine: r_res. The others: the larger of their Hill radius and r_res.
+RES_P9_AU, RES_DT_YR = 0.5, 0.5
+RADII_RULE = ("Planet Nine: r_res = 0.5 au (dt / 0.5 yr)^(2/3); the other planets: max(Hill radius, r_res (m / m_P9)^(1/3)), "
+              "i.e. about 164 steps per orbit around the planet at the removal distance (docs/close-encounters.md)")
+
+
+def masses(ic_path):
+    out = {}
+    for line in open(ic_path).read().splitlines():
+        f = line.split()
+        if f and f[0] == "p" and float(f[2]) > 0:
+            out[f[1]] = float(f[2])
+    return out
+
+
+def encounter_radii(ic_path, dt, overrides):
+    """radii_au, body_ids and how they came about, for params.removal.encounter."""
+    hill = hill_radii(ic_path)
+    m = masses(ic_path)
+    if "P9" not in m:
+        raise SystemExit(f"{ic_path}: no body P9 (the reference of the radius rule)")
+    res = {n: RES_P9_AU * (m[n] / m["P9"]) ** (1 / 3) * (dt / RES_DT_YR) ** (2 / 3) for n in hill}
+    radii = {n: f"{res[n]:.4f}" if n == "P9" else f"{max(float(hill[n][0]), res[n]):.4f}" for n in hill}
+    for o in overrides:
+        n, v = o.split("=", 1)
+        if n not in hill:
+            raise SystemExit(f"--radius: no body {n}")
+        float(v)
+        radii[n] = v
+    enc = {"radii_au": radii, "body_ids": {n: i for n, (_, i) in hill.items()}, "rule": RADII_RULE,
+           "hill_au": {n: r for n, (r, _) in hill.items()}, "resolution_au": {n: f"{v:.4f}" for n, v in res.items()}}
+    if overrides:
+        enc["overrides"] = list(overrides)
+    return enc
+
+
 def encounter_env(job):
     """P9_ENCOUNTER_RADII for a job: "id=radius,..." with each radius assigned by the body's name
     (params.removal.encounter.radii_au and .body_ids). The programs assign by id, so the order of
@@ -163,25 +204,28 @@ def cmd_make(a):
     ic = out / "ic.txt"
     cmd = [sys.executable, "-I", str(ROOT / "tools/make_ic.py"), "--out", str(ic), "--n-tp", str(a.n_tp), "--seed", str(a.seed),
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
+    if a.integrator != "whfast":
+        if a.program != "p9sim":
+            sys.exit("--integrator mercurius needs --program p9sim")
+        cmd += ["--integrator", a.integrator]
     if a.j2:
         if a.program != "p9gpu":
             sys.exit("--j2 needs --program p9gpu")
         cmd += ["--j2", a.j2, "--j2-out", str(out / "j2.json")]
     subprocess.run(cmd, check=True)
     subprocess.run([str(DEFAULT_P9SIM if a.program == "p9gpu" else a.p9sim), "init", str(ic), str(out / "input.sa")], check=True, stdout=subprocess.DEVNULL)
-    radii = hill_radii(ic) if a.encounters else {}
     params = {"case": "Brown & Batygin (2021): Sun (+ inner planets), Jupiter-Neptune (DE440s, JD 2458270.0), Planet Nine, test particles",
               "ic": {"generator": "tools/make_ic.py", "n_tp": a.n_tp, "seed": a.seed, "tp_from": a.tp_from,
                      "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic)},
               **({"real": a.real} if a.real != "double" else {}),
               **({"model": {"name": "j2", **json.loads((out / "j2.json").read_text())}} if a.j2 else {}),
-              "integrator": "whfast", "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
+              "integrator": a.integrator, "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
+              **({"r_crit_hill": 3} if a.integrator == "mercurius" else {}),
               "t_start_yr": 0.0, "t_end_yr": a.t_end, "snapshots": a.snapshots,
               "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
                           "encounter": {"criterion": "removed when closer to a planet than its encounter radius at the kick of a step "
                                                      "(positions of the middle of the step); src/p9encounter.h",
-                                        "radii_au": {n: r for n, (r, _) in radii.items()},
-                                        "body_ids": {n: i for n, (_, i) in radii.items()}}}}
+                                        **(encounter_radii(ic, a.dt, a.radius) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
 
@@ -296,6 +340,10 @@ def main():
     m.add_argument("--no-encounters", dest="encounters", action="store_false", help="no close-encounter removal (as before 2026-10-19)")
     m.add_argument("--real", choices=["double", "df64", "float", "double-t"], default="double",
                    help="number type of p9gpu's integrator (default double; df64: double-float, see docs/gpu-precision.md)")
+    m.add_argument("--radius", action="append", default=[], metavar="NAME=AU",
+                   help="encounter radius of a planet instead of the rule (e.g. the radii of another job); repeatable")
+    m.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
+                   help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",
                    help='model "j2": these planets merged into the Sun as its J2 (e.g. Jupiter,Saturn,Uranus; p9gpu only)')
     m.add_argument("--allow-dirty", action="store_true", help="tests only: allow uncommitted changes (the job's commit gets \"-dirty\")")

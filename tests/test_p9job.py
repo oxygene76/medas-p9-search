@@ -25,6 +25,8 @@ import p9job  # noqa: E402
 # Hill radii of the test case (docs/close-encounters.md)
 HILL = {"Jupiter": "0.3552", "Saturn": "0.4374", "Uranus": "0.4672", "Neptune": "0.7759", "P9": "6.9836"}
 IDS = {"Jupiter": 1, "Saturn": 2, "Uranus": 3, "Neptune": 4, "P9": 5}
+# radii of the rule at dt = 0.5 yr (p9job.RADII_RULE): Planet Nine 0.5 au, the others max(Hill, resolution)
+RULE_05 = {"Jupiter": "1.8575", "Saturn": "1.2427", "Uranus": "0.6643", "Neptune": "0.7759", "P9": "0.5000"}
 
 
 def job_with(radii, ids):
@@ -86,6 +88,21 @@ class HillRadii(unittest.TestCase):
             self.assertEqual({n: r for n, (r, _) in got.items()}, HILL)
             self.assertEqual({n: i for n, (_, i) in got.items()}, IDS)
 
+    def test_rule_scales_with_the_step(self):
+        with tempfile.TemporaryDirectory() as d:
+            ic = Path(d) / "ic.txt"
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/make_ic.py"), "--out", str(ic), "--n-tp", "3"], check=True,
+                           stderr=subprocess.DEVNULL)
+            self.assertEqual(p9job.encounter_radii(ic, 0.5, [])["radii_au"], RULE_05)
+            r5 = p9job.encounter_radii(ic, 5.0, [])["radii_au"]
+            self.assertEqual(r5["P9"], "2.3208")  # 0.5 au * 10^(2/3)
+            self.assertEqual(r5["Neptune"], "3.2579")  # the rule exceeds Neptune's Hill radius at this step
+            e = p9job.encounter_radii(ic, 0.25, ["P9=0.5000", "Neptune=0.7759"])
+            self.assertEqual((e["radii_au"]["P9"], e["radii_au"]["Neptune"], e["radii_au"]["Jupiter"]), ("0.5000", "0.7759", "1.1702"))
+            self.assertEqual(e["overrides"], ["P9=0.5000", "Neptune=0.7759"])
+            with self.assertRaises(SystemExit):
+                p9job.encounter_radii(ic, 0.5, ["Pluto=1"])
+
 
 def program(var):
     p = os.environ.get(var)
@@ -107,7 +124,7 @@ class EndToEnd(unittest.TestCase):
             subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "run", str(job), "--p9sim", str(prog), "--any-version"],
                            check=True, stdout=subprocess.DEVNULL, env=env)
             used = json.loads((job / "result.json").read_text())["encounter_radii_used_au"]
-            self.assertEqual(used, {n: float(r) for n, r in HILL.items()})
+            self.assertEqual(used, {n: float(r) for n, r in RULE_05.items()})
 
     @unittest.skipUnless(program("P9TEST_P9SIM"), "P9TEST_P9SIM not set")
     def test_p9sim(self):
@@ -116,6 +133,26 @@ class EndToEnd(unittest.TestCase):
     @unittest.skipUnless(program("P9TEST_P9GPU"), "P9TEST_P9GPU not set")
     def test_p9gpu(self):
         self.run_job(program("P9TEST_P9GPU"), "p9gpu")
+
+
+class Mercurius(unittest.TestCase):
+    """p9sim with REBOUND's MERCURIUS: the ids leave r while it integrates and come back for the outputs."""
+
+    @unittest.skipUnless(program("P9TEST_P9SIM"), "P9TEST_P9SIM not set")
+    def test_ids_survive(self):
+        prog = program("P9TEST_P9SIM")
+        with tempfile.TemporaryDirectory() as d:
+            job = Path(d) / "job"
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "make", "--out", str(job), "--t-end", "2000", "--snapshots", "2",
+                            "--n-tp", "8", "--p9sim", str(prog), "--integrator", "mercurius", "--no-encounters", "--allow-dirty"],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "run", str(job), "--p9sim", str(prog), "--any-version"],
+                           check=True, stdout=subprocess.DEVNULL)
+            for k in (0, 1):
+                out = subprocess.run([str(prog), "dump", str(job / "output.sa"), str(k)], capture_output=True, text=True, check=True).stdout
+                ids = [int(float(l.split()[1])) for l in out.splitlines()[1:]]
+                self.assertEqual(ids, list(range(6 + 8)))
+            self.assertIn("mercurius", (job / "ic.txt").read_text())
 
 
 if __name__ == "__main__":
