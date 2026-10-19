@@ -17,6 +17,9 @@
 //                        removed (only the distance rules remove)
 //   P9_FLYBY_OUT=file    with method step: the flyby records per test particle
 //                        (tab-separated, see write_flybys)
+//   P9_REMOVED_OUT=file  the fate of each test particle of the input: id, then
+//                        alive (1), distance rules (0) or the body id of the
+//                        planet of its close encounter (any method)
 //   P9_J2="muJ2R2,nx,ny,nz,r_remove"   model "j2" (whdh.h): the central body
 //                        has a J2 (tools/p9job.py sets it from params.model);
 //                        test particles within r_remove of the Sun are removed
@@ -502,6 +505,18 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     if (step_method && getenv("P9_FLYBY_OUT") && *getenv("P9_FLYBY_OUT") && write_flybys(getenv("P9_FLYBY_OUT"), &F, tp_ids, alive, ntp, P.np, ids))
         return 2;
+    if (getenv("P9_REMOVED_OUT") && *getenv("P9_REMOVED_OUT")) {
+        FILE* f = fopen(getenv("P9_REMOVED_OUT"), "w");
+        if (!f) return 2;
+        fprintf(f, "id\tfate\n");
+        for (int i = 0; i < ntp; i++) {
+            if (alive[i] == 1) fprintf(f, "%.0f\talive\n", tp_ids[i]);
+            else if (alive[i] == 0) fprintf(f, "%.0f\tdistance\n", tp_ids[i]);
+            else if (-1 - alive[i] < P.np) fprintf(f, "%.0f\tencounter:%.0f\n", tp_ids[i], ids[-1 - alive[i]]);
+            else fprintf(f, "%.0f\tinner\n", tp_ids[i]);
+        }
+        if (fclose(f)) return 2;
+    }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
            "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s encounter_method=%s encounter_remove=%d flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "

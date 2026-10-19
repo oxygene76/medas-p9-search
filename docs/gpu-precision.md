@@ -47,4 +47,17 @@ Details and the FP64 limit: `docs/gpu-performance.md`.
 
 ## Accuracy
 
-(results of the 300-Myr runs: see below, added when they are done)
+**Statistics over 300 Myr** (`runs/prec/df64-300myr` against the FP64 run
+`gpu-long-dkd`: the same 4,000 test particles and job, no encounter removal;
+`runs/prec/compare-df64-fp64.txt`):
+
+| | survivors FP64 / df64 | R(Δϖ), distant | R(ΔΩ), distant | KS p (a, q, i, Δϖ, ΔΩ) |
+|---|---|---|---|---|
+| 100 Myr | 3,515 / 3,519 | 0.703 / 0.707 | 0.733 / 0.730 | 0.51, 0.76, 0.46, 0.35, 0.62 |
+| 200 Myr | 2,955 / 2,982 | 0.594 / 0.582 | 0.769 / 0.769 | 0.75, 0.71, 0.78, 0.92, 0.99 |
+| 300 Myr | 2,672 / 2,703 | 0.403 / 0.391 | 0.722 / 0.721 | 0.44, 0.88, 0.83, 0.17, 0.56 |
+
+Single orbits diverge (chaos; median relative difference in a 11 % after
+100 Myr, as between any two integrations), the distributions agree.
+
+**Energy error** (pure Kepler orbits, `tools/kepler_energy.py`): running.
