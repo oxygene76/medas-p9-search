@@ -71,8 +71,10 @@ def method_env(method, planet_name, m, dt):
     import math as _m
     r_orbit = 0.5 * (m / (6.2 * fc.M_EARTH)) ** (1 / 3) * (dt / 0.5) ** (2 / 3)
     hill = 30.07 * (m / 3) ** (1 / 3) if planet_name == "Neptune" else 0.0
-    r = 4.0 * max(r_orbit, hill)  # trigger radius: 4 times the rule's radius (p9job --trigger-factor)
-    return {"P9_ENCOUNTER_METHOD": "substep", "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": "8"}
+    # trigger radius: 4 times the rule's radius (p9job --trigger-factor); FLYBY_TRIGGER_FACTOR and
+    # FLYBY_PLANET_SUBSTEPS override both for experiments
+    r = float(os.environ.get("FLYBY_TRIGGER_FACTOR", "4")) * max(r_orbit, hill)
+    return {"P9_ENCOUNTER_METHOD": "substep", "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": os.environ.get("FLYBY_PLANET_SUBSTEPS", "8")}
 
 
 def run_p9gpu(start, dt, nsteps, planet_name, p9gpu, p9sim, mode, extra):
