@@ -13,7 +13,8 @@ Run, either
      and the CUDA toolkit for building, e.g. /usr/local/cuda/bin/nvcc):
        sh run-gpucheck.sh
      with nvcc elsewhere:   NVCC=/path/to/nvcc CUDA_LIB=/path/to/lib64 sh run-gpucheck.sh
-     without a toolkit:     USE_PREBUILT=1 sh run-gpucheck.sh   (needs driver 580 or newer)
+     without a toolkit:     USE_PREBUILT=1 sh run-gpucheck.sh   (needs driver 580 or newer
+                            and glibc 2.35 or newer, e.g. Ubuntu 22.04; checked first)
      without the benchmark: SKIP_BENCH=1 sh run-gpucheck.sh
   b) in a container (needs Docker with the NVIDIA Container Toolkit):
        docker build -f Dockerfile.gpu -t p9gpucheck . && docker run --rm --gpus all p9gpucheck

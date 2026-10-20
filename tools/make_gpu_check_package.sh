@@ -49,14 +49,26 @@ for name, mode, res in rows:
 (out / "EXPECTED").write_text("\n".join(lines) + "\n")
 PY
 
-# prebuilt binaries for machines without a CUDA toolkit
+# prebuilt binaries for machines without a CUDA toolkit, built in NVIDIA's
+# CUDA 13.3 image on Ubuntu 22.04 (glibc 2.35, gcc 11): they run on Ubuntu
+# 22.04 and newer; libstdc++ and libgcc linked statically. The glibc they need
+# is recorded in bin/REQUIRES-glibc (run-gpucheck.sh checks it first).
+IMG=nvidia/cuda:13.3.0-devel-ubuntu22.04
 ARCH="-gencode arch=compute_80,code=sm_80 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_120,code=sm_120 -gencode arch=compute_80,code=compute_80"
-make -s gpu GPU_DIR="$OUT-build" GPU_ARCH="$ARCH" >/dev/null
-make -s "$OUT-build/peak" -f - <<EOF >/dev/null
-include Makefile
-$OUT-build/peak: gpu/probe/peak.cu
-	\$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $ARCH -o \$@ gpu/probe/peak.cu
-EOF
+rm -rf "$OUT-build" && mkdir -p "$OUT-build"
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/$OUT:/pkg:ro" -v "$PWD/$OUT-build:/out" "$IMG" sh -c "
+  set -e; cp -r /pkg /tmp/w; cd /tmp/w; mkdir -p third_party; tar -xzf third_party-src/rebound-5.2.2.tar.gz -C third_party
+  make -s gpu NVCC=/usr/local/cuda/bin/nvcc CUDA_LIB=/usr/local/cuda/lib64 GPU_ARCH='$ARCH' GPU_DIR=/tmp/b GPU_LDFLAGS='-static-libstdc++ -static-libgcc' >/dev/null
+  /usr/local/cuda/bin/nvcc -O3 --fmad=false -prec-div=true -prec-sqrt=true $ARCH -c gpu/probe/peak.cu -o /tmp/b/peak.o
+  g++ -static-libstdc++ -static-libgcc -o /tmp/b/peak /tmp/b/peak.o -L/usr/local/cuda/lib64 -lcudart_static -ldl -lpthread -lrt
+  cp /tmp/b/p9gpu /tmp/b/peak /out/; /usr/local/cuda/bin/nvcc --version | tail -n 2 | head -n 1 > /out/NVCC-VERSION; ldd --version | head -n 1 > /out/BUILD-GLIBC"
+# no symbol may need a newer glibc than Ubuntu 22.04 has (2.35), none any libstdc++ (GLIBCXX)
+REQ=$(objdump -T "$OUT-build/p9gpu" "$OUT-build/peak" | grep -oE 'GLIBC_[0-9.]+' | sed 's/GLIBC_//' | sort -uV | tail -n 1)
+if objdump -T "$OUT-build/p9gpu" "$OUT-build/peak" | grep -q GLIBCXX; then echo "prebuilt binaries need libstdc++ (GLIBCXX)" >&2; exit 1; fi
+[ "$(printf '%s\n' "$REQ" 2.35 | sort -V | tail -n 1)" = 2.35 ] || { echo "prebuilt binaries need glibc $REQ, more than Ubuntu 22.04's 2.35" >&2; exit 1; }
+echo "$REQ" > "$OUT/bin/REQUIRES-glibc"
+cp "$OUT-build/NVCC-VERSION" "$OUT-build/BUILD-GLIBC" "$OUT/bin/"
+echo "prebuilt: glibc >= $REQ needed; built with $(cat "$OUT-build/NVCC-VERSION"), $(cat "$OUT-build/BUILD-GLIBC")"
 cp "$OUT-build/p9gpu" "$OUT-build/peak" "$OUT/bin/"
 ( cd "$OUT/bin" && sha256sum p9gpu > SHA256-p9gpu && sha256sum peak > SHA256-peak )
 rm -rf "$OUT-build"

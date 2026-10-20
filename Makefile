@@ -72,6 +72,8 @@ counterexamples:
 CUDA ?= build/cuda-venv/lib/python3.14/site-packages/nvidia/cu13
 NVCC ?= $(CUDA)/bin/nvcc
 CUDA_LIB ?= $(CUDA)/lib
+# e.g. -static-libstdc++ -static-libgcc for binaries that run on other systems (the GPU check package)
+GPU_LDFLAGS ?=
 GPU_ARCH ?= -gencode arch=compute_120,code=sm_120 -gencode arch=compute_75,code=compute_75
 GPU_SRC := gpu/p9gpu.c src/p9state.c src/p9encounter.c src/sha256.c src/whfast512_stub.c
 GPU_HDR := gpu/whdh.h gpu/whdh_t.h gpu/df64.h gpu/p9gpu_api.h gpu/p9gpu_real.h
@@ -88,7 +90,7 @@ $(GPU_DIR)/p9gpu: gpu/kernel.cu gpu/cpu_t.cpp $(GPU_HDR) $(GPU_SRC) $(REB_SRC) M
 	@mkdir -p $(GPU_DIR)
 	$(NVCC) -O3 --fmad=false -prec-div=true -prec-sqrt=true $(GPU_ARCH) -Isrc -Igpu -Xcompiler -ffp-contract=off -c gpu/kernel.cu -o $(GPU_DIR)/kernel.o
 	$(CXX) $(GPU_CXXFLAGS) -c gpu/cpu_t.cpp -o $(GPU_DIR)/cpu_t.o
-	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) $(GPU_DIR)/kernel.o $(GPU_DIR)/cpu_t.o -L$(CUDA_LIB) -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
+	gcc $(GPU_CFLAGS) -o $@ $(GPU_SRC) $(REB_SRC) $(GPU_DIR)/kernel.o $(GPU_DIR)/cpu_t.o -L$(CUDA_LIB) $(GPU_LDFLAGS) -lcudart_static -lstdc++ -ldl -lpthread -lrt -lm
 	@echo "gpu: $(NVCC) --fmad=false $(GPU_ARCH); host gcc $(GPU_CFLAGS)" > $(GPU_DIR)/BUILD-FLAGS
 
 # The same integrator without CUDA (P9GPU_MODE=cpu only): reference and CPU speed.

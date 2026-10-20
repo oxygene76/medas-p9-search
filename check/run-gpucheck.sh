@@ -62,8 +62,17 @@ if [ "${USE_PREBUILT:-0}" != 1 ] && [ -x "$NVCC" ]; then
   GPU=./build/gpu/p9gpu
   PEAK=./build/probe/peak
 else
-  say "build: prebuilt bin/p9gpu (CUDA 13.4; sm_80, sm_89, sm_90, sm_120 and PTX)"
+  say "build: prebuilt bin/p9gpu ($(cat bin/NVCC-VERSION 2>/dev/null); sm_80, sm_89, sm_90, sm_120 and PTX; built on $(cat bin/BUILD-GLIBC 2>/dev/null))"
   [ "$(sha bin/p9gpu)" = "$(cut -d' ' -f1 bin/SHA256-p9gpu)" ] || { say "bin/p9gpu does not match its sha256"; exit 2; }
+  # the prebuilt binaries need at least the glibc in bin/REQUIRES-glibc: check before running anything
+  need=$(cat bin/REQUIRES-glibc 2>/dev/null || echo 2.35)
+  have=$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')
+  if [ -z "$have" ] || [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n 1)" != "$need" ]; then
+    say "STOP: the prebuilt binaries need glibc $need or newer, this system has ${have:-an unknown version}."
+    say "      Build from source instead (CUDA toolkit: NVCC=... sh run-gpucheck.sh) or use the container (Dockerfile.gpu)."
+    exit 3
+  fi
+  say "glibc: $have (prebuilt needs $need or newer)"
   GPU=./bin/p9gpu
   PEAK=./bin/peak
 fi
