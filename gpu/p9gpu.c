@@ -316,7 +316,7 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
         for (int k = 0; k < nb; k++) {
             int fj = -1, ns = 1;
             double fd = 0.0;
-            p9_capdiag cd = {-1, 0, 0.0, 0.0, 0.0};
+            p9_capdiag cd = {-1, 0, 0.0, 0.0, 0.0, 0.0};
             const int enc = step_method == 3 ? p9_step_tp_smooth_d(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3,
                                                                    wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, F->near + (size_t)i * np,
                                                                    F->fast + (size_t)i * np, F->close + (size_t)i * np, &fj, &fd, &ns,
@@ -335,9 +335,9 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
                 F->sub_steps[i]++;
                 if (ns > F->sub_max[i]) F->sub_max[i] = ns;
                 if (ns >= P9_SUB_MAX) F->sub_capped[i]++;
-                if (cap_out && ns >= P9_SUB_MAX && cd.j >= 0)
-                    fprintf(cap_out, "%.0f\t%llu\t%.0f\t%.6g\t%.6g\t%.6g\t%d\n", cap_tp_ids[i], step0 + k + 1, cap_ids[cd.j], cd.q_est, cd.d_min, cd.v_est,
-                            cd.n_want);
+                if (cap_out && ns >= P9_CAPDIAG_MIN && cd.j >= 0)
+                    fprintf(cap_out, "%.0f\t%llu\t%.0f\t%.6g\t%.6g\t%.6g\t%.6g\t%d\n", cap_tp_ids[i], step0 + k + 1, cap_ids[cd.j], cd.q_est, cd.d_min,
+                            cd.q_loc, cd.v_est, cd.n_want);
             }
             if (enc >= 0 && (enc_remove || !step_method)) {
                 a = -1 - enc;
@@ -462,7 +462,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             perror(getenv("P9_CAPPED_OUT"));
             return 2;
         }
-        fprintf(cap_out, "id\tstep\tplanet\tq_est_au\td_min_au\tv_est_au_yr\tn_want\n");
+        fprintf(cap_out, "id\tstep\tplanet\tq_est_au\td_min_au\tq_loc_au\tv_est_au_yr\tn_want\n");
         cap_tp_ids = tp_ids, cap_ids = ids;
     }
     P.j2 = 0;

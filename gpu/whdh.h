@@ -311,7 +311,12 @@ P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const d
 // by up to 1e-4 to 1e-3 au over half a step, which changes the kick of a slow
 // close flyby by per cents. The particle's jump from the planets' velocities
 // there (u = Kepler velocity + a t).
+#ifndef P9_SUB_MAX  // -DP9_SUB_MAX=... only for experiments (docs/substeps-plan.md)
 #define P9_SUB_MAX 4096
+#endif
+#ifndef P9_CAPDIAG_MIN  // P9_CAPPED_OUT: steps with at least this many sub-steps (experiments: below the cap)
+#define P9_CAPDIAG_MIN P9_SUB_MAX
+#endif
 #define P9_SUB_ORBIT 681.3  // (164 / (2 pi))^2, rounded up
 // The general form: the flyby lasts at least k sub-steps (k2 = k^2) and the orbit around the planet
 // at least 164 sqrt(orb) of them.
@@ -485,11 +490,12 @@ P9_HD void p9_kick_near(p9_body* p, const double* qs, const double* gm, const do
 // cancels). Counts and *nsub as p9_step_tp_sub; returns -1 (nothing removed).
 // cd (diagnostics, may be 0; it changes nothing in the step): for a step at
 // P9_SUB_MAX the planet with the smallest estimated pericentre, that estimate,
-// the speed there, the n the criteria would ask for without the cap, and the
-// smallest distance to that planet at the sub-steps' kicks.
+// the speed there, the n the criteria would ask for without the cap, the
+// smallest distance to that planet at the sub-steps' kicks and the pericentre
+// of the two-body orbit around the planet there (q_loc).
 typedef struct {
     int j, n_want;
-    double q_est, v_est, d_min;
+    double q_est, v_est, d_min, q_loc;
 } p9_capdiag;
 P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
                               const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub,
@@ -556,14 +562,14 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         // of the kick (docs/substeps-plan.md)
         const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0);
         if (nj > n) n = nj;
-        if (cd && nj >= P9_SUB_MAX && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
+        if (cd && nj >= P9_CAPDIAG_MIN && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
             const double v2 = w2e > w2 ? w2e : w2, d3 = m2e * sqrt(m2e);
-            int nw = P9_SUB_MAX;
+            int nw = P9_CAPDIAG_MIN;
             for (; nw < (1 << 30); nw *= 2) {
                 const double s = dt / nw;
                 if (m2e >= 1024.0 * v2 * s * s && d3 >= 16.0 * P9_SUB_ORBIT * s * s * gm[j]) break;
             }
-            cd->j = j, cd->n_want = nw, cd->q_est = sqrt(m2e), cd->v_est = sqrt(v2), cd->d_min = 1e300;
+            cd->j = j, cd->n_want = nw, cd->q_est = sqrt(m2e), cd->v_est = sqrt(v2), cd->d_min = 1e300, cd->q_loc = 1e300;
         }
     }
     *nsub = any ? n : 1;
@@ -575,19 +581,27 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
     p9_kepler(p, mu0, hs);
     for (int k = 0; k < n; k++) {
         const double t = (k + 0.5) * s;
-        double qs[3 * P9_MAX_PLANETS];
+        double qs[3 * P9_MAX_PLANETS], us[3 * P9_MAX_PLANETS];
         for (int j = 0; j < np; j++) {
             p9_body b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
             p9_kepler(&b, mu0, t);
             const double t2 = 0.5 * t * t;
             qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
                   qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
+            if (cd) us[3 * j] = b.vx + t * ac[3 * j], us[3 * j + 1] = b.vy + t * ac[3 * j + 1], us[3 * j + 2] = b.vz + t * ac[3 * j + 2];
         }
         p9_kick_near(p, qs, gm, r2out, np, s);
         if (cd && cd->j >= 0) {
             const double ux = p->x - qs[3 * cd->j], uy = p->y - qs[3 * cd->j + 1], uz = p->z - qs[3 * cd->j + 2];
             const double d = sqrt(ux * ux + uy * uy + uz * uz);
-            if (d < cd->d_min) cd->d_min = d;
+            if (d < cd->d_min) {
+                const int jj = cd->j;
+                const double vx = p->vx - us[3 * jj], vy = p->vy - us[3 * jj + 1], vz = p->vz - us[3 * jj + 2], mu = gm[jj];
+                const double cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx, L2 = cx * cx + cy * cy + cz * cz;
+                double e2 = 1.0 + 2.0 * (0.5 * (vx * vx + vy * vy + vz * vz) - mu / d) * L2 / (mu * mu);
+                if (e2 < 0.0) e2 = 0.0;
+                cd->d_min = d, cd->q_loc = L2 / mu / (1.0 + sqrt(e2));
+            }
         }
         p9_kepler(p, mu0, k == n - 1 ? hs : s);
     }
