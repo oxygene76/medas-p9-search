@@ -5,6 +5,7 @@
   python tools/flyby_p9gpu.py run --planet p9 --dt 0.5 [--dmin 0.5 --vrel 0.35] --out f.json [--p9gpu build/gpu/p9gpu] [--mode cpu|gpu]
   python tools/flyby_p9gpu.py summary f.json
   python tools/flyby_p9gpu.py close --planet neptune --method substep [--dt 0.5] [--out c.json]
+  python tools/flyby_p9gpu.py close --planet neptune --method smooth --radii 0.5 0.9 1.1 1.5 2 3 5 [--vinf 0.6 1.0]
 
 --method substep: p9gpu with sub-steps (docs/substeps-plan.md): the trigger
 radius of the planet 4 times the radius rule at dt (Neptune: 4 x its Hill
@@ -12,6 +13,13 @@ radius 0.776 au at 0.5 yr; Planet Nine 4 x 0.5 au), the planets with 8 inner
 steps (as p9job make --encounter-method substep).
 "close": the very close flybys of flyby_check.py close (seed 7, 8 phases,
 IAS15 with dt 0.001 as reference): signed kick ratio and spurious unbinding.
+--radii: also flybys with the pericentre at these multiples of the planet's
+physical radius (tools/p9job.py PHYSICAL_RADII_KM; 10 geometries each, as
+flyby_check.make_test_bodies, but the speed at the pericentre from v_inf,
+--vinf, and the energy, since make_test_bodies leaves out flybys slower than
+1.2 escape speeds there). Method smooth removes a particle closer than the
+radius (collision); expected: every case inside the radius ends as a
+collision, none outside it does, and those keep the kick criteria.
 
 The same test bodies (flyby_check.make_test_bodies, seed 1), the same windows
 (start at -(T + phase dt), IAS15 backwards from closest approach), the same
@@ -38,6 +46,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import flyby_check as fc  # noqa: E402
+import p9job  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -74,7 +83,42 @@ def method_env(method, planet_name, m, dt):
     # trigger radius: 4 times the rule's radius (p9job --trigger-factor); FLYBY_TRIGGER_FACTOR and
     # FLYBY_PLANET_SUBSTEPS override both for experiments
     r = float(os.environ.get("FLYBY_TRIGGER_FACTOR", "4")) * max(r_orbit, hill)
-    return {"P9_ENCOUNTER_METHOD": method, "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": os.environ.get("FLYBY_PLANET_SUBSTEPS", "8")}
+    env = {"P9_ENCOUNTER_METHOD": method, "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": os.environ.get("FLYBY_PLANET_SUBSTEPS", "8")}
+    if method == "smooth":  # collision at the physical radius, as p9job make --encounter-method smooth
+        env["P9_COLLISION_RADII"] = f"1={physical_radius_au(planet_name):.6e}"
+    return env
+
+
+def physical_radius_au(planet_name):
+    return p9job.PHYSICAL_RADII_KM[planet_name] / p9job.AU_KM
+
+
+def make_radius_bodies(p, m, rp, vp, radius_au, multiples, vinf, seed=8):
+    """Flybys with the pericentre at multiples of the physical radius (relative position d n, relative velocity
+    perpendicular to it with the pericentre speed sqrt(vinf^2 + 2 G m / d)); the heliocentric filters of
+    flyby_check.make_test_bodies (bound, qmin)."""
+    rng = np.random.default_rng(seed)
+    bodies = []
+    for k in multiples:
+        d = k * radius_au
+        for vi in vinf:
+            v = math.sqrt(vi * vi + 2 * fc.G * m / d)
+            n_ok = 0
+            while n_ok < fc.N_GEOMETRIES:
+                n = rng.normal(size=3); n /= np.linalg.norm(n)
+                u = rng.normal(size=3); u -= u.dot(n) * n; u /= np.linalg.norm(u)
+                x = rp + d * n
+                w = vp + v * u
+                r = np.linalg.norm(x); w2 = w.dot(w)
+                if w2 >= p["bound"] * 2 * fc.G / r:
+                    continue
+                a = 1.0 / (2.0 / r - w2 / fc.G)
+                h = np.cross(x, w)
+                e = math.sqrt(max(0.0, 1 - h.dot(h) / fc.G / a))
+                if a * (1 - e) < p["qmin"]:
+                    continue
+                bodies.append((d, vi, x, w)); n_ok += 1
+    return bodies
 
 
 def run_p9gpu(start, dt, nsteps, planet_name, p9gpu, p9sim, mode, extra):
@@ -86,13 +130,20 @@ def run_p9gpu(start, dt, nsteps, planet_name, p9gpu, p9sim, mode, extra):
         for k in ("P9_ENCOUNTER_RADII", "P9_ENCOUNTER_METHOD", "P9_ENCOUNTER_REMOVE", "P9_J2", "P9_PLANET_SUBSTEPS", "P9_FLYBY_OUT"):
             env.pop(k, None)
         env.update(extra)
+        env["P9_REMOVED_OUT"] = str(d / "removed.tsv")
         out = subprocess.run([str(p9gpu), "run", str(d / "in.sa"), repr(nsteps * dt), "1", str(d / "out.sa")], env=env, capture_output=True, text=True)
         if out.returncode:
             sys.exit(out.stderr[-2000:])
         kv = dict(x.split("=", 1) for x in [l for l in out.stdout.splitlines() if l.startswith("result_sha256=")][-1].split())
         if int(kv["steps"]) != nsteps:
             sys.exit(f"p9gpu: {kv['steps']} steps instead of {nsteps}")
-        return energy_and_h_dump(subprocess.run([str(p9sim), "dump", str(d / "out.sa"), "0"], capture_output=True, text=True, check=True).stdout), kv
+        fate = {int(l.split("\t")[0]): l.split("\t")[1] for l in (d / "removed.tsv").read_text().splitlines()[1:]}
+        text = subprocess.run([str(p9sim), "dump", str(d / "out.sa"), "0"], capture_output=True, text=True, check=True).stdout
+        ids = [int(float(l.split()[1])) for l in text.splitlines()[3:]]
+        e = energy_and_h_dump(text)
+        # per test body (id 2 + i): E and h if it is still there, else None; and its fate
+        res = {i: row for i, row in zip(ids, e)}
+        return res, fate, kv
 
 
 def cmd_close(a):
@@ -101,6 +152,10 @@ def cmd_close(a):
     p["vrel"] = a.vrel or ([0.6, 1.0] if a.planet == "neptune" else [0.2, 0.35, 0.5])
     m, rp, vp, bodies = fc.make_test_bodies(p, seed=7)
     name = "P9" if a.planet == "p9" else "Neptune"
+    R = physical_radius_au(name)
+    n_close = len(bodies)
+    if a.radii:
+        bodies = bodies + make_radius_bodies(p, m, rp, vp, R, a.radii, a.vinf)
     extra = method_env(a.method, name, m, a.dt)
     rows = []
     for ph in [k / 8 for k in range(8)]:
@@ -112,19 +167,23 @@ def cmd_close(a):
         sim.integrate(t_start)
         start = sim.copy()
         e0 = fc.energy_and_h(start)[:, 0]
-        res, kv = run_p9gpu(start, a.dt, nsteps, name, a.p9gpu, a.p9sim, a.mode, extra)
-        ew = res[:, 0]
+        res, fate, kv = run_p9gpu(start, a.dt, nsteps, name, a.p9gpu, a.p9sim, a.mode, extra)
         ref = start.copy()
         ref.integrator = "ias15"
         ref.dt = 0.001
         ref.integrate(start.t + nsteps * a.dt)
         er = fc.energy_and_h(ref)[:, 0]
         for i, (d, v, _, _) in enumerate(bodies):
-            rows.append(dict(d=d, v=v, ratio=float((ew[i] - e0[i]) / (er[i] - e0[i])), unbound_wh=bool(ew[i] > 0), unbound_ref=bool(er[i] > 0)))
-        print(f"{a.planet} close dt={a.dt} phase={ph}: sub-steps {kv.get('sub_steps', '-')} up to n = {kv.get('sub_max', '-')}", file=sys.stderr)
+            f = fate[2 + i]
+            ew = res[2 + i][0] if f == "alive" else float("nan")
+            rows.append(dict(d=d, v=v, radius_case=i >= n_close, fate=f, ratio=float((ew - e0[i]) / (er[i] - e0[i])), unbound_wh=bool(ew > 0),
+                             unbound_ref=bool(er[i] > 0)))
+        print(f"{a.planet} close dt={a.dt} phase={ph}: sub-steps {kv.get('sub_steps', '-')} up to n = {kv.get('sub_max', '-')}, "
+              f"capped {kv.get('sub_capped', '-')}, collisions {kv.get('collisions', '-')}", file=sys.stderr)
     cells = collections.defaultdict(list)
     for r in rows:
-        cells[(r["d"], r["v"])].append(r)
+        if not r["radius_case"]:
+            cells[(r["d"], r["v"])].append(r)
     print(f"{a.planet}  dt = {a.dt} yr  p9gpu ({a.method})   (8 step phases x 10 geometries per row)")
     print("  d_min  v_rel  flyby/dt | kick ratio: median    min     max | spuriously unbound")
     worst_med = worst_all = 0.0
@@ -136,9 +195,36 @@ def cmd_close(a):
         worst_med = max(worst_med, abs(np.median(ra) - 1))
         worst_all = max(worst_all, float(np.max(np.abs(ra - 1))))
         print(f"  {d:5.2f}  {v:5.2f}  {d / (v * a.dt):7.2f}  | {np.median(ra):12.4f} {ra.min():7.4f} {ra.max():7.4f} | {spur:3d} of {len(c)}")
+    if any(r["fate"] != "alive" for r in rows if not r["radius_case"]):
+        print("removed (close cases): " + ", ".join(f"{r['d']} au {r['fate']}" for r in rows if not r["radius_case"] and r["fate"] != "alive"))
     print(f"worst |median - 1| {worst_med:.4f}, worst |ratio - 1| {worst_all:.4f}, spuriously unbound {spur_total}")
+    out = {"rows": rows, "worst_median": worst_med, "worst_all": worst_all, "spurious": spur_total}
+    if a.radii:
+        rc = collections.defaultdict(list)
+        for r in rows:
+            if r["radius_case"]:
+                rc[(r["d"], r["v"])].append(r)
+        print(f"pericentre at multiples of the physical radius R = {R:.4e} au ({R * p9job.AU_KM:.0f} km); speed far away v_inf")
+        print("  d/R   v_inf | collisions | kick ratio of the others: median    min     max | spuriously unbound")
+        wrong = 0
+        rw_med = rw_all = 0.0
+        for (d, v), c in sorted(rc.items()):
+            col = sum(1 for x in c if x["fate"].startswith("collision"))
+            inside = d < R
+            wrong += (len(c) - col) if inside else col
+            ra = np.array([x["ratio"] for x in c if x["fate"] == "alive"])
+            spur = sum(1 for x in c if x["fate"] == "alive" and x["unbound_wh"] and not x["unbound_ref"])
+            if len(ra):
+                rw_med, rw_all = max(rw_med, abs(np.median(ra) - 1)), max(rw_all, float(np.max(np.abs(ra - 1))))
+                kick = f"{np.median(ra):12.4f} {ra.min():7.4f} {ra.max():7.4f}"
+            else:
+                kick = f"{'-':>12} {'-':>7} {'-':>7}"
+            print(f"  {d / R:4.1f}  {v:5.2f}  | {col:3d} of {len(c):2d}  | {kick} | {spur:3d}")
+        print(f"radius cases: wrong outcome (a collision outside R or none inside) {wrong}; outside R worst |median - 1| {rw_med:.4f}, "
+              f"worst |ratio - 1| {rw_all:.4f}")
+        out.update(radius_wrong=wrong, radius_worst_median=rw_med, radius_worst_all=rw_all)
     if a.out:
-        Path(a.out).write_text(json.dumps({"rows": rows, "worst_median": worst_med, "worst_all": worst_all, "spurious": spur_total}))
+        Path(a.out).write_text(json.dumps(out))
 
 
 def one_window(p, dt, phase, m, rp, vp, bodies, p9gpu, p9sim, mode, planet_name, extra=None):
@@ -245,6 +331,8 @@ def main():
     c.add_argument("--dmin", type=float, nargs="+")
     c.add_argument("--vrel", type=float, nargs="+")
     c.add_argument("--method", choices=["fixed", "substep", "smooth"], default="smooth")
+    c.add_argument("--radii", type=float, nargs="+", help="also pericentres at these multiples of the planet's physical radius")
+    c.add_argument("--vinf", type=float, nargs="+", default=[0.6, 1.0], help="with --radii: speeds far from the planet (au/yr)")
     c.add_argument("--out", default=None)
     c.add_argument("--p9gpu", default=str(ROOT / "build/gpu-cpu/p9gpu"))
     c.add_argument("--p9sim", default=str(ROOT / "build/gcc-O3/p9sim"))

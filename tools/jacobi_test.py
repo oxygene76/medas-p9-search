@@ -14,8 +14,10 @@ the Jacobi constant C = 2 (mu_S / r_S + mu_N / r_N) - v^2 + 2 n (x v_y - y v_x)
 not, so its error shows the integrator's error over the encounters. p9gpu
 with method fixed (dt = 0.5 yr, no radii; with counting, which leaves the
 trajectories bit-identical), substep (hard switch) and smooth (the accepted
-design), the radius 4 x Neptune's Hill radius as for the runs. Removal only
-by the distance rules. analyze: per method and snapshot the median, 90 % and
+design), the radius 4 x Neptune's Hill radius as for the runs. Removal by the
+distance rules and, with smooth, by a collision with Neptune (its physical
+radius, tools/p9job.py). The steps at the cap of sub-steps (P9_CAPPED_OUT)
+and the collisions are reported. analyze: per method and snapshot the median, 90 % and
 maximum of |dC/C| over the particles still there, and the trend.
 """
 
@@ -32,6 +34,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from make_ic import G, elements_to_state  # noqa: E402
+import p9job  # noqa: E402
 
 M_N = 5.151383713179197e-05  # Neptune / Sun (DE440 GM ratio, as make_ic.py)
 A_N = 30.07
@@ -70,13 +73,18 @@ def cmd_make(a):
 def cmd_run(a):
     d = Path(a.dir)
     env = dict(os.environ, P9GPU_MODE=a.mode)
-    for k in ("P9_ENCOUNTER_RADII", "P9_ENCOUNTER_METHOD", "P9_ENCOUNTER_REMOVE", "P9_FLYBY_OUT", "P9_J2", "P9GPU_REAL", "P9_PLANET_SUBSTEPS"):
+    for k in ("P9_ENCOUNTER_RADII", "P9_ENCOUNTER_METHOD", "P9_ENCOUNTER_REMOVE", "P9_FLYBY_OUT", "P9_J2", "P9GPU_REAL", "P9_PLANET_SUBSTEPS",
+              "P9_COLLISION_RADII", "P9_CAPPED_OUT", "P9_REMOVED_OUT"):
         env.pop(k, None)
     env.update(P9_ENCOUNTER_RADII=RADII[a.method], P9_PLANET_SUBSTEPS="8", P9_FLYBY_OUT=str(d / f"flybys-{a.method}.tsv"))
     if a.method == "fixed":
         env.update(P9_ENCOUNTER_METHOD="step", P9_ENCOUNTER_REMOVE="0")  # counting only: the fixed step's trajectories
     else:
         env.update(P9_ENCOUNTER_METHOD=a.method)
+    if a.method == "smooth":
+        env.update(P9_COLLISION_RADII=f"1={p9job.PHYSICAL_RADII_KM['Neptune'] / p9job.AU_KM:.6e}", P9_REMOVED_OUT=str(d / f"removed-{a.method}.tsv"))
+        if a.mode == "cpu":
+            env.update(P9_CAPPED_OUT=str(d / f"capped-{a.method}.tsv"))
     p = subprocess.run([a.p9gpu, "run", str(d / "input.sa"), repr(a.t_end), str(a.snapshots), str(d / f"output-{a.method}.sa")], env=env,
                        capture_output=True, text=True)
     (d / f"run-{a.method}.log").write_text(p.stdout + p.stderr)
@@ -130,9 +138,14 @@ def cmd_analyze(a):
             import csv
             for r in csv.DictReader(open(fb), delimiter="\t"):
                 enc += int(r["near_1"]); fast += int(r["fast_1"]); close += int(r["close_1"])
+        log = d / f"run-{method}.log"
+        kv = dict(x.split("=", 1) for x in [l for l in log.read_text().splitlines() if l.startswith("result_sha256=")][-1].split()) if log.exists() else {}
         report[method] = {"series": series, "loglog_slope_median": slope, "flybys_within_3_rule_radii": enc, "under_1_5_steps": fast,
-                          "under_0_1_au": close}
-        print(f"== {method}: flybys within 3 rule radii {enc}, shorter than 1.5 steps {fast}, closer than 0.1 au {close}")
+                          "under_0_1_au": close, "sub_capped": int(kv.get("sub_capped", 0)), "sub_max": int(kv.get("sub_max", 1)),
+                          "collisions": kv.get("collisions", "-"), "removed": int(kv.get("removed", 0))}
+        print(f"== {method}: flybys within 3 rule radii {enc}, shorter than 1.5 steps {fast}, closer than 0.1 au {close}; "
+              f"removed {kv.get('removed', '-')}, collisions {kv.get('collisions', '-')}, steps at the cap {kv.get('sub_capped', '-')} "
+              f"(largest n {kv.get('sub_max', '-')})")
         for x in series:
             if x["t"] in (1e6, 2e6, 5e6, 1e7) or x is series[-1]:
                 print(f"   t = {x['t'] / 1e6:5.1f} Myr  n = {x['n']:4d}  |dC/C| median {x['median']:.2e}  90% {x['p90']:.2e}  max {x['max']:.2e}")
