@@ -79,3 +79,19 @@ with the fixed step comes much closer to MERCURIUS than removing them at the
 rule's radii. Not decided here; input for the decision of 2026-10-20 (with
 the flyby check: the encounters below 1.5 steps per flyby are then integrated
 inaccurately, and how many there are is what method "step" counts).
+
+## Where the rule removed the 412 (2026-10-20)
+
+The rule run computed again with the fate of every test particle
+(`runs/val/gpu-2000-rerun`, `P9_REMOVED_OUT`; the same result hash as
+`runs/val/gpu-2000`, so the same run), paired with MERCURIUS at 50 Myr:
+
+| removed by the rule at | removed | of them alive in MERCURIUS at 50 Myr |
+|---|---|---|
+| Neptune (0.7759 au) | 389 | 333 |
+| Planet Nine (0.5 au) | 82 | 80 |
+| Uranus (0.6643 au) | 1 | 1 |
+| distance rules | 7 | 6 |
+
+Alive in the rule run but lost in MERCURIUS: 8. Difference of the survivors:
+333 + 80 + 1 + 6 − 8 = 412. Mostly Neptune, then Planet Nine.
