@@ -18,7 +18,9 @@ Bodies, in this order (the first six are massive, N_active = 6):
            anomaly 180 deg (its median). Heliocentric elements, ecliptic J2000.
   tp00000… test particles (massless) in the distant Kuiper belt: a uniform in
            150-550 au, perihelion uniform in 30-50 au, inclination uniform in
-           0-10 deg, the angles uniform; seeded, so the set is reproducible.
+           0-10 deg (other ranges with --a-range, --q-range, --inc-range;
+           Brown & Batygin 2021: 150-500 au, 30-50 au, 0-25 deg), the angles
+           uniform; seeded, so the set is reproducible.
 
 Ensembles (--members): member 0 is the set itself; member m >= 1 is the same
 set with each test particle's barycentric position multiplied, per component,
@@ -195,6 +197,9 @@ def main():
     ap.add_argument("--tp-from", type=int, default=0)
     ap.add_argument("--tp-to", type=int, default=None)
     ap.add_argument("--dt", type=float, default=0.5)
+    ap.add_argument("--a-range", type=float, nargs=2, default=list(TP["a"]), help="semi-major axes of the test particles (au), uniform")
+    ap.add_argument("--q-range", type=float, nargs=2, default=list(TP["q"]), help="perihelia (au), uniform")
+    ap.add_argument("--inc-range", type=float, nargs=2, default=list(TP["inc"]), help="inclinations (deg), uniform")
     ap.add_argument("--members", default="0", help="ensemble members (comma-separated, 0 = the set itself; see above)")
     ap.add_argument("--perturb", type=float, default=1e-12, help="relative perturbation of the positions of members >= 1")
     ap.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
@@ -203,6 +208,8 @@ def main():
     ap.add_argument("--j2-out", default=None, help="file for the J2 parameters (JSON)")
     args = ap.parse_args()
     tp_to = args.n_tp if args.tp_to is None else args.tp_to
+    default_ranges = dict(TP)
+    TP.update(a=tuple(args.a_range), q=tuple(args.q_range), inc=tuple(args.inc_range))
     rows, j2 = build(args.n_tp, args.seed, args.tp_from, tp_to, args.j2.split(",") if args.j2 else None)
     members = [int(m) for m in args.members.split(",")]
     if members != [0]:
@@ -225,7 +232,8 @@ def main():
     with open(args.out, "w") as f:
         f.write("# p9sim start values, written by tools/make_ic.py (see its docstring); values are Python repr (exact)\n")
         f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}"
-                + (f", members {args.members} (positions perturbed by {args.perturb:g} relative)" if members != [0] else "") + "\n")
+                + (f", members {args.members} (positions perturbed by {args.perturb:g} relative)" if members != [0] else "")
+                + (f", a {TP['a']} au, q {TP['q']} au, i {TP['inc']} deg" if TP != default_ranges else "") + "\n")
         f.write(f"G {G!r}\ndt {args.dt!r}\nN_active {sum(1 for r in rows if r[1] > 0)}\ncorrector 0\n")
         if args.integrator != "whfast":
             f.write(f"integrator {args.integrator}\n")

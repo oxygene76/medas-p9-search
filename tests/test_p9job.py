@@ -182,6 +182,25 @@ class EndToEnd(unittest.TestCase):
         self.run_job(program("P9TEST_P9GPU"), "p9gpu")
 
     @unittest.skipUnless(program("P9TEST_P9GPU"), "P9TEST_P9GPU not set")
+    def test_brown_batygin_2021_setup(self):
+        # ranges of the start values and the inner removal distance of Brown & Batygin (2021): in the job, used by the program
+        prog = program("P9TEST_P9GPU")
+        with tempfile.TemporaryDirectory() as d:
+            job = Path(d) / "job"
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "make", "--out", str(job), "--t-end", "1000", "--snapshots", "1",
+                            "--n-tp", "50", "--program", "p9gpu", "--p9sim", str(prog), "--allow-dirty", "--encounter-method", "smooth",
+                            "--a-range", "150", "500", "--inc-range", "0", "25", "--r-in", "4.5"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            j = json.loads((job / "job.json").read_text())
+            self.assertEqual(j["params"]["removal"]["r_in_au"], 4.5)
+            self.assertEqual(j["params"]["ic"]["ranges"], {"a_au": [150.0, 500.0], "inc_deg": [0.0, 25.0]})
+            rows = [l.split() for l in (job / "ic.txt").read_text().splitlines() if l.startswith("p tp")]
+            self.assertEqual(len(rows), 50)
+            env = dict(os.environ, P9GPU_MODE="cpu")
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "run", str(job), "--p9sim", str(prog), "--any-version"],
+                           check=True, stdout=subprocess.DEVNULL, env=env)
+            self.assertTrue((job / "result.json").exists())
+
+    @unittest.skipUnless(program("P9TEST_P9GPU"), "P9TEST_P9GPU not set")
     def test_p9gpu_smooth_with_collisions(self):
         prog = program("P9TEST_P9GPU")
         with tempfile.TemporaryDirectory() as d:

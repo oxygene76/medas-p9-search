@@ -25,6 +25,8 @@
 //   P9_REMOVED_OUT=file  the fate of each test particle of the input: id, then
 //                        alive (1), distance rules (0) or the body id of the
 //                        planet of its close encounter (any method)
+//   P9_R_IN=au           the inner removal distance (default 5 au; Brown &
+//                        Batygin 2021: 4.5 au), checked every 1000 steps
 //   P9_COLLISION_RADII="id=au,..."  method smooth: the physical radii of the
 //                        planets (by body id; tools/p9job.py sets them); a test
 //                        particle closer to a planet than its radius at a
@@ -74,7 +76,7 @@
 #endif
 
 #define R_OUT 10000.0
-#define R_IN 5.0
+static double R_IN = 5.0;  // P9_R_IN may set it (e.g. 4.5 au as Brown & Batygin 2021); 5 au by default
 #define CHECK_EVERY 1000
 
 static double now_s(void) {
@@ -419,6 +421,14 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     const int use_gpu = !(mode_env && strcmp(mode_env, "cpu") == 0);
 #endif
     const int max_nb = getenv("P9GPU_BLOCK") ? atoi(getenv("P9GPU_BLOCK")) : 2000;
+    if (getenv("P9_R_IN") && *getenv("P9_R_IN")) {
+        char* end;
+        R_IN = strtod(getenv("P9_R_IN"), &end);
+        if (*end || !(R_IN > 0.0)) {
+            fprintf(stderr, "P9_R_IN: the inner removal distance in au (> 0)\n");
+            return 2;
+        }
+    }
     const int real = p9_real_parse(getenv("P9GPU_REAL"));
     const char* method_env = getenv("P9_ENCOUNTER_METHOD");
     if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step") && strcmp(method_env, "substep") &&
@@ -686,12 +696,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
+           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f r_in=%.17g "
            "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
            use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text, sub_method == 2 ? by_text : "-",
-           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
+           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, R_IN, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);

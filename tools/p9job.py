@@ -274,6 +274,9 @@ def cmd_make(a):
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
     if a.members != "0":
         cmd += ["--members", a.members, "--perturb", repr(a.perturb)]
+    ranges = {k: v for k, v in (("a_au", a.a_range), ("q_au", a.q_range), ("inc_deg", a.inc_range)) if v}
+    for k, v in ranges.items():
+        cmd += ["--" + {"a_au": "a-range", "q_au": "q-range", "inc_deg": "inc-range"}[k], repr(v[0]), repr(v[1])]
     if a.no_removal and (a.encounter_method != "step" or not a.encounters or a.program != "p9gpu"):
         sys.exit("--no-removal needs --program p9gpu, the encounter method step and the radii (they define the counting zone)")
     if a.encounter_method in ("substep", "smooth") and (not a.encounters or a.program != "p9gpu"):
@@ -294,13 +297,14 @@ def cmd_make(a):
               "ic": {"generator": "tools/make_ic.py", "n_tp": a.n_tp, "seed": a.seed, "tp_from": a.tp_from,
                      "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic),
                      **({"members": [int(m) for m in a.members.split(",")], "perturb_position_relative": a.perturb}
-                        if a.members != "0" else {})},
+                        if a.members != "0" else {}),
+                     **({"ranges": ranges} if ranges else {})},
               **({"real": a.real} if a.real != "double" else {}),
               **({"model": {"name": "j2", **json.loads((out / "j2.json").read_text())}} if a.j2 else {}),
               "integrator": a.integrator, "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
               **({"r_crit_hill": 3} if a.integrator == "mercurius" else {}),
               "t_start_yr": 0.0, "t_end_yr": a.t_end, "snapshots": a.snapshots,
-              "removal": {"r_out_au": 10000, "r_in_au": 5, "every_steps": 1000,
+              "removal": {"r_out_au": 10000, "r_in_au": a.r_in if a.r_in != 5.0 else 5, "every_steps": 1000,
                           "encounter": {"criterion": ("removed when the closest approach to a planet within a step (from relative position "
                                                       "and velocity at the kick) is below its encounter radius; gpu/whdh.h p9_kick_tp_step"
                                                       if a.encounter_method == "step" else
@@ -356,6 +360,10 @@ def cmd_run(a):
     env = dict(os.environ)
     env.pop("P9_ENCOUNTER_RADII", None)
     env.pop("P9_COLLISION_RADII", None)
+    env.pop("P9_R_IN", None)
+    r_in = float(job["params"].get("removal", {}).get("r_in_au", 5))
+    if r_in != 5.0:
+        env["P9_R_IN"] = repr(r_in)
     # number type of p9gpu's integrator (params.real, default double); part of the job, never taken from outside
     real = job["params"].get("real", "double")
     if real != "double" and job["code"].get("program") != "p9gpu":
@@ -403,6 +411,8 @@ def cmd_run(a):
         sys.exit(f"the program used encounter method {kv.get('encounter_method', 'kick')}, the job needs {method}")
     if method in ("substep", "smooth") and int(kv.get("planet_substeps", 1)) != job["params"]["removal"]["encounter"]["planet_substeps"]:
         sys.exit("the program used other planet sub-steps than the job")
+    if r_in != 5.0 and float(kv.get("r_in", "nan")) != r_in:
+        sys.exit(f"the program used r_in={kv.get('r_in')}, the job needs {r_in}")
     if kv.get("model", "full") != model["name"]:
         sys.exit(f"the program integrated model {kv.get('model', 'full')}, the job needs {model['name']}")
     if kv.get("real", "double") != real:
@@ -484,6 +494,10 @@ def main():
                    help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",
                    help='model "j2": these planets merged into the Sun as its J2 (e.g. Jupiter,Saturn,Uranus; p9gpu only)')
+    m.add_argument("--a-range", type=float, nargs=2, default=None, help="semi-major axes of the test particles (au; default 150 550)")
+    m.add_argument("--q-range", type=float, nargs=2, default=None, help="perihelia (au; default 30 50)")
+    m.add_argument("--inc-range", type=float, nargs=2, default=None, help="inclinations (deg; default 0 10)")
+    m.add_argument("--r-in", type=float, default=5.0, help="inner removal distance (au; Brown & Batygin 2021: 4.5)")
     m.add_argument("--members", default="0",
                    help="ensemble members (tools/make_ic.py): 0 = the start values themselves, m >= 1 with perturbed positions; e.g. 0,1,2,3")
     m.add_argument("--perturb", type=float, default=1e-12, help="relative perturbation of the positions of members >= 1")

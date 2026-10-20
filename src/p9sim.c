@@ -61,7 +61,7 @@
 // not meant to follow them. Checked every CHECK_EVERY steps, so the removal
 // happens at the same steps on every machine.
 #define R_OUT 10000.0
-#define R_IN 5.0
+static double R_IN = 5.0;  // P9_R_IN may set it (e.g. 4.5 au as Brown & Batygin 2021); 5 au by default
 #define CHECK_EVERY 1000
 
 static size_t n_removed = 0;
@@ -259,6 +259,14 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
     double enc_ids[16], enc_r[16];
     for (size_t j = 0; j + 1 < r->N_active; j++) enc_ids[j] = r->particles[j + 1].r;  // ids of the massive bodies after the Sun
     if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, enc_ids, enc_r, enc_r2)) return 2;
+    if (getenv("P9_R_IN") && *getenv("P9_R_IN")) {
+        char* end;
+        R_IN = strtod(getenv("P9_R_IN"), &end);
+        if (*end || !(R_IN > 0.0)) {
+            fprintf(stderr, "P9_R_IN: the inner removal distance in au (> 0)\n");
+            return 2;
+        }
+    }
     if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, enc_ids, enc_r);
     const char* method = getenv("P9_ENCOUNTER_METHOD");
     if (method && *method && strcmp(method, "kick") && strcmp(method, "step")) {
@@ -320,9 +328,9 @@ static int cmd_run(const char* in, double t_end, long n_snap, const char* out, c
         snprintf(fast_text + strlen(fast_text), sizeof fast_text - strlen(fast_text), "%s%.0f:%lld", j ? "," : "", enc_ids[j], n_fast_by[j]);
     }
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e removed_by=%s encounter_method=%s flybys=%s fast_flybys=%s program=p9sim version=%s\n",
+           "dE_rel=%.3e removed_by=%s encounter_method=%s flybys=%s fast_flybys=%s r_in=%.17g program=p9sim version=%s\n",
            h, hs, r->t, (unsigned long long)r->steps_done, N0, r->N, n_removed, n_removed_encounter, now_s() - w0, (e1 - e0) / e0, by_text, enc_step ? "step" : "kick",
-           enc_step ? near_text : "-", enc_step ? fast_text : "-", P9_VERSION);
+           enc_step ? near_text : "-", enc_step ? fast_text : "-", R_IN, P9_VERSION);
     reb_simulation_free(r);
     return 0;
 }
