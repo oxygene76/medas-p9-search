@@ -30,6 +30,9 @@
 //                        particle closer to a planet than its radius at a
 //                        sub-step's kick is removed (fate collision:<id>, the
 //                        count per planet in collisions=); without: none
+//   P9_SUBSTEPS_OUT=file  methods substep and smooth, P9GPU_MODE=cpu, double:
+//                        how many steps had n = 2, 4, ..., 2^21 sub-steps
+//                        (diagnostics, the same bits; the GPU chooses the same n)
 //   P9_CAPPED_OUT=file   method smooth, P9GPU_MODE=cpu, double: one line per
 //                        step at P9_SUB_MAX sub-steps (diagnostics, the same
 //                        bits: whdh.h p9_capdiag)
@@ -305,6 +308,8 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 // P9_CAPPED_OUT (diagnostics): the file and the ids of the test particles and planets
 static FILE* cap_out;
 static const double *cap_tp_ids, *cap_ids;
+// P9_SUBSTEPS_OUT (diagnostics): steps by their number of sub-steps, bin k: n = 2^k
+static long long sub_hist[32];
 
 static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* r2col, const double* tab, int nb,
                       unsigned long long step0, double dt, int step_method, int enc_remove, p9_flybys* F) {
@@ -337,6 +342,9 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
                                   : p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
             if (fj >= 0) F->last_step[i] = step0 + k + 1, F->last_j[i] = fj + 1, F->last_d[i] = fd;
             if (ns > 1) {
+                int lg = 0;
+                while ((1 << lg) < ns && lg < 31) lg++;
+                sub_hist[lg]++;
                 F->sub_steps[i]++;
                 if (ns > F->sub_max[i]) F->sub_max[i] = ns;
                 if (ns >= (step_method == 3 ? P9_SMOOTH_MAX : P9_SUB_MAX)) F->sub_capped[i]++;
@@ -652,6 +660,18 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     if (step_method && getenv("P9_FLYBY_OUT") && *getenv("P9_FLYBY_OUT") && write_flybys(getenv("P9_FLYBY_OUT"), &F, tp_ids, alive, ntp, P.np, ids))
         return 2;
     if (cap_out && fclose(cap_out)) return 2;
+    if (getenv("P9_SUBSTEPS_OUT") && *getenv("P9_SUBSTEPS_OUT")) {
+        if (use_gpu || real != P9_REAL_DOUBLE || !sub_method) {
+            fprintf(stderr, "P9_SUBSTEPS_OUT: methods substep and smooth, P9GPU_MODE=cpu, double only\n");
+            return 2;
+        }
+        FILE* f = fopen(getenv("P9_SUBSTEPS_OUT"), "w");
+        if (!f) return 2;
+        fprintf(f, "n\tsteps\n");
+        for (int k = 1; k < 32; k++)
+            if (sub_hist[k]) fprintf(f, "%lld\t%lld\n", 1LL << k, sub_hist[k]);
+        if (fclose(f)) return 2;
+    }
     if (getenv("P9_REMOVED_OUT") && *getenv("P9_REMOVED_OUT")) {
         FILE* f = fopen(getenv("P9_REMOVED_OUT"), "w");
         if (!f) return 2;
