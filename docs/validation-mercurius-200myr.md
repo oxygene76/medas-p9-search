@@ -32,6 +32,21 @@ As in `docs/validation-mercurius.md` (same tool, same readings):
 Tool: `tools/eval_mercurius.py` with `--mcnemar`; results below, added when
 the runs are done.
 
-## Result
+## Result (2026-10-20, `runs/val/eval-mercurius-200myr.txt`): **all criteria met**
 
-(added by the evaluation)
+p9gpu without removal and **without sub-steps** (fixed step 0.5 yr;
+`runs/val/gpu-2000-count` and its continuation `gpu-2000-count2`) against
+MERCURIUS (`runs/val/merc`, `merc2`):
+
+| t | survivors M / G (limit) | KS p a, q, i, ϖ, Ω | losses only G / only M / both, McNemar p | R(Δϖ) distant, all | R(ΔΩ) distant, all |
+|---|---|---|---|---|---|
+| 100 Myr | 1,783 / 1,756 (27 ≤ 40.4) | 0.43, 0.76, 0.87, 0.99, 0.89 | 145 / 118 / 99, 0.11 | 0.695/0.688, 0.242/0.238 | 0.727/0.718, 0.537/0.543 |
+| 150 Myr | 1,617 / 1,611 (6 ≤ 49.9) | 0.75, 0.98, 0.94, 0.35, 0.63 | 165 / 159 / 224, 0.78 | 0.686/0.672, 0.344/0.330 | 0.754/0.762, 0.586/0.564 |
+| 200 Myr | 1,504 / 1,500 (4 ≤ 54.7) | 0.95, 0.79, 0.26, 0.74, 0.11 | 161 / 157 / 339, 0.87 | 0.608/0.578, 0.340/0.344 | 0.769/0.768, 0.615/0.596 |
+
+All R differences within 2 bootstrap standard errors. The excess of losses
+seen at 50 Myr (74 against 53, McNemar p = 0.076, explained by 32 numerical
+losses at close flybys, `docs/validation-mercurius.md`) has disappeared in the
+noise by 100 Myr. The decision of 2026-10-20 stands regardless: close flybys
+get sub-steps; this comparison is repeated with them as part of their
+acceptance.
