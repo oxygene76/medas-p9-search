@@ -72,9 +72,9 @@ counterexamples:
 CUDA ?= build/cuda-venv/lib/python3.14/site-packages/nvidia/cu13
 NVCC ?= $(CUDA)/bin/nvcc
 CUDA_LIB ?= $(CUDA)/lib
-# For binaries that run on other systems (the GPU check package): GPU_LINK=g++ GPU_STDCXX=
-# GPU_LDFLAGS="-static-libstdc++ -static-libgcc" (g++ then links libstdc++ statically itself;
-# an explicit -lstdc++ would bind it dynamically)
+# For binaries that run on other systems (the GPU check package):
+# GPU_STDCXX="-Wl,-Bstatic -lstdc++ -Wl,-Bdynamic" GPU_LDFLAGS=-static-libgcc (libstdc++ and libgcc
+# linked statically; the command compiles the C sources too, so the driver stays gcc)
 GPU_LDFLAGS ?=
 GPU_LINK ?= gcc
 GPU_STDCXX ?= -lstdc++
