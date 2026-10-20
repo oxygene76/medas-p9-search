@@ -1,7 +1,7 @@
 # Sub-steps for too short flybys (plan, not implemented)
 
-Prepared 2026-10-19 for the decision of 2026-10-20; implementation only after
-the project lead's OK. Goal: follow close
+Prepared 2026-10-19; **approved 2026-10-20** by the project lead, with the
+additions below. Accepted only when the whole test plan is met. Goal: follow close
 encounters correctly instead of removing them or integrating them with the
 fixed step. Only the particle concerned computes the step in sub-steps, so
 that its flyby lasts at least about four sub-steps; the planets' positions in
@@ -86,3 +86,8 @@ with many encounters (control in the GPU check package).
 4. **Bits**: GPU = CPU twin = WebAssembly on a control job with close
    encounters; the jobs of the GPU check package.
 5. **Speed**: the 64,000-particle benchmark; slowdown reported.
+6. **Regression: the 32 confirmed numerical losses** of
+   `docs/validation-mercurius.md` (their states before the flyby are in the
+   repository, `tests/data/flyby-regression/`): with sub-steps each must match
+   IAS15 (kick within ±5 %, no false loss: unbound only where IAS15 is).
+7. After acceptance: df64 with sub-steps again against FP64.

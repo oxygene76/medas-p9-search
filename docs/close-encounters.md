@@ -7,8 +7,15 @@ there the planet's pull dominates and the step is far too long for the orbit
 around the planet. Instead of following such particles with wrong orbits, both
 remove them by the same criterion.
 
-> **Status 2026-10-19 22:45 (decision for the night; the basic decision
-> follows on 2026-10-20):** removal at the planets is suspended. Runs remove
+> **Decision 2026-10-20 (project lead):** close encounters are followed, no
+> particle is removed at the planets any more; only the distance rules remove.
+> The radius rule stays documented as a negative result: in 50 Myr it removed,
+> among others, 389 particles at Neptune and 82 at Planet Nine, of which 333
+> and 80 survive in MERCURIUS (`docs/validation-mercurius.md`). Too short
+> flybys get sub-steps (`docs/substeps-plan.md`, accepted only when its whole
+> test plan is met); the production run starts only with accepted sub-steps.
+>
+> **Status 2026-10-19 22:45 (decision for the night):** removal at the planets is suspended. Runs remove
 > only by the distance rules (10,000 au, 5 au); close encounters are counted
 > (`p9job make --no-removal`, method "step", `flybys.tsv`). Reason: against
 > REBOUND's MERCURIUS (2,000 test particles, 50 Myr) the removal at the rule's
