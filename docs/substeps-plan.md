@@ -128,9 +128,72 @@ Results:
 | 2. flyby grid, both presets, dt 0.5 yr | ≤ 1e-3 in every cell | worst cell 4.0e-4 (Neptune), 8.1e-4 (Planet Nine) |
 | 6. the 32 numerical losses | kick ± 5 %, no false loss | all 32 (largest deviation 3.3 %, case 1673 at 0.0102 au) |
 | 4. bits | GPU = CPU = WebAssembly | 32 of 32 cases GPU = CPU twin; WebAssembly = native (4 cases, up to n = 4,096); df64 GPU = CPU twin; double-t = double |
-| Jacobi constant (restricted three-body problem: Sun, Neptune on a circular orbit, 256 Neptune crossers, 10 Myr; `tools/jacobi_test.py`) | must not grow systematically | median \|dC/C\| 1.1e-8 (1 Myr) to 4.5e-8 (10 Myr), growing as t^0.55 (a random walk), maximum 2.9e-6; hard switch: 3.4e-6, t^0.90; fixed step: 1.2e-2, t^2.0, 37 particles lost (smooth: 4) |
+| Jacobi constant (restricted three-body problem: Sun, Neptune on a circular orbit, 256 Neptune crossers, 10 Myr; `tools/jacobi_test.py`) | must not grow systematically | median \|dC/C\| 1.1e-8 (1 Myr) to 4.5e-8 (10 Myr), growing as t^0.55 (a random walk), maximum 2.9e-6; hard switch: 3.4e-6, t^0.90, maximum 5.5e-4 (at 10 Myr the smooth transition is 75 times smaller in the median, 190 times in the maximum); fixed step: 1.2e-2, t^2.0, 37 particles lost (smooth: 4, all numerical, at the cap of 4,096 sub-steps, see below) |
 | 3. MERCURIUS over 200 Myr | `docs/validation-smooth-200myr.md` | running |
 | 5. speed | reported | Jacobi test (encounter-heavy): 1,130 s against 283 s with the fixed step; the real case: to be measured |
 
-The cap n = 4,096 was reached in 4,082 steps of the Jacobi test (the deepest
-flybys); its errors stay at the level above.
+### The cap of 4,096 sub-steps and the 4 losses of the Jacobi test
+
+Checked 2026-10-20 (question of the project lead: are the 4 losses real
+ejections; where are the 4,082 steps at the cap).
+
+**The 4 losses are numerical, not real ejections.** All 4 particles were
+removed by the distance rule (10,000 au) within 500–5,000 yr of one flyby of
+Neptune. Their |dC/C| stayed at 2e-8 to 2e-7 up to the snapshot just before
+that flyby and jumped in that one flyby (`runs/jacobi-lost`: the 4 particles
+alone, same bits as in the full run, a snapshot every 500 yr):
+
+| particle | \|dC/C\| before the flyby | after | pericentre (IAS15) | heliocentric orbit after |
+|---|---|---|---|---|
+| 57 | 1.7e-8 | 0.97 | 2.25e-4 au = 1.36 R_N | hyperbolic, a = −8.4 au |
+| 59 | 7.0e-8 | 9.1 | 9.4e-5 au = 0.57 R_N | hyperbolic, a = −1.1 au |
+| 147 | 3.3e-8 | 0.32 | 2.61e-4 au = 1.58 R_N | hyperbolic, a = −33 au |
+| 234 | 2.3e-7 | 58 | 2.0e-5 au = 0.12 R_N | hyperbolic, a = −0.2 au (about 70 km/s) |
+
+(R_N = 24,764 km = 1.655e-4 au. In this test C is conserved exactly, so at
+best Neptune can just unbind a particle; speeds like these are impossible.)
+In all 4 flybys the steps through the pericentre were at the cap. Counter-test
+(`tools/deep_flyby_test.py`, `runs/jacobi-lost/deep`): each particle restarted
+1,500 steps before the flyby, run over 5,500 steps. With the cap of 4,096,
+the same jumps (0.97, 0.32; 59 and 234 removed again). With a cap of 2^21
+(experimental build, `-DP9_SUB_MAX=2097152`), |dC/C| stays at 7e-9, 9e-10,
+9e-8 and 2e-9, and the position at the end agrees with IAS15 (to 0.3 au after
+the deepest flyby, otherwise to 0.1 au). Particles 59 and 234 pass inside
+Neptune: physically collisions. 57 and 147 graze it at 1.4 and 1.6 radii:
+physically they survive.
+
+**Where the 4,082 capped steps are** (`P9_CAPPED_OUT`, CPU, the same bits:
+the run again gave result 0bb5ae67…; `tools/capped_report.py`,
+`runs/jacobi-capped`):
+
+- 2,364 steps (804 flybys) at the edge of r_out (about 3 au, outside
+  Neptune's Hill radius of 0.78 au). There the two-body pericentre around
+  Neptune is tiny, but the Sun's pull still changes the orbit around the
+  planet, and the particle does not come within 0.1 au in a capped step. These
+  steps only cost sub-steps; their errors are not measurable.
+- 1,718 steps in 75 deep flybys (a capped step within 0.1 au), by pericentre:
+  2 inside Neptune, 2 at 1–2 radii, 3 at 2–5, 4 at 5–10, 15 at 10–20, 29 at
+  20–50, 20 beyond 50 radii. The 4 losses are exactly the 4 below 2 radii.
+  Of the three at 2–5 radii, particles 39 and 205 (3.7 radii) changed |dC/C|
+  by 3e-6 (the run's maximum of 2.9e-6), particle 101 (5.0 radii) by 5e-9;
+  the four at 5–10 radii by at most 4e-8 (snapshots before and after).
+
+Without the cap, n would have to reach 2^20 (Jupiter, Saturn, Uranus) or 2^21
+(Neptune, Planet Nine with 6.2 Earth masses and 2.6 Earth radii) for a
+flyby at the physical radius, by the same criteria (32 sub-steps per flyby,
+656 per orbit around the planet).
+
+Experiment with a cap of 2^21 (`runs/jacobi-cap21`, not a production build):
+256 of 256 particles remain; |dC/C| median 3.8e-8 at 10 Myr, maximum
+3.9e-7 (with the cap of 4,096: 4.5e-8, 2.9e-6, 4 lost), growth t^0.51.
+The sub-steps in steps above 4,096 rise from 1.7e7 to 2.1e8 (mostly the edge
+flybys). CPU time 660 s against 613 s (one core). This run had no flyby
+inside Neptune; one would again be integrated as a point mass with too few
+sub-steps.
+
+**Proposal (decision pending):** for the production runs, (1) a collision
+with the physical radius of a planet ends the test particle, as in MERCURY
+(at a sub-step's kick closer than the radius; fate `collision:<planet>`),
+and (2) the cap raised to 2^21, so that every flyby outside the radius gets
+the sub-steps that the criteria ask for. Both change the bits of capped steps
+only. The running 200-Myr comparison (cap 4,096) stays as it is.
