@@ -207,11 +207,11 @@ P9_HDT void p9t_kick_near(p9t_body<T>* p, const T* qs, const T* gm, const T* r2o
 }
 
 template <class T>
-P9_HDT int p9t_sub_n_k(T m2, T w2, T gm, T dt, T k2, T orb) {
-    if (!(m2 > L<T>(0.0))) return P9_SUB_MAX;
+P9_HDT int p9t_sub_n_k(T m2, T w2, T gm, T dt, T k2, T orb, int nmax) {
+    if (!(m2 > L<T>(0.0))) return nmax;
     const T d3 = m2 * p9_sqrt(m2);
     int n = 1;
-    for (; n < P9_SUB_MAX; n *= 2) {
+    for (; n < nmax; n *= 2) {
         const T s = dt / L<T>((double)n);
         if (!(m2 < k2 * w2 * s * s) && !(d3 < orb * L<T>(P9_SUB_ORBIT) * s * s * gm)) break;
     }
@@ -219,8 +219,8 @@ P9_HDT int p9t_sub_n_k(T m2, T w2, T gm, T dt, T k2, T orb) {
 }
 
 template <class T>
-P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* uqb, const T* wa, const T* wb, const T* gm, const T* r2out, int np,
-                              T mu0, T dt, int* nsub) {
+P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* uqb, const T* wa, const T* wb, const T* gm, const T* r2out,
+                              const T* r2col, int np, T mu0, T dt, int* nsub) {
     const T h = L<T>(0.5) * dt;
     p9t_jump(p, wa, h);
     p9t_kick_far(p, q, gm, r2out, np, dt);
@@ -242,18 +242,30 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
         any = 1;
         const T d2 = dx * dx + dy * dy + dz * dz;
         const T r = p9_sqrt(d2), mu = gm[j];
-        const T cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
-        const T L2 = cx * cx + cy * cy + cz * cz;
         const T en = L<T>(0.5) * w2 - mu / r;
-        T e2 = L<T>(1.0) + L<T>(2.0) * en * L2 / (mu * mu);
-        if (e2 < L<T>(0.0)) e2 = L<T>(0.0);
-        const T qp = L2 / mu / (L<T>(1.0) + p9_sqrt(e2));
-        T m2e = m2, w2e = w2;
-        if (qp * qp < m2e) {
-            m2e = qp * qp;
-            w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
+        const T dw = dx * wx + dy * wy + dz * wz;
+        int peri = dw < L<T>(0.0) && (!(-dw > L<T>(2.0) * dt * w2) || !(d2 * r > L<T>(4.0) * dt * dt * mu));
+        if (en < L<T>(0.0)) {
+            const T a = -mu / (L<T>(2.0) * en);
+            if (!(L<T>(P9_PI2) * a * a * a > L<T>(4.0) * dt * dt * mu)) peri = 1;
         }
-        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0));
+        T m2e, w2e;
+        if (peri) {
+            const T cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+            const T L2 = cx * cx + cy * cy + cz * cz;
+            T e2 = L<T>(1.0) + L<T>(2.0) * en * L2 / (mu * mu);
+            if (e2 < L<T>(0.0)) e2 = L<T>(0.0);
+            const T qp = L2 / mu / (L<T>(1.0) + p9_sqrt(e2));
+            m2e = m2, w2e = w2;
+            if (qp * qp < m2e) {
+                m2e = qp * qp;
+                w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
+            }
+        } else {
+            m2e = L<T>(0.5) * m2;
+            w2e = L<T>(2.0) * en + L<T>(2.0) * mu / p9_sqrt(m2e);
+        }
+        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), P9_SMOOTH_MAX);
         if (nj > n) n = nj;
     }
     *nsub = any ? n : 1;
@@ -272,6 +284,11 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
             const T t2 = L<T>(0.5) * t * t;
             qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
                   qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
+        }
+        for (int j = 0; r2col && j < np; j++) {
+            if (!(r2col[j] > L<T>(0.0))) continue;
+            const T ux = p->x - qs[3 * j], uy = p->y - qs[3 * j + 1], uz = p->z - qs[3 * j + 2];
+            if (ux * ux + uy * uy + uz * uz < r2col[j]) return j;
         }
         p9t_kick_near(p, qs, gm, r2out, np, s);
         p9t_kepler(p, mu0, k == n - 1 ? hs : s);

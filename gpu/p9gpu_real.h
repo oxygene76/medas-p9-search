@@ -16,7 +16,7 @@ typedef struct {
     int *near, *fast, *close, *last_j;
     unsigned long long *last_step, *rm_step;
     double* last_d;
-    int *sub_steps, *sub_max, *sub_capped;  // method substep: steps with sub-steps, largest n, steps at P9_SUB_MAX
+    int *sub_steps, *sub_max, *sub_capped;  // methods substep, smooth: steps with sub-steps, largest n, steps at the cap (P9_SUB_MAX, P9_SMOOTH_MAX)
 } p9_flybys;
 #ifdef __cplusplus
 extern "C" {
@@ -26,9 +26,9 @@ int p9_real_parse(const char* text);
 const char* p9_real_name(int real);
 // One block of steps on the CPU in the given type (gpu/cpu_t.cpp), as the
 // kernel does it: the same bits as the GPU.
-// smooth: method "smooth" (the radii r2enc are then r_out^2; nothing removed at the planets).
-void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, double mu0, const double* tab, int nb,
-                    unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth);
+// smooth: method "smooth" (the radii r2enc are then r_out^2; removed at a planet only by a collision, r2col: squared physical radii, 0: none).
+void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, const double* r2col, double mu0,
+                    const double* tab, int nb, unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth);
 #ifdef __cplusplus
 }
 #endif

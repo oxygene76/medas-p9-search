@@ -25,6 +25,11 @@
 //   P9_REMOVED_OUT=file  the fate of each test particle of the input: id, then
 //                        alive (1), distance rules (0) or the body id of the
 //                        planet of its close encounter (any method)
+//   P9_COLLISION_RADII="id=au,..."  method smooth: the physical radii of the
+//                        planets (by body id; tools/p9job.py sets them); a test
+//                        particle closer to a planet than its radius at a
+//                        sub-step's kick is removed (fate collision:<id>, the
+//                        count per planet in collisions=); without: none
 //   P9_CAPPED_OUT=file   method smooth, P9GPU_MODE=cpu, double: one line per
 //                        step at P9_SUB_MAX sub-steps (diagnostics, the same
 //                        bits: whdh.h p9_capdiag)
@@ -301,8 +306,8 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 static FILE* cap_out;
 static const double *cap_tp_ids, *cap_ids;
 
-static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* tab, int nb, unsigned long long step0,
-                      double dt, int step_method, int enc_remove, p9_flybys* F) {
+static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* r2col, const double* tab, int nb,
+                      unsigned long long step0, double dt, int step_method, int enc_remove, p9_flybys* F) {
     const int np = P->np;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
@@ -318,7 +323,7 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
             double fd = 0.0;
             p9_capdiag cd = {-1, 0, 0.0, 0.0, 0.0, 0.0};
             const int enc = step_method == 3 ? p9_step_tp_smooth_d(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3,
-                                                                   wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, F->near + (size_t)i * np,
+                                                                   wa + 3 * k, wb + 3 * k, P->gm, r2enc, r2col, np, P->mu0, dt, F->near + (size_t)i * np,
                                                                    F->fast + (size_t)i * np, F->close + (size_t)i * np, &fj, &fd, &ns,
                                                                    cap_out ? &cd : 0)
                           : step_method == 2 ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k,
@@ -334,12 +339,12 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
             if (ns > 1) {
                 F->sub_steps[i]++;
                 if (ns > F->sub_max[i]) F->sub_max[i] = ns;
-                if (ns >= P9_SUB_MAX) F->sub_capped[i]++;
+                if (ns >= (step_method == 3 ? P9_SMOOTH_MAX : P9_SUB_MAX)) F->sub_capped[i]++;
                 if (cap_out && ns >= P9_CAPDIAG_MIN && cd.j >= 0)
                     fprintf(cap_out, "%.0f\t%llu\t%.0f\t%.6g\t%.6g\t%.6g\t%.6g\t%d\n", cap_tp_ids[i], step0 + k + 1, cap_ids[cd.j], cd.q_est, cd.d_min,
                             cd.q_loc, cd.v_est, cd.n_want);
             }
-            if (enc >= 0 && (enc_remove || !step_method)) {
+            if (enc >= 0 && (enc_remove || !step_method || step_method == 3)) {  // smooth: a collision
                 a = -1 - enc;
                 if (step_method) F->rm_step[i] = step0 + k + 1;
                 break;
@@ -363,9 +368,9 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
 // Builds without C++ (WebAssembly): double only.
 int p9_real_parse(const char* text) { return !text || !*text || !strcmp(text, "double") ? P9_REAL_DOUBLE : -1; }
 const char* p9_real_name(int real) { return real == P9_REAL_DOUBLE ? "double" : "?"; }
-void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, double mu0, const double* tab, int nb,
-                    unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth) {
-    (void)real, (void)tp, (void)alive, (void)ntp, (void)np, (void)gm, (void)r2enc, (void)mu0, (void)tab, (void)nb, (void)step0, (void)dt,
+void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, const double* r2col, double mu0,
+                    const double* tab, int nb, unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth) {
+    (void)real, (void)tp, (void)alive, (void)ntp, (void)np, (void)gm, (void)r2enc, (void)r2col, (void)mu0, (void)tab, (void)nb, (void)step0, (void)dt,
         (void)check_every, (void)rin2, (void)rout2, (void)smooth;
 }
 #endif
@@ -444,6 +449,17 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     for (size_t j = 0; j + 1 < r->N_active; j++) ids[j] = r->particles[j + 1].r;  // ids of the massive bodies after the Sun
     if (p9_encounter_radii(getenv("P9_ENCOUNTER_RADII"), (int)r->N_active - 1, ids, renc, r2enc)) return 2;
     if (getenv("P9_ENCOUNTER_RADII") && *getenv("P9_ENCOUNTER_RADII")) p9_encounter_print((int)r->N_active - 1, ids, renc);
+    double r2col[P9_MAX_PLANETS] = {0}, rcol[P9_MAX_PLANETS] = {0};
+    if (getenv("P9_COLLISION_RADII") && *getenv("P9_COLLISION_RADII")) {
+        if (sub_method != 2) {
+            fprintf(stderr, "P9_COLLISION_RADII: method smooth only\n");
+            return 2;
+        }
+        if (p9_encounter_radii(getenv("P9_COLLISION_RADII"), (int)r->N_active - 1, ids, rcol, r2col)) return 2;
+        fprintf(stderr, "collision radii (au):");
+        for (size_t j = 0; j + 1 < r->N_active; j++) fprintf(stderr, " %.0f=%.6g", ids[j], rcol[j]);
+        fprintf(stderr, "\n");
+    }
     planets P;
     com_t com;
     p9_body* tp = malloc(sizeof(p9_body) * (ntp > 0 ? ntp : 1));
@@ -523,6 +539,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
         }
+        if (sub_method == 2 && p9g_set_collision(g, r2col, err, sizeof err)) {
+            fprintf(stderr, "GPU: %s\n", err);
+            return 3;
+        }
         if (P.j2 && p9g_set_j2(g, P.j2v, err, sizeof err)) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
@@ -560,9 +580,9 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
                 if (real == P9_REAL_DOUBLE)
-                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method + sub_method, enc_remove, &F);
+                    cpu_block(tp, alive, ntp, &P, r2enc, r2col, cpu_tab, nb, steps, dt, step_method + sub_method, enc_remove, &F);
                 else
-                    p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT,
+                    p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, r2col, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT,
                                    sub_method == 2);
             }
             steps += (unsigned long long)nb;
@@ -641,18 +661,18 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         for (int i = 0; i < ntp; i++) {
             if (alive[i] == 1) fprintf(f, "%.0f\talive\n", tp_ids[i]);
             else if (alive[i] == 0) fprintf(f, "%.0f\tdistance\n", tp_ids[i]);
-            else if (-1 - alive[i] < P.np) fprintf(f, "%.0f\tencounter:%.0f\n", tp_ids[i], ids[-1 - alive[i]]);
+            else if (-1 - alive[i] < P.np) fprintf(f, "%.0f\t%s:%.0f\n", tp_ids[i], sub_method == 2 ? "collision" : "encounter", ids[-1 - alive[i]]);
             else fprintf(f, "%.0f\tinner\n", tp_ids[i]);
         }
         if (fclose(f)) return 2;
     }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
+           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
            "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text,
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text, sub_method == 2 ? by_text : "-",
            sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA

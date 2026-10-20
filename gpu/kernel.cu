@@ -17,6 +17,7 @@
 
 __constant__ double c_gm[P9_MAX_PLANETS];
 __constant__ double c_r2enc[P9_MAX_PLANETS];  // squared encounter radii (0: no check)
+__constant__ double c_r2col[P9_MAX_PLANETS];  // method smooth: squared physical radii (0: no collisions)
 __constant__ double c_j2[5];                   // model "j2": mu J2 R^2, axis n, r_remove^2 (whdh.h)
 
 // Table of a block of nb steps (layout shared with p9gpu.c):
@@ -59,7 +60,7 @@ __global__ void p9_advance(p9_body* __restrict__ st, int* __restrict__ alive, in
 // and end of a block (exact for df64), the table is converted once per block.
 template <class T>
 struct p9t_consts {
-    T gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS];
+    T gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS], r2col[P9_MAX_PLANETS];
 };
 
 template <class T>
@@ -83,7 +84,7 @@ __global__ void p9_advance_t(p9_body* __restrict__ st, int* __restrict__ alive, 
     for (int k = 0; k < nb; k++) {
         int ns;
         const int enc = smooth ? p9t_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm,
-                                                    c.r2enc, np, mu0, dt, &ns)
+                                                    c.r2enc, c.r2col, np, mu0, dt, &ns)
                                : p9t_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm, c.r2enc, np, mu0, dt);
         if (enc >= 0) {
             a = -1 - enc;
@@ -156,7 +157,7 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
         int fj = -1, ns = 1;
         double fd = 0.0;
         const int enc = sub == 2 ? p9_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k,
-                                                     c_gm, c_r2enc, np, mu0, dt, nr, fs, cl, &fj, &fd, &ns)
+                                                     c_gm, c_r2enc, c_r2col, np, mu0, dt, nr, fs, cl, &fj, &fd, &ns)
                         : sub ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm,
                                              c_r2enc, np, mu0, dt, nr,
                                              fs, cl, &fj, &fd, &ns)
@@ -165,10 +166,10 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
         if (ns > 1) {
             sub_steps[i]++;
             if (ns > sub_max[i]) sub_max[i] = ns;
-            if (ns >= P9_SUB_MAX) sub_capped[i]++;
+            if (ns >= (sub == 2 ? P9_SMOOTH_MAX : P9_SUB_MAX)) sub_capped[i]++;
         }
         if (fj >= 0) last_step[i] = step0 + k + 1, last_j[i] = fj + 1, last_d[i] = fd;
-        if (enc >= 0 && remove) {
+        if (enc >= 0 && (remove || sub == 2)) {  // smooth: a collision
             a = -1 - enc;
             rm_step[i] = step0 + k + 1;
             break;
@@ -198,7 +199,7 @@ struct p9g {
     double* d_tab[2];
     double* h_tab[2];  // pinned
     void* d_tab_t;     // the table converted to T (P9GPU_REAL other than double)
-    double gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS];
+    double gm[P9_MAX_PLANETS], r2enc[P9_MAX_PLANETS], r2col[P9_MAX_PLANETS];
     size_t tab_doubles;
     cudaStream_t stream;
     cudaEvent_t copied[2];
@@ -265,6 +266,11 @@ extern "C" int p9g_set_step_method(p9g* g, int remove, int sub, char* err, int e
     return 0;
 }
 
+extern "C" int p9g_set_collision(p9g* g, const double* r2col, char* err, int errlen) {
+    for (int j = 0; j < g->np; j++) g->r2col[j] = r2col[j];
+    return fail(cudaMemcpyToSymbol(c_r2col, r2col, sizeof(double) * g->np), "r2col", err, errlen);
+}
+
 extern "C" int p9g_counts(p9g* g, p9_flybys* f, char* err, int errlen) {
     if (fail(wait_stream(g->stream), "kernel", err, errlen)) return 1;
     if (g->ntp == 0) return 0;
@@ -319,7 +325,7 @@ static void launch_t(p9g* g, int b, size_t n, int nb, unsigned long long step0, 
     T* tab = (T*)g->d_tab_t;
     p9_convert<T><<<(unsigned)((n + 255) / 256), 256, 0, g->stream>>>(g->d_tab[b], tab, n);
     p9t_consts<T> c;
-    for (int j = 0; j < P9_MAX_PLANETS; j++) c.gm[j] = L<T>(g->gm[j]), c.r2enc[j] = L<T>(g->r2enc[j]);
+    for (int j = 0; j < P9_MAX_PLANETS; j++) c.gm[j] = L<T>(g->gm[j]), c.r2enc[j] = L<T>(g->r2enc[j]), c.r2col[j] = L<T>(g->r2col[j]);
     const int threads = 128;
     p9_advance_t<T><<<(g->ntp + threads - 1) / threads, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, tab, g->np, nb, step0, L<T>(dt), L<T>(mu0),
                                                                                   check_every, L<T>(rin2), L<T>(rout2), c, g->sub == 2);

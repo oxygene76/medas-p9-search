@@ -311,26 +311,32 @@ P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const d
 // by up to 1e-4 to 1e-3 au over half a step, which changes the kick of a slow
 // close flyby by per cents. The particle's jump from the planets' velocities
 // there (u = Kepler velocity + a t).
-#ifndef P9_SUB_MAX  // -DP9_SUB_MAX=... only for experiments (docs/substeps-plan.md)
+#ifndef P9_SUB_MAX  // the hard switch (method substep); -DP9_SUB_MAX=... only for experiments
 #define P9_SUB_MAX 4096
 #endif
+// The smooth transition: 2^21, enough for a flyby at the physical radius of
+// every planet of the runs (docs/substeps-plan.md); closer is a collision.
+#ifndef P9_SMOOTH_MAX
+#define P9_SMOOTH_MAX 2097152
+#endif
 #ifndef P9_CAPDIAG_MIN  // P9_CAPPED_OUT: steps with at least this many sub-steps (experiments: below the cap)
-#define P9_CAPDIAG_MIN P9_SUB_MAX
+#define P9_CAPDIAG_MIN P9_SMOOTH_MAX
 #endif
 #define P9_SUB_ORBIT 681.3  // (164 / (2 pi))^2, rounded up
+#define P9_PI2 9.869604401089358  // pi^2
 // The general form: the flyby lasts at least k sub-steps (k2 = k^2) and the orbit around the planet
-// at least 164 sqrt(orb) of them.
-P9_HD int p9_sub_n_k(double m2, double w2, double gm, double dt, double k2, double orb) {
-    if (!(m2 > 0.0)) return P9_SUB_MAX;
+// at least 164 sqrt(orb) of them; n at most nmax.
+P9_HD int p9_sub_n_k(double m2, double w2, double gm, double dt, double k2, double orb, int nmax) {
+    if (!(m2 > 0.0)) return nmax;
     const double d3 = m2 * sqrt(m2);
     int n = 1;
-    for (; n < P9_SUB_MAX; n *= 2) {
+    for (; n < nmax; n *= 2) {
         const double s = dt / n;  // dt over a power of two: exact
         if (m2 >= k2 * w2 * s * s && d3 >= orb * P9_SUB_ORBIT * s * s * gm) break;
     }
     return n;
 }
-P9_HD int p9_sub_n(double m2, double w2, double gm, double dt) { return p9_sub_n_k(m2, w2, gm, dt, 64.0, 1.0); }
+P9_HD int p9_sub_n(double m2, double w2, double gm, double dt) { return p9_sub_n_k(m2, w2, gm, dt, 64.0, 1.0, P9_SUB_MAX); }
 
 // One step with sub-steps where needed. Counts as p9_kick_tp_step (near, fast,
 // close, *fast_j, *fast_d; counters may be NULL); *nsub: the sub-steps used (1:
@@ -487,9 +493,13 @@ P9_HD void p9_kick_near(p9_body* p, const double* qs, const double* gm, const do
 // ahead by h wb (the second jump) less the jump it does not take, so its
 // position relative to a planet at time t after the kick is right if the planet
 // is taken at Kepler(q, mean velocity; t) + a t^2 / 2 + h wb (the jump integral
-// cancels). Counts and *nsub as p9_step_tp_sub; returns -1 (nothing removed).
+// cancels). Counts and *nsub as p9_step_tp_sub (the cap is P9_SMOOTH_MAX).
+// Collision: r2col[j] > 0 is the squared physical radius of planet j (r2col
+// may be 0: none); a particle closer than that at a sub-step's kick has hit the
+// planet, and the step returns j (the particle is removed, as in MERCURY);
+// otherwise -1.
 // cd (diagnostics, may be 0; it changes nothing in the step): for a step at
-// P9_SUB_MAX the planet with the smallest estimated pericentre, that estimate,
+// P9_CAPDIAG_MIN the planet with the smallest estimated pericentre, that estimate,
 // the speed there, the n the criteria would ask for without the cap, the
 // smallest distance to that planet at the sub-steps' kicks and the pericentre
 // of the two-body orbit around the planet there (q_loc).
@@ -498,8 +508,8 @@ typedef struct {
     double q_est, v_est, d_min, q_loc;
 } p9_capdiag;
 P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
-                              const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub,
-                              p9_capdiag* cd) {
+                              const double* r2out, const double* r2col, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j,
+                              double* fast_d, int* nsub, p9_capdiag* cd) {
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
     // counters, as p9_kick_tp_step (closest approach within the step around the kick, three r_out / 4 = three rule radii)
@@ -543,24 +553,44 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         const double m2 = ex * ex + ey * ey + ez * ez;
         if (m2 >= r2out[j]) continue;
         any = 1;
-        // focusing: the pericentre of the two-body orbit around the planet
         const double d2 = dx * dx + dy * dy + dz * dz;
         const double r = sqrt(d2), mu = gm[j];
-        const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
-        const double L2 = cx * cx + cy * cy + cz * cz;
         const double en = 0.5 * w2 - mu / r;
-        double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
-        if (e2 < 0.0) e2 = 0.0;
-        const double qp = L2 / mu / (1.0 + sqrt(e2));
-        double m2e = m2, w2e = w2;
-        if (qp * qp < m2e) {
-            m2e = qp * qp;
-            w2e = 2.0 * en + 2.0 * mu / qp;
+        // Is the pericentre of the two-body orbit around the planet reached within the step? The particle
+        // approaches (r.v < 0) and the straight line's closest approach -r.v / v^2 or the fall time
+        // sqrt(r^3 / mu) is at most 2 dt, or it is bound to the planet with half a period (pi sqrt(a^3 / mu))
+        // of at most 2 dt. The factor 2: in a check against the exact two-body time (Jupiter, Neptune, Planet
+        // Nine, 9e5 states) no pericentre within the step was missed (factor 1.5: 9) (docs/substeps-plan.md).
+        const double dw = dx * wx + dy * wy + dz * wz;
+        int peri = dw < 0.0 && (-dw <= 2.0 * dt * w2 || d2 * r <= 4.0 * dt * dt * mu);
+        if (en < 0.0) {
+            const double a = -mu / (2.0 * en);
+            if (P9_PI2 * a * a * a <= 4.0 * dt * dt * mu) peri = 1;
+        }
+        double m2e, w2e;
+        if (peri) {
+            // focusing: distance and speed at the pericentre, where that is closer than the straight line
+            const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+            const double L2 = cx * cx + cy * cy + cz * cz;
+            double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
+            if (e2 < 0.0) e2 = 0.0;
+            const double qp = L2 / mu / (1.0 + sqrt(e2));
+            m2e = m2, w2e = w2;
+            if (qp * qp < m2e) {
+                m2e = qp * qp;
+                w2e = 2.0 * en + 2.0 * mu / qp;
+            }
+        } else {
+            // the smallest distance within the step: the straight line's, with m2 halved, as the planet's pull
+            // brings the particle up to 1/0.68 closer within the step; the speed there from the energy
+            // (two-body check: n then never too small, docs/substeps-plan.md)
+            m2e = 0.5 * m2;
+            w2e = 2.0 * en + 2.0 * mu / sqrt(m2e);
         }
         // the near part is integrated in A with a leapfrog whose n changes from step to step: finer than
         // for the hard switch (32 sub-steps per flyby, 656 per orbit), so that its error stays below 1e-3
         // of the kick (docs/substeps-plan.md)
-        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0);
+        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0, P9_SMOOTH_MAX);
         if (nj > n) n = nj;
         if (cd && nj >= P9_CAPDIAG_MIN && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
             const double v2 = w2e > w2 ? w2e : w2, d3 = m2e * sqrt(m2e);
@@ -590,6 +620,11 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
                   qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
             if (cd) us[3 * j] = b.vx + t * ac[3 * j], us[3 * j + 1] = b.vy + t * ac[3 * j + 1], us[3 * j + 2] = b.vz + t * ac[3 * j + 2];
         }
+        for (int j = 0; r2col && j < np; j++) {
+            if (!(r2col[j] > 0.0)) continue;
+            const double ux = p->x - qs[3 * j], uy = p->y - qs[3 * j + 1], uz = p->z - qs[3 * j + 2];
+            if (ux * ux + uy * uy + uz * uz < r2col[j]) return j;
+        }
         p9_kick_near(p, qs, gm, r2out, np, s);
         if (cd && cd->j >= 0) {
             const double ux = p->x - qs[3 * cd->j], uy = p->y - qs[3 * cd->j + 1], uz = p->z - qs[3 * cd->j + 2];
@@ -608,8 +643,9 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
     return -1;
 }
 P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
-                            const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub) {
-    return p9_step_tp_smooth_d(p, q, uq, uqb, wa, wb, gm, r2out, np, mu0, dt, near, fast, close, fast_j, fast_d, nsub, 0);
+                            const double* r2out, const double* r2col, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j,
+                            double* fast_d, int* nsub) {
+    return p9_step_tp_smooth_d(p, q, uq, uqb, wa, wb, gm, r2out, r2col, np, mu0, dt, near, fast, close, fast_j, fast_d, nsub, 0);
 }
 
 // The synchronous state of a body kept half a drift ahead.
