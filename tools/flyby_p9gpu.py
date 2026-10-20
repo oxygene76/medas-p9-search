@@ -96,8 +96,10 @@ def physical_radius_au(planet_name):
 def make_radius_bodies(p, m, rp, vp, radius_au, multiples, vinf, seed=8):
     """Flybys with the pericentre at multiples of the physical radius (relative position d n, relative velocity
     perpendicular to it with the pericentre speed sqrt(vinf^2 + 2 G m / d)); the heliocentric filters of
-    flyby_check.make_test_bodies (bound, qmin), applied to the orbit far from the planet (planet velocity +
-    vinf u): at the pericentre itself the heliocentric speed of a deep flyby is above the Sun's escape speed."""
+    flyby_check.make_test_bodies (bound, qmin), applied to the heliocentric orbits far from the planet before and
+    after the flyby (planet velocity + the incoming and the outgoing asymptotic velocity of the hyperbola around
+    the planet): at the pericentre itself the heliocentric speed of a deep flyby is above the Sun's escape speed,
+    and the flyby turns the velocity by up to about 160 degrees."""
     rng = np.random.default_rng(seed)
     bodies = []
     for k in multiples:
@@ -113,14 +115,24 @@ def make_radius_bodies(p, m, rp, vp, radius_au, multiples, vinf, seed=8):
                 u = rng.normal(size=3); u -= u.dot(n) * n; u /= np.linalg.norm(u)
                 x = rp + d * n
                 w = vp + v * u
-                wf = vp + vi * u
-                r = np.linalg.norm(x); w2 = wf.dot(wf)
-                if w2 >= p["bound"] * 2 * fc.G / r:
-                    continue
-                a = 1.0 / (2.0 / r - w2 / fc.G)
-                h = np.cross(x, wf)
-                e = math.sqrt(max(0.0, 1 - h.dot(h) / fc.G / a))
-                if a * (1 - e) < p["qmin"]:
+                # asymptotic velocities of the hyperbola (pericentre direction n, velocity direction u there):
+                # v_inf (+-sin f n + (e - 1/e) u) / sqrt(e^2 - 1), cos f = -1/e, e = 1 + d vinf^2 / (G m)
+                eh = 1.0 + d * vi * vi / (fc.G * m)
+                sf, c2 = math.sqrt(1.0 - 1.0 / eh ** 2), eh - 1.0 / eh
+                ok = True
+                for sign in (1.0, -1.0):
+                    wf = vp + vi * (sign * sf * n + c2 * u) / math.sqrt(eh * eh - 1.0)
+                    r = np.linalg.norm(x); w2 = wf.dot(wf)
+                    if w2 >= p["bound"] * 2 * fc.G / r:
+                        ok = False
+                        break
+                    a = 1.0 / (2.0 / r - w2 / fc.G)
+                    h = np.cross(x, wf)
+                    e = math.sqrt(max(0.0, 1 - h.dot(h) / fc.G / a))
+                    if a * (1 - e) < p["qmin"]:
+                        ok = False
+                        break
+                if not ok:
                     continue
                 bodies.append((d, vi, x, w)); n_ok += 1
     return bodies
