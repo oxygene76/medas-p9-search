@@ -585,7 +585,15 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         // the near part is integrated in A with a leapfrog whose n changes from step to step: finer than
         // for the hard switch (32 sub-steps per flyby, 656 per orbit), so that its error stays below 1e-3
         // of the kick (docs/substeps-plan.md)
-        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0, peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
+        int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0, peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
+        if (!peri) {
+            // without the pericentre in the step, its smallest distance may still need more (a step that starts at the
+            // pericentre): the straight line's, with m2 halved, as the planet's pull brings the particle up to 1/0.68
+            // closer within the step; the speed there from the energy (two-body check, docs/substeps-plan.md)
+            const double m2s = 0.5 * m2, w2s = 2.0 * en + 2.0 * mu / sqrt(m2s);
+            const int ns = p9_sub_n_k(m2s, w2s > w2 ? w2s : w2, gm[j], dt, 1024.0, 16.0, P9_SMOOTH_MAX);
+            if (ns > nj) nj = ns;
+        }
         if (nj > n) n = nj;
         if (cd && nj >= P9_CAPDIAG_MIN && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
             const double v2 = w2e > w2 ? w2e : w2, d3 = m2e * sqrt(m2e);

@@ -259,7 +259,12 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
             m2e = qp * qp;
             w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
         }
-        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
+        int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
+        if (!peri) {
+            const T m2s = L<T>(0.5) * m2, w2s = L<T>(2.0) * en + L<T>(2.0) * mu / p9_sqrt(m2s);
+            const int ns = p9t_sub_n_k(m2s, w2s > w2 ? w2s : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), P9_SMOOTH_MAX);
+            if (ns > nj) nj = ns;
+        }
         if (nj > n) n = nj;
     }
     *nsub = any ? n : 1;
