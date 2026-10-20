@@ -91,3 +91,46 @@ with many encounters (control in the GPU check package).
    repository, `tests/data/flyby-regression/`): with sub-steps each must match
    IAS15 (kick within ±5 %, no false loss: unbound only where IAS15 is).
 7. After acceptance: df64 with sub-steps again against FP64.
+
+## Implementation and acceptance (2026-10-20)
+
+Implemented as method `smooth` (`gpu/whdh.h` p9_step_tp_smooth; template
+p9t_step_tp_smooth for df64), decided by the project lead after the hard switch
+(method `substep`, kept for comparison) missed the grid criterion: every
+abrupt change of the step length leaves an error of the order of the planet's
+perturbation there (the shadow orbit of a Wisdom-Holman step depends on the
+step), up to 1e-2 of the small kick of a distant flyby.
+
+- Split as in MERCURIUS: far part s(d) F in the kick at the middle of the step,
+  near part (1 - s) F added to the Kepler motion around the Sun, which then runs
+  in sub-steps (leapfrog Kepler / near kick). s: the "C5" polynomial of degree
+  11 (five vanishing derivatives at both ends; Rein et al. 2019; the infinitely
+  smooth function needs exp, not reproducible bit for bit). r_out = 4 times the
+  radius rule's radius (Neptune 3.10 au, Planet Nine 2.00 au), r_in = r_out/10:
+  the zone 2.8 and 1.8 au wide, more than 2 v99 dt (about 1.0 and 0.5 au).
+- In the near part's sub-steps the jump term moves neither the particle nor
+  the planets; the planet is taken at its Kepler drift from the kick plus
+  a t^2/2 plus h w (derived: the integral of the jump velocity cancels).
+- n for the near part: power of two up to 4,096, at least 32 sub-steps per
+  flyby and 656 per orbit around the planet (with 8 per flyby and 164 per orbit
+  the leapfrog, whose n changes from step to step, left up to 4e-3 of the kick);
+  distance and speed at the pericentre of the two-body orbit around the planet
+  where focusing brings it closer than the straight line.
+- The planets take 8 inner steps per step (`planet_substeps`): their own
+  0.5-yr integration was off enough to change the kick of flybys below about
+  0.05 au by up to 13 %.
+
+Results:
+
+| test | criterion | result |
+|---|---|---|
+| 1. close, Neptune and Planet Nine, 0.02–0.78 / 0.02–7 au | medians 1 ± 0.01, all 1 ± 0.05, no spurious unbinding | worst ratio off by 4e-4 (both), medians 1 ± 1e-4, none unbound (fixed step: up to factor 170, 34 unbound) |
+| 2. flyby grid, both presets, dt 0.5 yr | ≤ 1e-3 in every cell | worst cell 4.0e-4 (Neptune), 8.1e-4 (Planet Nine) |
+| 6. the 32 numerical losses | kick ± 5 %, no false loss | all 32 (largest deviation 3.3 %, case 1673 at 0.0102 au) |
+| 4. bits | GPU = CPU = WebAssembly | 32 of 32 cases GPU = CPU twin; WebAssembly = native (4 cases, up to n = 4,096); df64 GPU = CPU twin; double-t = double |
+| Jacobi constant (restricted three-body problem: Sun, Neptune on a circular orbit, 256 Neptune crossers, 10 Myr; `tools/jacobi_test.py`) | must not grow systematically | median \|dC/C\| 1.1e-8 (1 Myr) to 4.5e-8 (10 Myr), growing as t^0.55 (a random walk), maximum 2.9e-6; hard switch: 3.4e-6, t^0.90; fixed step: 1.2e-2, t^2.0, 37 particles lost (smooth: 4) |
+| 3. MERCURIUS over 200 Myr | `docs/validation-smooth-200myr.md` | running |
+| 5. speed | reported | Jacobi test (encounter-heavy): 1,130 s against 283 s with the fixed step; the real case: to be measured |
+
+The cap n = 4,096 was reached in 4,082 steps of the Jacobi test (the deepest
+flybys); its errors stay at the level above.
