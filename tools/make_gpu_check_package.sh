@@ -58,7 +58,7 @@ ARCH="-gencode arch=compute_80,code=sm_80 -gencode arch=compute_89,code=sm_89 -g
 rm -rf "$OUT-build" && mkdir -p "$OUT-build"
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/$OUT:/pkg:ro" -v "$PWD/$OUT-build:/out" "$IMG" sh -c "
   set -e; cp -r /pkg /tmp/w; cd /tmp/w; mkdir -p third_party; tar -xzf third_party-src/rebound-5.2.2.tar.gz -C third_party
-  make -s gpu NVCC=/usr/local/cuda/bin/nvcc CUDA_LIB=/usr/local/cuda/lib64 GPU_ARCH='$ARCH' GPU_DIR=/tmp/b GPU_LDFLAGS='-static-libstdc++ -static-libgcc' >/dev/null
+  make -s gpu NVCC=/usr/local/cuda/bin/nvcc CUDA_LIB=/usr/local/cuda/lib64 GPU_ARCH='$ARCH' GPU_DIR=/tmp/b GPU_LINK=g++ GPU_STDCXX= GPU_LDFLAGS='-static-libstdc++ -static-libgcc' >/dev/null
   /usr/local/cuda/bin/nvcc -O3 --fmad=false -prec-div=true -prec-sqrt=true $ARCH -c gpu/probe/peak.cu -o /tmp/b/peak.o
   g++ -static-libstdc++ -static-libgcc -o /tmp/b/peak /tmp/b/peak.o -L/usr/local/cuda/lib64 -lcudart_static -ldl -lpthread -lrt
   cp /tmp/b/p9gpu /tmp/b/peak /out/; /usr/local/cuda/bin/nvcc --version | tail -n 2 | head -n 1 > /out/NVCC-VERSION; ldd --version | head -n 1 > /out/BUILD-GLIBC"
