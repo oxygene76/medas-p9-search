@@ -25,6 +25,9 @@
 //   P9_REMOVED_OUT=file  the fate of each test particle of the input: id, then
 //                        alive (1), distance rules (0) or the body id of the
 //                        planet of its close encounter (any method)
+//   P9_CAPPED_OUT=file   method smooth, P9GPU_MODE=cpu, double: one line per
+//                        step at P9_SUB_MAX sub-steps (diagnostics, the same
+//                        bits: whdh.h p9_capdiag)
 //   P9_PLANET_SUBSTEPS=k  the planets take k (even) inner steps of dt/k per step
 //                        (kept synchronous); the test particles get their
 //                        positions, velocities and accelerations at the middle
@@ -294,6 +297,10 @@ static void drop_dead(struct reb_simulation* r, const int* alive, int* was_alive
 
 // ------------------------------------------------------------------ test particles on the CPU (reference)
 
+// P9_CAPPED_OUT (diagnostics): the file and the ids of the test particles and planets
+static FILE* cap_out;
+static const double *cap_tp_ids, *cap_ids;
+
 static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const double* r2enc, const double* tab, int nb, unsigned long long step0,
                       double dt, int step_method, int enc_remove, p9_flybys* F) {
     const int np = P->np;
@@ -309,9 +316,11 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
         for (int k = 0; k < nb; k++) {
             int fj = -1, ns = 1;
             double fd = 0.0;
-            const int enc = step_method == 3 ? p9_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3,
-                                                                 wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, F->near + (size_t)i * np,
-                                                                 F->fast + (size_t)i * np, F->close + (size_t)i * np, &fj, &fd, &ns)
+            p9_capdiag cd = {-1, 0, 0.0, 0.0, 0.0};
+            const int enc = step_method == 3 ? p9_step_tp_smooth_d(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3,
+                                                                   wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, F->near + (size_t)i * np,
+                                                                   F->fast + (size_t)i * np, F->close + (size_t)i * np, &fj, &fd, &ns,
+                                                                   cap_out ? &cd : 0)
                           : step_method == 2 ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k,
                                                               wb + 3 * k, P->gm, r2enc, np,
                                                               P->mu0, dt, F->near + (size_t)i * np, F->fast + (size_t)i * np, F->close + (size_t)i * np,
@@ -326,6 +335,9 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
                 F->sub_steps[i]++;
                 if (ns > F->sub_max[i]) F->sub_max[i] = ns;
                 if (ns >= P9_SUB_MAX) F->sub_capped[i]++;
+                if (cap_out && ns >= P9_SUB_MAX && cd.j >= 0)
+                    fprintf(cap_out, "%.0f\t%llu\t%.0f\t%.6g\t%.6g\t%.6g\t%d\n", cap_tp_ids[i], step0 + k + 1, cap_ids[cd.j], cd.q_est, cd.d_min, cd.v_est,
+                            cd.n_want);
             }
             if (enc >= 0 && (enc_remove || !step_method)) {
                 a = -1 - enc;
@@ -441,6 +453,18 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     double* tp_ids = malloc(sizeof(double) * (ntp > 0 ? ntp : 1));  // ids of the test particles in input order
     for (int i = 0; i < ntp; i++) tp_ids[i] = r->particles[r->N_active + i].r;
     to_dh(r, &P, tp, ntp, &com);
+    if (getenv("P9_CAPPED_OUT") && *getenv("P9_CAPPED_OUT")) {
+        if (use_gpu || real != P9_REAL_DOUBLE || sub_method != 2) {
+            fprintf(stderr, "P9_CAPPED_OUT: method smooth, P9GPU_MODE=cpu, double only\n");
+            return 2;
+        }
+        if (!(cap_out = fopen(getenv("P9_CAPPED_OUT"), "w"))) {
+            perror(getenv("P9_CAPPED_OUT"));
+            return 2;
+        }
+        fprintf(cap_out, "id\tstep\tplanet\tq_est_au\td_min_au\tv_est_au_yr\tn_want\n");
+        cap_tp_ids = tp_ids, cap_ids = ids;
+    }
     P.j2 = 0;
     const char* j2env = getenv("P9_J2");
     if (j2env && *j2env) {
@@ -609,6 +633,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     if (step_method && getenv("P9_FLYBY_OUT") && *getenv("P9_FLYBY_OUT") && write_flybys(getenv("P9_FLYBY_OUT"), &F, tp_ids, alive, ntp, P.np, ids))
         return 2;
+    if (cap_out && fclose(cap_out)) return 2;
     if (getenv("P9_REMOVED_OUT") && *getenv("P9_REMOVED_OUT")) {
         FILE* f = fopen(getenv("P9_REMOVED_OUT"), "w");
         if (!f) return 2;

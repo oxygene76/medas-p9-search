@@ -483,8 +483,17 @@ P9_HD void p9_kick_near(p9_body* p, const double* qs, const double* gm, const do
 // position relative to a planet at time t after the kick is right if the planet
 // is taken at Kepler(q, mean velocity; t) + a t^2 / 2 + h wb (the jump integral
 // cancels). Counts and *nsub as p9_step_tp_sub; returns -1 (nothing removed).
-P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
-                            const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub) {
+// cd (diagnostics, may be 0; it changes nothing in the step): for a step at
+// P9_SUB_MAX the planet with the smallest estimated pericentre, that estimate,
+// the speed there, the n the criteria would ask for without the cap, and the
+// smallest distance to that planet at the sub-steps' kicks.
+typedef struct {
+    int j, n_want;
+    double q_est, v_est, d_min;
+} p9_capdiag;
+P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
+                              const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub,
+                              p9_capdiag* cd) {
     const double h = 0.5 * dt;
     p9_jump(p, wa, h);
     // counters, as p9_kick_tp_step (closest approach within the step around the kick, three r_out / 4 = three rule radii)
@@ -547,6 +556,15 @@ P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const
         // of the kick (docs/substeps-plan.md)
         const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0);
         if (nj > n) n = nj;
+        if (cd && nj >= P9_SUB_MAX && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
+            const double v2 = w2e > w2 ? w2e : w2, d3 = m2e * sqrt(m2e);
+            int nw = P9_SUB_MAX;
+            for (; nw < (1 << 30); nw *= 2) {
+                const double s = dt / nw;
+                if (m2e >= 1024.0 * v2 * s * s && d3 >= 16.0 * P9_SUB_ORBIT * s * s * gm[j]) break;
+            }
+            cd->j = j, cd->n_want = nw, cd->q_est = sqrt(m2e), cd->v_est = sqrt(v2), cd->d_min = 1e300;
+        }
     }
     *nsub = any ? n : 1;
     if (!any) {
@@ -566,9 +584,18 @@ P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const
                   qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
         }
         p9_kick_near(p, qs, gm, r2out, np, s);
+        if (cd && cd->j >= 0) {
+            const double ux = p->x - qs[3 * cd->j], uy = p->y - qs[3 * cd->j + 1], uz = p->z - qs[3 * cd->j + 2];
+            const double d = sqrt(ux * ux + uy * uy + uz * uz);
+            if (d < cd->d_min) cd->d_min = d;
+        }
         p9_kepler(p, mu0, k == n - 1 ? hs : s);
     }
     return -1;
+}
+P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
+                            const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub) {
+    return p9_step_tp_smooth_d(p, q, uq, uqb, wa, wb, gm, r2out, np, mu0, dt, near, fast, close, fast_j, fast_d, nsub, 0);
 }
 
 // The synchronous state of a body kept half a drift ahead.
