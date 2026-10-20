@@ -272,6 +272,8 @@ def cmd_make(a):
     ic = out / "ic.txt"
     cmd = [sys.executable, "-I", str(ROOT / "tools/make_ic.py"), "--out", str(ic), "--n-tp", str(a.n_tp), "--seed", str(a.seed),
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
+    if a.members != "0":
+        cmd += ["--members", a.members, "--perturb", repr(a.perturb)]
     if a.no_removal and (a.encounter_method != "step" or not a.encounters or a.program != "p9gpu"):
         sys.exit("--no-removal needs --program p9gpu, the encounter method step and the radii (they define the counting zone)")
     if a.encounter_method in ("substep", "smooth") and (not a.encounters or a.program != "p9gpu"):
@@ -290,7 +292,9 @@ def cmd_make(a):
     subprocess.run([str(DEFAULT_P9SIM if a.program == "p9gpu" else a.p9sim), "init", str(ic), str(out / "input.sa")], check=True, stdout=subprocess.DEVNULL)
     params = {"case": "Brown & Batygin (2021): Sun (+ inner planets), Jupiter-Neptune (DE440s, JD 2458270.0), Planet Nine, test particles",
               "ic": {"generator": "tools/make_ic.py", "n_tp": a.n_tp, "seed": a.seed, "tp_from": a.tp_from,
-                     "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic)},
+                     "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic),
+                     **({"members": [int(m) for m in a.members.split(",")], "perturb_position_relative": a.perturb}
+                        if a.members != "0" else {})},
               **({"real": a.real} if a.real != "double" else {}),
               **({"model": {"name": "j2", **json.loads((out / "j2.json").read_text())}} if a.j2 else {}),
               "integrator": a.integrator, "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
@@ -480,6 +484,9 @@ def main():
                    help="p9sim's integrator (mercurius resolves close encounters; use with --no-encounters)")
     m.add_argument("--j2", default=None, metavar="NAMES",
                    help='model "j2": these planets merged into the Sun as its J2 (e.g. Jupiter,Saturn,Uranus; p9gpu only)')
+    m.add_argument("--members", default="0",
+                   help="ensemble members (tools/make_ic.py): 0 = the start values themselves, m >= 1 with perturbed positions; e.g. 0,1,2,3")
+    m.add_argument("--perturb", type=float, default=1e-12, help="relative perturbation of the positions of members >= 1")
     m.add_argument("--allow-dirty", action="store_true", help="tests only: allow uncommitted changes (the job's commit gets \"-dirty\")")
     n = sub.add_parser("next")
     n.add_argument("--prev", required=True)

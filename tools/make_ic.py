@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Start values of the test case (Brown & Batygin 2021) as exact decimal text.
 
-  python tools/make_ic.py --out ic.txt [--n-tp 4000] [--seed 9] [--tp-from 0 --tp-to 4000]
+  python tools/make_ic.py --out ic.txt [--n-tp 4000] [--seed 9] [--tp-from 0 --tp-to 4000] [--members 0,1,2,3 --perturb 1e-12]
 
 Bodies, in this order (the first six are massive, N_active = 6):
   Sun      the Sun with the masses of Mercury, Venus, Earth+Moon and Mars, at
@@ -19,6 +19,14 @@ Bodies, in this order (the first six are massive, N_active = 6):
   tp00000… test particles (massless) in the distant Kuiper belt: a uniform in
            150-550 au, perihelion uniform in 30-50 au, inclination uniform in
            0-10 deg, the angles uniform; seeded, so the set is reproducible.
+
+Ensembles (--members): member 0 is the set itself; member m >= 1 is the same
+set with each test particle's barycentric position multiplied, per component,
+by 1 + perturb u, u uniform in [-1, 1] drawn from the seed (seed, m, i), so a
+particle gets the same perturbation in any slice. Member m's particle i is
+named tp{m * 100000 + i} (tp100005: member 1, particle 5; member 0 keeps
+tp00005) with id 6 + m * 100000 + i; one file may hold several members (they
+do not interact).
 
 Frame: ecliptic and equinox J2000 (the elements of the reference population
 refer to it), barycentric; units au, year (365.25 d), solar mass, G = (k *
@@ -187,6 +195,8 @@ def main():
     ap.add_argument("--tp-from", type=int, default=0)
     ap.add_argument("--tp-to", type=int, default=None)
     ap.add_argument("--dt", type=float, default=0.5)
+    ap.add_argument("--members", default="0", help="ensemble members (comma-separated, 0 = the set itself; see above)")
+    ap.add_argument("--perturb", type=float, default=1e-12, help="relative perturbation of the positions of members >= 1")
     ap.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",
                     help="p9sim's integrator (mercurius: hybrid, resolves close encounters with IAS15)")
     ap.add_argument("--j2", default=None, help='model "j2": planets merged into the central body, e.g. Jupiter,Saturn,Uranus')
@@ -194,12 +204,28 @@ def main():
     args = ap.parse_args()
     tp_to = args.n_tp if args.tp_to is None else args.tp_to
     rows, j2 = build(args.n_tp, args.seed, args.tp_from, tp_to, args.j2.split(",") if args.j2 else None)
+    members = [int(m) for m in args.members.split(",")]
+    if members != [0]:
+        if args.n_tp > 100000 or min(members) < 0 or max(members) > 9 or len(set(members)) != len(members):
+            sys.exit("--members: distinct members 0..9, at most 100000 test particles")
+        massive = [r for r in rows if not r[0].startswith("tp")]
+        tps = [r for r in rows if r[0].startswith("tp")]
+        rows = list(massive)
+        for mem in members:
+            for name, m, pos, v, pid in tps:
+                i = int(name[2:])
+                if mem == 0:
+                    rows.append((name, m, pos, v, pid))
+                    continue
+                u = np.random.default_rng([args.seed, mem, i]).uniform(-1.0, 1.0, 3)
+                rows.append((f"tp{mem * 100000 + i:06d}", m, pos * (1.0 + args.perturb * u), v, pid + mem * 100000))
     if j2 and args.j2_out:
         import json
         open(args.j2_out, "w").write(json.dumps(j2, indent=1) + "\n")
     with open(args.out, "w") as f:
         f.write("# p9sim start values, written by tools/make_ic.py (see its docstring); values are Python repr (exact)\n")
-        f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}\n")
+        f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}"
+                + (f", members {args.members} (positions perturbed by {args.perturb:g} relative)" if members != [0] else "") + "\n")
         f.write(f"G {G!r}\ndt {args.dt!r}\nN_active {sum(1 for r in rows if r[1] > 0)}\ncorrector 0\n")
         if args.integrator != "whfast":
             f.write(f"integrator {args.integrator}\n")
