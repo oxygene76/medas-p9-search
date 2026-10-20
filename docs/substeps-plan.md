@@ -191,9 +191,75 @@ flybys). CPU time 660 s against 613 s (one core). This run had no flyby
 inside Neptune; one would again be integrated as a point mass with too few
 sub-steps.
 
-**Proposal (decision pending):** for the production runs, (1) a collision
+**Proposal:** for the production runs, (1) a collision
 with the physical radius of a planet ends the test particle, as in MERCURY
 (at a sub-step's kick closer than the radius; fate `collision:<planet>`),
 and (2) the cap raised to 2^21, so that every flyby outside the radius gets
 the sub-steps that the criteria ask for. Both change the bits of capped steps
 only. The running 200-Myr comparison (cap 4,096) stays as it is.
+
+### Decision and the new version (2026-10-20)
+
+Decision of the project lead: both, for the production runs; first the false
+alarms at the edge of r_out are removed (else the higher cap costs time on the
+GPU for nothing); then regression, close (down to 0.02 au, plus flybys at 0.5
+to 5 planet radii), grid, bits GPU = CPU = WebAssembly and the Jacobi test
+again; `P9_CAPPED_OUT` stays as a counter, plus the collisions per planet. The
+running 200-Myr comparison stays the acceptance of the smooth transition and
+is evaluated as committed; the two changes concern only rare steps at the cap
+and are accepted with these tests. If the comparison fails, `P9_CAPPED_OUT`
+shows whether steps at the cap cause it, and the comparison is repeated with
+the new version.
+
+Implementation (`gpu/whdh.h` p9_step_tp_smooth, the same in `gpu/whdh_t.h`,
+GPU, CPU twin and WebAssembly; `tools/p9job.py`):
+
+- **The cap 2^21 only where the pericentre is reached within the step.** The
+  pericentre is within the step if the particle approaches (r·v < 0) and
+  either the straight line's closest approach −(r·v)/v² or the fall time
+  sqrt(r³/μ) is at most 2 dt, or if it is bound to the planet with half a
+  period π sqrt(a³/μ) of at most 2 dt. Only + − × ÷ and sqrt, compared
+  without roots where possible (−r·v ≤ 2 dt v², r³ ≤ 4 dt² μ, π² a³ ≤
+  4 dt² μ). The factor 2: against the exact two-body time to the pericentre
+  (Jupiter, Neptune, Planet Nine; distances 3e-5 to 5 au, speeds 0.003 to
+  10 au/yr; about 9e5 approaching states with the pericentre within the
+  step), factor 2 missed none, 1.5 missed 9, 1 missed 843. Such steps may
+  take up to 2^21 sub-steps; all others at most 4,096, as before (the false
+  alarms at the edge of r_out stay at 4,096 and cost no more than before).
+  A step whose pericentre is not within it needs fewer than 4,096: within
+  about 0.2 au of Neptune (r³ ≤ 4 dt² μ) every approaching step counts as one
+  with the pericentre in it.
+- **First version, not kept (c7fccfb):** as asked, without the pericentre
+  within the step n came from the step's smallest distance (the straight
+  line's, m² halved, as the planet's pull brings the particle up to 1/0.68
+  closer within the step; speed from the energy; in a two-body check n then
+  never too small). Regression, close, grid passed, but the Jacobi test
+  failed: median |dC/C| 3.3e-6 at 10 Myr, growing as t^0.92 (before: 4.5e-8,
+  t^0.55), as with the hard switch. The n for the far part of the zone (1–3
+  au) then follows the criteria (e.g. 4), while the pericentre estimate,
+  though too pessimistic there, gave many more sub-steps: the good
+  conservation of the accepted version owes something to that. With the
+  estimate in every step and only the cap depending on the timing
+  (aa0eda7): 4.7e-8, t^0.56 (`runs/jacobi-hybrid`). Decision pending.
+- **Collision**: closer to a planet than its physical radius at a sub-step's
+  kick: the particle is removed, fate `collision:<id>`, counted per planet
+  (`collisions=` in the result line, `collisions` in result.json). The kicks
+  are at most v dt/n apart, at 2^21 sub-steps under 3e-6 au, far below the
+  radii.
+- **Cap 2^21** for the smooth transition (`P9_SMOOTH_MAX`); the hard switch
+  keeps 4,096. 2^21 is what the criteria ask for at the physical radius of
+  Neptune and Planet Nine (2^20 for Jupiter, Saturn, Uranus).
+
+Physical radii (`tools/p9job.py` PHYSICAL_RADII_KM, written into the job as
+params.removal.encounter.collision with their source; `--no-collision` leaves
+them out):
+
+| planet | radius | source |
+|---|---|---|
+| Jupiter | 71,492 km = 4.7789e-4 au | equatorial radius at 1 bar, IAU WGCCRE 2015 (Archinal et al. 2018, Celest. Mech. Dyn. Astron. 130, 22) |
+| Saturn | 60,268 km = 4.0287e-4 au | same |
+| Uranus | 25,559 km = 1.7085e-4 au | same |
+| Neptune | 24,764 km = 1.6554e-4 au | same |
+| Planet Nine | 16,565 km = 1.1073e-4 au | **assumption**, not a measurement: 2.6 Earth radii (6,371.0 km) for 6.2 Earth masses |
+
+Results of the new version: see the next section.
