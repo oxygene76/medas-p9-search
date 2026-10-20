@@ -59,3 +59,8 @@ from 175 Myr (−1.09 to −1.24). R falls in all three runs after about 140 Myr
 (MERCURIUS 0.693 → 0.608), faster in both p9gpu runs. The differences at
 successive times are not independent (the same particles), so this is one
 excursion, not several.
+
+Note (not a rating; the rule of `docs/acceptance-rules.md` applies only from
+the next acceptance on): with that rule this comparison, 33 single tests,
+would have passed: one failure where up to 4 are allowed for N = 33, and that
+one at 2.5 standard errors, below the Bonferroni limit of 3.2.

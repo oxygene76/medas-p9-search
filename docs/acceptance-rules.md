@@ -1,7 +1,9 @@
-# Overall rule for acceptances with many single tests (proposal, decision pending)
+# Overall rule for acceptances with many single tests
 
-Asked for by the project lead on 2026-10-20 (point 4), for future acceptances,
-to be fixed before their runs.
+Asked for by the project lead on 2026-10-20 (point 4); **accepted on
+2026-10-20** as proposed below (at most 3 failures among 30 tests, Bonferroni
+limit 3.1 standard errors), valid from the next acceptance on. Earlier
+acceptances are not rated again.
 
 ## The problem
 
@@ -21,7 +23,7 @@ numbers somewhat, not the point):
 
 So a single failure among 30 says almost nothing by itself.
 
-## Proposal
+## The rule
 
 For a series of N single tests, each with its own limit as before:
 

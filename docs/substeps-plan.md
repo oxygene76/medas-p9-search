@@ -268,4 +268,51 @@ them out):
 | Neptune | 24,764 km = 1.6554e-4 au | same |
 | Planet Nine | 16,565 km = 1.1073e-4 au | **assumption**, not a measurement: 2.6 Earth radii (6,371.0 km) for 6.2 Earth masses |
 
-Results of the new version: see the next section.
+Results of v5 (`runs/accept-v5`, 79c16e2; the decision of the project lead:
+v5 runs the ensemble if all of these pass):
+
+| test | criterion | result |
+|---|---|---|
+| regression, the 32 numerical losses | kick ± 5 %, no false loss | 32 of 32 (0.9815 to 1.0327) |
+| close, Neptune and Planet Nine, 0.02–0.78 / 0.02–7 au | medians 1 ± 0.01, all 1 ± 0.05, none spuriously unbound | worst 4e-4 (both), medians 1 ± 1e-4, none unbound |
+| close at 0.5–5 planet radii (10 geometries × 2 speeds × 8 phases per row) | inside the radius a collision, outside none; outside the kick criteria above | no wrong outcome (Neptune, Planet Nine); outside worst 8.9e-3 (Neptune), 3e-4 (Planet Nine), medians 1 ± 1e-4 |
+| grid, both presets | ≤ 1e-3 in every cell | worst cell 4.0e-4 (Neptune), 8.1e-4 (Planet Nine) |
+| bits | CPU = WebAssembly, GPU = CPU, df64 GPU = CPU twin, double-t = double | 36 of 36 cases each (the 32 regression cases, the 4 deep flybys up to n = 2^21 with collisions) |
+| Jacobi constant | no systematic growth; GPU = CPU | median 5.1e-8 at 10 Myr, t^0.56, maximum 4.6e-7; 2 collisions, none lost; GPU hash: see `runs/val/ens-gpu/run.log` |
+
+### The number of sub-steps must stay constant within a flyby
+
+Found 2026-10-20 with the versions of the decision above. The Jacobi test
+(Sun, Neptune on a circular orbit, 256 Neptune crossers, 10 Myr,
+`tools/jacobi_test.py`; C is conserved exactly) for every version:
+
+| version | n of the near part | median \|dC/C\| at 10 Myr | maximum | growth of the median | lost / collisions |
+|---|---|---|---|---|---|
+| fixed step | none (no sub-steps) | 1.2e-2 | – | t^2.0 | 37 lost |
+| hard switch (`substep`) | sub-steps only inside the trigger radius | 3.4e-6 | 5.5e-4 | t^0.90 | – |
+| v1, accepted (47127ba) | from the pericentre estimate, cap 4,096 | 4.5e-8 | 2.9e-6 | t^0.55 | 4 lost (numerical, at the cap) |
+| v1 with cap 2^21 (experiment) | the same, cap 2^21 | 3.8e-8 | 3.9e-7 | t^0.51 | none |
+| v2 (c7fccfb) | estimate only with the pericentre ahead in the step, else the step's smallest distance | 3.3e-6 | 3.0e-5 | t^0.92 | 1 lost (a real ejection) |
+| v3 (aa0eda7) | estimate; cap 2^21 only with the pericentre ahead in the step | 4.7e-8 | 4.6e-7 | t^0.56 | 2 collisions |
+| v4 (a9ea1f1) | v3, plus at least what the step's smallest distance asks for | 3.3e-6 | 1.8e-5 | t^0.94 | 1 collision |
+| v5 (79c16e2) | estimate; cap 2^21 near the pericentre (before or after it) | 5.1e-8 | 4.6e-7 | t^0.56 | 2 collisions |
+
+v4 has at least as many sub-steps as v3 in every step and yet drifts like the
+hard switch: more sub-steps do not help, their change does. The two-body
+pericentre estimate (distance and speed at the pericentre of the orbit around
+the planet) is nearly constant along a flyby, so n is too; the step's
+smallest distance changes from step to step, and n with it, by powers of two.
+Each step's leapfrog in the near part leaves an error of the order of its
+sub-step squared; with the same n in successive steps these errors largely
+cancel (the composition of identical symmetric steps), with changing n they
+do not and add up, as in the hard switch, whose abrupt change of the step at
+the trigger radius left an error of the order of the planet's perturbation.
+
+Rule for any change to the choice of n: **n may depend only on quantities that
+are (nearly) conserved during a flyby** (the pericentre estimate, the
+planetocentric energy and angular momentum), not on the particle's current
+distance or the step's phase. A cap may depend on the phase (v5: near the
+pericentre or not), because it only binds where the estimate asks for more
+than 4,096, and then in all steps around the pericentre alike. Any change is
+checked with the Jacobi test, besides the kick tests (regression, close,
+grid), which do not see this drift: v2 and v4 passed all of those.
