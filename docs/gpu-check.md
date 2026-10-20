@@ -51,3 +51,33 @@ Expected on an L40S (`docs/gpu-performance.md`): the double benchmark about
 1,100 s if the kernel runs at the same share of the FP64 rate; df64 about
 twice as fast, since the L40S, like this GPU, computes float 64 times faster
 than double.
+
+## Result on the L40S (2026-10-20, package 07e5d2c, prebuilt binary)
+
+Server appmdp-05 (QEMU virtual machine, 32 threads, Ubuntu 22.04, glibc 2.35,
+gcc 11.4); NVIDIA L40S (sm_89, 142 SMs, 46 GB), driver 580.178.04, power
+limit 350 W, ECC on. Run by the project lead; report-gpu.txt:
+
+- **ALL SAME**: control and repro on GPU and CPU, repro-df64, and both
+  benchmarks give the hashes of the reference machine (laptop GPU and CPU
+  twin), bit for bit, on another GPU architecture (sm_89 against sm_120) and
+  another CPU.
+- Benchmark, 64,000 test particles over 10 Myr:
+
+  | | L40S | RTX 5080 Laptop (alone) | L40S / laptop |
+  |---|---|---|---|
+  | double (FP64) | 1,417 s, 9.0e8 particle-steps/s | 2,850 s, 4.5e8 | 2.0 |
+  | df64 | 478 s, 2.7e9 | about 1,430 s, 9.1e8 | 2.9 |
+  | df64 / double on the same GPU | 2.96 | 2.0 | |
+
+  GPU utilisation 100 % in both; power 138 W (double: limited by the FP64
+  units) against 353 W (df64: the float units at full load, at the power
+  limit, SM clock 2,308 instead of 2,520 MHz).
+- Throughput per operation (probe): double add/mul 6.0e11/s (laptop 2.86e11),
+  float 4.3e13/s (1.97e13): the L40S computes double at 1/71 of float, as the
+  laptop GPU (1/69). The double benchmark runs at 86 % of the limit its FP64
+  rate allows (`docs/gpu-performance.md`: 572 FP64 operations per step), as on
+  the laptop (90 %).
+- Estimate in `docs/gpu-performance.md` was about 1,100 s and a factor 2.5;
+  measured 1,417 s and 2.0: the L40S's FP64 rate is 2.1 times the laptop's,
+  not 2.5 times.

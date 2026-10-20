@@ -71,7 +71,7 @@ as two):
 | GPU | FP64 (datasheet) | FP64 instructions/s | factor vs this GPU | particle-steps/s (saturated, estimate) |
 |---|---|---|---|---|
 | RTX 5080 Laptop (this) | – | 2.86e11 (measured) | 1 | 4.6e8 (measured) |
-| L40S | not stated; 1/64 of 91.6 TFLOPS FP32 = about 1.4 TFLOPS | about 7.2e11 | about 2.5 | about 1.2e9 |
+| L40S | not stated; 1/64 of 91.6 TFLOPS FP32 = about 1.4 TFLOPS | about 7.2e11; **measured 6.0e11** | about 2.5; **measured 2.0** | about 1.2e9; **measured 9.0e8 (df64: 2.7e9)** |
 | A100 (SXM or PCIe) | 9.7 TFLOPS | 4.9e12 | 17 | about 7.8e9 |
 | H100 PCIe | 26 TFLOPS | 1.3e13 | 45 | about 2.1e10 |
 | H100 SXM | 34 TFLOPS | 1.7e13 | 59 | about 2.7e10 |
