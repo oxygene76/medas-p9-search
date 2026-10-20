@@ -313,16 +313,19 @@ P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const d
 // there (u = Kepler velocity + a t).
 #define P9_SUB_MAX 4096
 #define P9_SUB_ORBIT 681.3  // (164 / (2 pi))^2, rounded up
-P9_HD int p9_sub_n(double m2, double w2, double gm, double dt) {
+// The general form: the flyby lasts at least k sub-steps (k2 = k^2) and the orbit around the planet
+// at least 164 sqrt(orb) of them.
+P9_HD int p9_sub_n_k(double m2, double w2, double gm, double dt, double k2, double orb) {
     if (!(m2 > 0.0)) return P9_SUB_MAX;
     const double d3 = m2 * sqrt(m2);
     int n = 1;
     for (; n < P9_SUB_MAX; n *= 2) {
         const double s = dt / n;  // dt over a power of two: exact
-        if (m2 >= 64.0 * w2 * s * s && d3 >= P9_SUB_ORBIT * s * s * gm) break;
+        if (m2 >= k2 * w2 * s * s && d3 >= orb * P9_SUB_ORBIT * s * s * gm) break;
     }
     return n;
 }
+P9_HD int p9_sub_n(double m2, double w2, double gm, double dt) { return p9_sub_n_k(m2, w2, gm, dt, 64.0, 1.0); }
 
 // One step with sub-steps where needed. Counts as p9_kick_tp_step (near, fast,
 // close, *fast_j, *fast_d; counters may be NULL); *nsub: the sub-steps used (1:
@@ -539,7 +542,10 @@ P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const
             m2e = qp * qp;
             w2e = 2.0 * en + 2.0 * mu / qp;
         }
-        const int nj = p9_sub_n(m2e, w2e > w2 ? w2e : w2, gm[j], dt);
+        // the near part is integrated in A with a leapfrog whose n changes from step to step: finer than
+        // for the hard switch (32 sub-steps per flyby, 656 per orbit), so that its error stays below 1e-3
+        // of the kick (docs/substeps-plan.md)
+        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0);
         if (nj > n) n = nj;
     }
     *nsub = any ? n : 1;
