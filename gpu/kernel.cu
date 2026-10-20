@@ -150,7 +150,9 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
     for (int k = 0; k < nb; k++) {
         int fj = -1, ns = 1;
         double fd = 0.0;
-        const int enc = sub ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm,
+        const int enc = sub == 2 ? p9_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k,
+                                                     c_gm, c_r2enc, np, mu0, dt, nr, fs, cl, &fj, &fd, &ns)
+                        : sub ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm,
                                              c_r2enc, np, mu0, dt, nr,
                                              fs, cl, &fj, &fd, &ns)
                             : p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, c_r2enc, np, mu0, dt, nr,

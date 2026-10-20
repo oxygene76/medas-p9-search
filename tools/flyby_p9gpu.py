@@ -66,7 +66,7 @@ def energy_and_h_dump(text):
 
 def method_env(method, planet_name, m, dt):
     """Environment for p9gpu: nothing (fixed step) or method substep with the rule's trigger radius."""
-    if method != "substep":
+    if method not in ("substep", "smooth"):
         return {}
     import math as _m
     r_orbit = 0.5 * (m / (6.2 * fc.M_EARTH)) ** (1 / 3) * (dt / 0.5) ** (2 / 3)
@@ -74,7 +74,7 @@ def method_env(method, planet_name, m, dt):
     # trigger radius: 4 times the rule's radius (p9job --trigger-factor); FLYBY_TRIGGER_FACTOR and
     # FLYBY_PLANET_SUBSTEPS override both for experiments
     r = float(os.environ.get("FLYBY_TRIGGER_FACTOR", "4")) * max(r_orbit, hill)
-    return {"P9_ENCOUNTER_METHOD": "substep", "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": os.environ.get("FLYBY_PLANET_SUBSTEPS", "8")}
+    return {"P9_ENCOUNTER_METHOD": method, "P9_ENCOUNTER_RADII": f"1={r:.4f}", "P9_PLANET_SUBSTEPS": os.environ.get("FLYBY_PLANET_SUBSTEPS", "8")}
 
 
 def run_p9gpu(start, dt, nsteps, planet_name, p9gpu, p9sim, mode, extra):
@@ -238,13 +238,13 @@ def main():
     r.add_argument("--p9gpu", default=str(ROOT / "build/gpu-cpu/p9gpu"))
     r.add_argument("--p9sim", default=str(ROOT / "build/gcc-O3/p9sim"))
     r.add_argument("--mode", choices=["cpu", "gpu"], default="cpu")
-    r.add_argument("--method", choices=["fixed", "substep"], default="fixed")
+    r.add_argument("--method", choices=["fixed", "substep", "smooth"], default="fixed")
     c = sub.add_parser("close")
     c.add_argument("--planet", choices=fc.PRESETS, default="neptune")
     c.add_argument("--dt", type=float, default=0.5)
     c.add_argument("--dmin", type=float, nargs="+")
     c.add_argument("--vrel", type=float, nargs="+")
-    c.add_argument("--method", choices=["fixed", "substep"], default="substep")
+    c.add_argument("--method", choices=["fixed", "substep", "smooth"], default="smooth")
     c.add_argument("--out", default=None)
     c.add_argument("--p9gpu", default=str(ROOT / "build/gpu-cpu/p9gpu"))
     c.add_argument("--p9sim", default=str(ROOT / "build/gcc-O3/p9sim"))

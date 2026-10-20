@@ -15,7 +15,9 @@
 //                        closest approach within the step (step), or followed
 //                        with sub-steps where a step is too long (substep;
 //                        nothing removed at the planets; the radii are the
-//                        trigger radii; whdh.h p9_step_tp_sub)
+//                        trigger radii; whdh.h p9_step_tp_sub), or split
+//                        smoothly into a far and a near part (smooth, as
+//                        MERCURIUS; the radii are r_out; p9_step_tp_smooth)
 //   P9_ENCOUNTER_REMOVE=0  with method step: close encounters are counted, not
 //                        removed (only the distance rules remove)
 //   P9_FLYBY_OUT=file    with method step: the flyby records per test particle
@@ -307,7 +309,10 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
         for (int k = 0; k < nb; k++) {
             int fj = -1, ns = 1;
             double fd = 0.0;
-            const int enc = step_method == 2 ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k,
+            const int enc = step_method == 3 ? p9_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3,
+                                                                 wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, F->near + (size_t)i * np,
+                                                                 F->fast + (size_t)i * np, F->close + (size_t)i * np, &fj, &fd, &ns)
+                          : step_method == 2 ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k,
                                                               wb + 3 * k, P->gm, r2enc, np,
                                                               P->mu0, dt, F->near + (size_t)i * np, F->fast + (size_t)i * np, F->close + (size_t)i * np,
                                                               &fj, &fd, &ns)
@@ -391,11 +396,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     const int max_nb = getenv("P9GPU_BLOCK") ? atoi(getenv("P9GPU_BLOCK")) : 2000;
     const int real = p9_real_parse(getenv("P9GPU_REAL"));
     const char* method_env = getenv("P9_ENCOUNTER_METHOD");
-    if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step") && strcmp(method_env, "substep")) {
-        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick, step or substep\n");
+    if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step") && strcmp(method_env, "substep") &&
+        strcmp(method_env, "smooth")) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick, step, substep or smooth\n");
         return 2;
     }
-    const int sub_method = method_env && !strcmp(method_env, "substep");
+    const int sub_method = !method_env ? 0 : !strcmp(method_env, "substep") ? 1 : !strcmp(method_env, "smooth") ? 2 : 0;
     const int step_method = method_env && (!strcmp(method_env, "step") || sub_method);
     const char* remove_env = getenv("P9_ENCOUNTER_REMOVE");
     const int enc_remove = !(remove_env && !strcmp(remove_env, "0")) && !sub_method;
@@ -621,7 +627,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
            use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text,
-           sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
+           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);

@@ -228,7 +228,7 @@ def cmd_make(a):
            "--tp-from", str(a.tp_from), "--tp-to", str(a.tp_to if a.tp_to is not None else a.n_tp), "--dt", repr(a.dt)]
     if a.no_removal and (a.encounter_method != "step" or not a.encounters or a.program != "p9gpu"):
         sys.exit("--no-removal needs --program p9gpu, the encounter method step and the radii (they define the counting zone)")
-    if a.encounter_method == "substep" and (not a.encounters or a.program != "p9gpu"):
+    if a.encounter_method in ("substep", "smooth") and (not a.encounters or a.program != "p9gpu"):
         sys.exit("--encounter-method substep needs --program p9gpu and the radii (they are the trigger radii)")
     if a.integrator != "whfast":
         if a.program != "p9sim":
@@ -261,9 +261,9 @@ def cmd_make(a):
                                             "note": "close encounters are followed with sub-steps where a step is too "
                                                                      "long (gpu/whdh.h p9_step_tp_sub, docs/substeps-plan.md); the radii are "
                                                                      "the trigger radii; only the distance rules remove"}
-                                           if a.encounter_method == "substep" else {}),
+                                           if a.encounter_method in ("substep", "smooth") else {}),
                                         **(substep_radii(encounter_radii(ic, a.dt, a.radius, a.v99), a.trigger_factor)
-                                           if a.encounters and a.encounter_method == "substep" else
+                                           if a.encounters and a.encounter_method in ("substep", "smooth") else
                                            encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
@@ -312,12 +312,12 @@ def cmd_run(a):
     method = job["params"].get("removal", {}).get("encounter", {}).get("method", "kick")  # jobs before the method: at the kick
     env["P9_ENCOUNTER_METHOD"] = method
     env.pop("P9_PLANET_SUBSTEPS", None)
-    if method == "substep":
+    if method in ("substep", "smooth"):
         env["P9_PLANET_SUBSTEPS"] = str(job["params"]["removal"]["encounter"]["planet_substeps"])
     remove = job["params"].get("removal", {}).get("encounter", {}).get("remove", True)
     env["P9_ENCOUNTER_REMOVE"] = "1" if remove else "0"
     env.pop("P9_FLYBY_OUT", None)
-    if method in ("step", "substep") and enc:
+    if method in ("step", "substep", "smooth") and enc:
         env["P9_FLYBY_OUT"] = str(d / "flybys.tsv")
     if enc:
         env["P9_ENCOUNTER_RADII"] = enc
@@ -338,7 +338,7 @@ def cmd_run(a):
         sys.exit(f"the program used encounter_remove={kv.get('encounter_remove', 1)}, the job needs {remove}")
     if enc and kv.get("encounter_method", "kick") != method:
         sys.exit(f"the program used encounter method {kv.get('encounter_method', 'kick')}, the job needs {method}")
-    if method == "substep" and int(kv.get("planet_substeps", 1)) != job["params"]["removal"]["encounter"]["planet_substeps"]:
+    if method in ("substep", "smooth") and int(kv.get("planet_substeps", 1)) != job["params"]["removal"]["encounter"]["planet_substeps"]:
         sys.exit("the program used other planet sub-steps than the job")
     if kv.get("model", "full") != model["name"]:
         sys.exit(f"the program integrated model {kv.get('model', 'full')}, the job needs {model['name']}")
@@ -358,9 +358,9 @@ def cmd_run(a):
                   "flybys_under_1_5_steps": removed_by(job, kv.get("fast_flybys", "")),
                   "flybys_under_0_1_au": removed_by(job, kv.get("close_flybys", "")), "encounter_remove": remove,
                   **({"flybys_file": {"file": "flybys.tsv", "sha256": sha256_file(d / "flybys.tsv")}} if (d / "flybys.tsv").exists() else {})}
-                 if enc and method in ("step", "substep") else {}),
+                 if enc and method in ("step", "substep", "smooth") else {}),
               **({"sub_steps": int(kv.get("sub_steps", 0)), "sub_max": int(kv.get("sub_max", 1)), "sub_capped": int(kv.get("sub_capped", 0))}
-                 if method == "substep" else {})}
+                 if method in ("substep", "smooth") else {})}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -406,7 +406,7 @@ def main():
                    help="encounter radius of a planet instead of the rule (e.g. the radii of another job); repeatable")
     m.add_argument("--v99", action="append", default=[], metavar="NAME=AU_PER_YR",
                    help="99th percentile of the encounter speed at a planet: the radius is at least 1.5 v99 dt; repeatable")
-    m.add_argument("--encounter-method", choices=["step", "kick", "substep"], default="step",
+    m.add_argument("--encounter-method", choices=["step", "kick", "substep", "smooth"], default="step",
                    help="close encounters by the closest approach within a step (step, default) or at the kick (kick, before 2026-10-19 evening)")
     m.add_argument("--trigger-factor", type=float, default=4.0,
                    help="method substep: trigger radius = this times the rule's radius (docs/substeps-plan.md)")

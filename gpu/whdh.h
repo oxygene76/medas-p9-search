@@ -413,6 +413,158 @@ P9_HD int p9_step_tp_sub(p9_body* p, const double* q, const double* uq, const do
     return -1;
 }
 
+// ------------------------------------------------------------------ smooth transition (method "smooth")
+// docs/substeps-plan.md, decision of 2026-10-20: as in MERCURIUS (Rein et al.
+// 2019), each planet's force on a test particle is split with a smooth
+// function s(d) of their distance d into a far part s F and a near part
+// (1 - s) F. The far part is the usual kick at the middle of the step; the
+// near part is added to the Kepler motion around the Sun, which then runs in
+// sub-steps (the step: jump(h) far-kick(dt) jump(h) A(dt), A = Kepler + near
+// part). Where no planet comes within r_out during a step, A is the Kepler
+// drift alone and the step is the production step: no abrupt switch.
+// s: 0 for d <= r_in, 1 for d >= r_out, in between the polynomial of degree 11
+// with five vanishing derivatives at both ends ("C5", Rein et al. 2019; the
+// infinitely smooth one needs exp, which is not reproducible bit for bit).
+// r_in = r_out / 10 as in MERCURIUS; r_out = the trigger radius.
+P9_HD double p9_far(double d, double rout) {
+    const double rin = 0.1 * rout;
+    if (d >= rout) return 1.0;
+    if (d <= rin) return 0.0;
+    const double y = (d - rin) / (rout - rin);
+    const double y2 = y * y, y3 = y2 * y, y6 = y3 * y3;
+    return (462.0 - 1980.0 * y + 3465.0 * y2 - 3080.0 * y3 + 1386.0 * y2 * y2 - 252.0 * y2 * y3) * y6;
+}
+
+// The far part of the kick at the middle of the step (r2out[j] = r_out^2; 0: no split for this planet).
+P9_HD void p9_kick_far(p9_body* p, const double* q, const double* gm, const double* r2out, int np, double h) {
+    double ax = 0.0, ay = 0.0, az = 0.0;
+    for (int j = 0; j < np; j++) {
+        const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
+        const double d2 = dx * dx + dy * dy + dz * dz;
+        const double d = sqrt(d2);
+        double k = gm[j] / (d2 * d);
+        if (r2out[j] > 0.0 && d2 < r2out[j]) k = k * p9_far(d, sqrt(r2out[j]));
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+}
+
+// The near part, as a kick with the planets at qs.
+P9_HD void p9_kick_near(p9_body* p, const double* qs, const double* gm, const double* r2out, int np, double h) {
+    double ax = 0.0, ay = 0.0, az = 0.0;
+    for (int j = 0; j < np; j++) {
+        if (!(r2out[j] > 0.0)) continue;
+        const double dx = qs[3 * j] - p->x, dy = qs[3 * j + 1] - p->y, dz = qs[3 * j + 2] - p->z;
+        const double d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 >= r2out[j]) continue;
+        const double d = sqrt(d2);
+        const double k = gm[j] / (d2 * d) * (1.0 - p9_far(d, sqrt(r2out[j])));
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+}
+
+// One step with the smooth transition. q, uq, uqb: the planets at the kick and
+// their velocities before and after it (as for p9_step_tp_sub); wb: the jump
+// velocity of the step's second jump. In A the jump term moves neither the
+// particle nor the planets; relative to the true motion the particle is then
+// ahead by h wb (the second jump) less the jump it does not take, so its
+// position relative to a planet at time t after the kick is right if the planet
+// is taken at Kepler(q, mean velocity; t) + a t^2 / 2 + h wb (the jump integral
+// cancels). Counts and *nsub as p9_step_tp_sub; returns -1 (nothing removed).
+P9_HD int p9_step_tp_smooth(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
+                            const double* r2out, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub) {
+    const double h = 0.5 * dt;
+    p9_jump(p, wa, h);
+    // counters, as p9_kick_tp_step (closest approach within the step around the kick, three r_out / 4 = three rule radii)
+    for (int j = 0; j < np; j++) {
+        if (!(r2out[j] > 0.0) || !near) continue;
+        const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
+        const double wx = uq[3 * j] - p->vx, wy = uq[3 * j + 1] - p->vy, wz = uq[3 * j + 2] - p->vz;
+        const double w2 = wx * wx + wy * wy + wz * wz;
+        double tau = w2 > 0.0 ? -(dx * wx + dy * wy + dz * wz) / w2 : 0.0;
+        const int inside = tau > -h && tau <= h;
+        if (tau < -h) tau = -h;
+        if (tau > h) tau = h;
+        const double ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+        const double m2 = ex * ex + ey * ey + ez * ez;
+        if (inside && m2 < 0.5625 * r2out[j]) {
+            near[j]++;
+            if (m2 < 0.01) close[j]++;
+            if (m2 < 2.25 * w2 * dt * dt) {
+                fast[j]++;
+                *fast_j = j;
+                *fast_d = sqrt(m2);
+            }
+        }
+    }
+    p9_kick_far(p, q, gm, r2out, np, dt);
+    p9_jump(p, wb, h);
+    // A over [0, dt] after the kick: Kepler alone unless a planet comes within r_out
+    double um[3 * P9_MAX_PLANETS], ac[3 * P9_MAX_PLANETS];
+    for (int c = 0; c < 3 * np; c++) um[c] = 0.5 * (uq[c] + uqb[c]), ac[c] = (uqb[c] - uq[c]) / dt;
+    int n = 1, any = 0;
+    for (int j = 0; j < np; j++) {
+        if (!(r2out[j] > 0.0)) continue;
+        // planet (as used in A) and particle at t = 0, straight lines over [0, dt]
+        const double dx = q[3 * j] + h * wb[0] - p->x, dy = q[3 * j + 1] + h * wb[1] - p->y, dz = q[3 * j + 2] + h * wb[2] - p->z;
+        const double wx = um[3 * j] - p->vx, wy = um[3 * j + 1] - p->vy, wz = um[3 * j + 2] - p->vz;
+        const double w2 = wx * wx + wy * wy + wz * wz;
+        double tau = w2 > 0.0 ? -(dx * wx + dy * wy + dz * wz) / w2 : 0.0;
+        if (tau < 0.0) tau = 0.0;
+        if (tau > dt) tau = dt;
+        const double ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+        const double m2 = ex * ex + ey * ey + ez * ez;
+        if (m2 >= r2out[j]) continue;
+        any = 1;
+        // focusing: the pericentre of the two-body orbit around the planet
+        const double d2 = dx * dx + dy * dy + dz * dz;
+        const double r = sqrt(d2), mu = gm[j];
+        const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+        const double L2 = cx * cx + cy * cy + cz * cz;
+        const double en = 0.5 * w2 - mu / r;
+        double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
+        if (e2 < 0.0) e2 = 0.0;
+        const double qp = L2 / mu / (1.0 + sqrt(e2));
+        double m2e = m2, w2e = w2;
+        if (qp * qp < m2e) {
+            m2e = qp * qp;
+            w2e = 2.0 * en + 2.0 * mu / qp;
+        }
+        const int nj = p9_sub_n(m2e, w2e > w2 ? w2e : w2, gm[j], dt);
+        if (nj > n) n = nj;
+    }
+    *nsub = any ? n : 1;
+    if (!any) {
+        p9_kepler(p, mu0, dt);
+        return -1;
+    }
+    const double s = dt / n, hs = 0.5 * s;
+    p9_kepler(p, mu0, hs);
+    for (int k = 0; k < n; k++) {
+        const double t = (k + 0.5) * s;
+        double qs[3 * P9_MAX_PLANETS];
+        for (int j = 0; j < np; j++) {
+            p9_body b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
+            p9_kepler(&b, mu0, t);
+            const double t2 = 0.5 * t * t;
+            qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
+                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
+        }
+        p9_kick_near(p, qs, gm, r2out, np, s);
+        p9_kepler(p, mu0, k == n - 1 ? hs : s);
+    }
+    return -1;
+}
+
 // The synchronous state of a body kept half a drift ahead.
 P9_HD p9_body p9_synchronous(p9_body y, double mu0, double dt) {
     p9_kepler(&y, mu0, -0.5 * dt);
