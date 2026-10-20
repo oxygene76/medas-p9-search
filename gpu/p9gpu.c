@@ -456,9 +456,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             return 2;
         }
         if (p9_encounter_radii(getenv("P9_COLLISION_RADII"), (int)r->N_active - 1, ids, rcol, r2col)) return 2;
-        fprintf(stderr, "collision radii (au):");
-        for (size_t j = 0; j + 1 < r->N_active; j++) fprintf(stderr, " %.0f=%.6g", ids[j], rcol[j]);
-        fprintf(stderr, "\n");
+        for (size_t j = 0; j + 1 < r->N_active; j++) printf("collision_radius id=%.0f au=%.10g\n", ids[j], rcol[j]);
     }
     planets P;
     com_t com;

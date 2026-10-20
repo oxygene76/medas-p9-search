@@ -155,6 +155,26 @@ def encounter_radii(ic_path, dt, overrides, v99=()):
     return enc
 
 
+# Method smooth: a test particle closer to a planet than its physical radius is removed (collision, as in
+# MERCURY; docs/substeps-plan.md). Equatorial radii (1 bar) of the IAU Working Group on Cartographic Coordinates
+# and Rotational Elements (Archinal et al. 2018, Celest. Mech. Dyn. Astron. 130, 22). Planet Nine: an
+# assumption, not a measurement: 2.6 Earth radii (mean radius 6,371.0 km) for its 6.2 Earth masses.
+AU_KM = 149597870.7
+PHYSICAL_RADII_KM = {"Jupiter": 71492.0, "Saturn": 60268.0, "Uranus": 25559.0, "Neptune": 24764.0, "P9": 2.6 * 6371.0}
+COLLISION_SOURCE = ("equatorial radii (1 bar), IAU WGCCRE 2015 (Archinal et al. 2018, Celest. Mech. Dyn. Astron. 130, 22); "
+                    "P9: assumption 2.6 Earth radii (6,371.0 km) for 6.2 Earth masses")
+
+
+def collision_radii(body_ids):
+    """params.removal.encounter.collision for method smooth: the physical radii of the job's planets."""
+    missing = sorted(set(body_ids) - set(PHYSICAL_RADII_KM))
+    if missing:
+        raise SystemExit(f"no physical radius for {missing}")
+    return {"radii_km": {n: f"{PHYSICAL_RADII_KM[n]:.1f}" for n in sorted(body_ids)},
+            "radii_au": {n: f"{PHYSICAL_RADII_KM[n] / AU_KM:.6e}" for n in sorted(body_ids)}, "source": COLLISION_SOURCE,
+            "assumption": "P9" in body_ids and "the radius of Planet Nine (2.6 Earth radii) is assumed" or None}
+
+
 def substep_radii(enc, factor):
     """Method substep: the trigger radii are factor times the rule's radii (docs/substeps-plan.md: with the rule's
     radius itself, flybys just outside it, still under two steps long, were off by up to 40 %; with 4 times it by
@@ -183,6 +203,32 @@ def encounter_env(job):
     if set(ids) != set(radii):
         raise SystemExit(f"encounter radii and body ids name different bodies: {sorted(radii)} / {sorted(ids)}")
     return ",".join(f"{ids[n]}={radii[n]}" for n in sorted(radii))
+
+
+def collision_env(job):
+    """P9_COLLISION_RADII for a job of method smooth ("id=au,...", by name as encounter_env), None without."""
+    enc = job["params"].get("removal", {}).get("encounter", {})
+    col = enc.get("collision")
+    if not col:
+        return None
+    ids = enc["body_ids"]
+    if set(ids) != set(col["radii_au"]):
+        raise SystemExit(f"collision radii and body ids name different bodies: {sorted(col['radii_au'])} / {sorted(ids)}")
+    return ",".join(f"{ids[n]}={col['radii_au'][n]}" for n in sorted(col["radii_au"]))
+
+
+def check_collision_report(job, stdout):
+    """The physical radii the program reports (lines "collision_radius id=… au=…") must be the job's, by name."""
+    enc = job["params"]["removal"]["encounter"]
+    ids, want = enc["body_ids"], {enc["body_ids"][n]: float(r) for n, r in enc["collision"]["radii_au"].items()}
+    got = {}
+    for line in stdout.splitlines():
+        if line.startswith("collision_radius "):
+            kv = dict(x.split("=", 1) for x in line.split()[1:])
+            got[int(kv["id"])] = float(kv["au"])
+    if got != want:
+        raise SystemExit(f"the program used other collision radii than the job: {got} instead of {want}")
+    return {n: got[ids[n]] for n in sorted(ids)}
 
 
 def removed_by(job, text):
@@ -230,6 +276,8 @@ def cmd_make(a):
         sys.exit("--no-removal needs --program p9gpu, the encounter method step and the radii (they define the counting zone)")
     if a.encounter_method in ("substep", "smooth") and (not a.encounters or a.program != "p9gpu"):
         sys.exit("--encounter-method substep needs --program p9gpu and the radii (they are the trigger radii)")
+    if a.no_collision and a.encounter_method != "smooth":
+        sys.exit("--no-collision: method smooth only")
     if a.integrator != "whfast":
         if a.program != "p9sim":
             sys.exit("--integrator mercurius needs --program p9sim")
@@ -265,6 +313,12 @@ def cmd_make(a):
                                         **(substep_radii(encounter_radii(ic, a.dt, a.radius, a.v99), a.trigger_factor)
                                            if a.encounters and a.encounter_method in ("substep", "smooth") else
                                            encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
+    enc = params["removal"]["encounter"]
+    if a.encounter_method == "smooth" and not a.no_collision:
+        enc["collision"] = collision_radii(enc["body_ids"])
+        enc["note"] = ("close encounters are followed with sub-steps (gpu/whdh.h p9_step_tp_smooth, docs/substeps-plan.md); the radii "
+                       "are r_out of the smooth transition; removed by the distance rules and by a collision with a planet (closer than "
+                       "its physical radius, collision.radii_au)")
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
 
@@ -297,6 +351,7 @@ def cmd_run(a):
         sys.exit(f"{p9sim} is version {have}, the job needs {want} (--any-version to run it anyway)")
     env = dict(os.environ)
     env.pop("P9_ENCOUNTER_RADII", None)
+    env.pop("P9_COLLISION_RADII", None)
     # number type of p9gpu's integrator (params.real, default double); part of the job, never taken from outside
     real = job["params"].get("real", "double")
     if real != "double" and job["code"].get("program") != "p9gpu":
@@ -321,6 +376,9 @@ def cmd_run(a):
         env["P9_FLYBY_OUT"] = str(d / "flybys.tsv")
     if enc:
         env["P9_ENCOUNTER_RADII"] = enc
+    col = collision_env(job) if method == "smooth" else None
+    if col:
+        env["P9_COLLISION_RADII"] = col
     build_flags = (p9sim.parent / "BUILD-FLAGS").read_text().strip() if (p9sim.parent / "BUILD-FLAGS").exists() else str(p9sim)
     cmd = ([*a.prefix.split()] if a.prefix else []) + [str(p9sim), "run", str(d / "input.sa"), repr(float(job["params"]["t_end_yr"])),
                                                        str(job["params"]["snapshots"]), str(d / a.output), str(d / "final.state")]
@@ -333,6 +391,7 @@ def cmd_run(a):
         sys.exit(f"p9sim failed ({p.returncode}): {p.stderr[-2000:]}")
     line = [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1]
     used = check_encounter_report(job, p.stdout) if enc else {}
+    used_col = check_collision_report(job, p.stdout) if col else None
     kv = dict(x.split("=", 1) for x in line.split())
     if enc and int(kv.get("encounter_remove", 1)) != (1 if remove else 0):
         sys.exit(f"the program used encounter_remove={kv.get('encounter_remove', 1)}, the job needs {remove}")
@@ -360,7 +419,8 @@ def cmd_run(a):
                   **({"flybys_file": {"file": "flybys.tsv", "sha256": sha256_file(d / "flybys.tsv")}} if (d / "flybys.tsv").exists() else {})}
                  if enc and method in ("step", "substep", "smooth") else {}),
               **({"sub_steps": int(kv.get("sub_steps", 0)), "sub_max": int(kv.get("sub_max", 1)), "sub_capped": int(kv.get("sub_capped", 0))}
-                 if method in ("substep", "smooth") else {})}
+                 if method in ("substep", "smooth") else {}),
+              **({"collision_radii_used_au": used_col, "collisions": removed_by(job, kv.get("collisions", ""))} if col else {})}
     (d / a.result_name).write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: result[k] for k in ("job_id", "result_sha256", "wall_s", "particles_end")}))
 
@@ -412,6 +472,8 @@ def main():
                    help="method substep: trigger radius = this times the rule's radius (docs/substeps-plan.md)")
     m.add_argument("--planet-substeps", type=int, default=8,
                    help="method substep: inner steps of the planets per step (even; docs/substeps-plan.md)")
+    m.add_argument("--no-collision", action="store_true",
+                   help="method smooth: no removal at the physical radius of a planet (default: collisions, as in MERCURY)")
     m.add_argument("--no-removal", action="store_true",
                    help="with method step: count close encounters (flybys.tsv) instead of removing them; only the distance rules remove")
     m.add_argument("--integrator", choices=["whfast", "mercurius"], default="whfast",

@@ -20,12 +20,17 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import p9job  # noqa: E402
+
 DATA = ROOT / "tests/data/flyby-regression"
 # trigger radii: 4 times the rule at dt = 0.5 yr (Jupiter, Saturn, Uranus, Neptune, Planet Nine; ids 1..5),
 # as p9job make --encounter-method substep (--trigger-factor 4)
 RADII = "1=7.4300,2=4.9708,3=2.6572,4=3.1036,5=2.0000"
 # the method: smooth (accepted design, decision of 2026-10-20) or substep (hard switch, for comparison)
 METHOD = os.environ.get("P9TEST_METHOD", "smooth")
+# method smooth: collision at the physical radii (tools/p9job.py PHYSICAL_RADII_KM; ids as in RADII)
+COLLISION = ",".join(f"{i}={p9job.PHYSICAL_RADII_KM[n] / p9job.AU_KM:.6e}" for i, n in enumerate(["Jupiter", "Saturn", "Uranus", "Neptune", "P9"], 1))
 # the planets' inner steps per step (p9gpu P9_PLANET_SUBSTEPS; the job parameter planet_substeps of method substep)
 PLANET_SUBSTEPS = "8"
 
@@ -35,8 +40,10 @@ def run_case(c, p9gpu, p9sim, mode="cpu"):
         d = Path(d)
         subprocess.run([p9sim, "init", str(DATA / c["file"]), str(d / "in.sa")], check=True, stdout=subprocess.DEVNULL)
         env = dict(os.environ, P9GPU_MODE=mode, P9_ENCOUNTER_METHOD=METHOD, P9_ENCOUNTER_RADII=RADII, P9_PLANET_SUBSTEPS=PLANET_SUBSTEPS)
-        for k in ("P9_ENCOUNTER_REMOVE", "P9_FLYBY_OUT", "P9_J2", "P9GPU_REAL"):
+        for k in ("P9_ENCOUNTER_REMOVE", "P9_FLYBY_OUT", "P9_J2", "P9GPU_REAL", "P9_COLLISION_RADII"):
             env.pop(k, None)
+        if METHOD == "smooth":
+            env["P9_COLLISION_RADII"] = COLLISION
         p = subprocess.run([p9gpu, "run", str(d / "in.sa"), repr(c["steps"] * c["dt_yr"]), "1", str(d / "o.sa")], env=env, capture_output=True,
                            text=True, check=True)
         kv = dict(x.split("=", 1) for x in [l for l in p.stdout.splitlines() if l.startswith("result_sha256=")][-1].split())

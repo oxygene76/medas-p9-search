@@ -78,6 +78,42 @@ class EncounterEnv(unittest.TestCase):
             p9job.check_encounter_report(job, "")  # a program that reports nothing
 
 
+class CollisionRadii(unittest.TestCase):
+    """Method smooth: the physical radii, also by planet name."""
+
+    def job(self, ids=IDS):
+        return {"params": {"removal": {"encounter": {"method": "smooth", "radii_au": HILL, "body_ids": ids,
+                                                     "collision": p9job.collision_radii(ids)}}}}
+
+    def test_radii_and_their_source(self):
+        c = p9job.collision_radii(IDS)
+        self.assertEqual(c["radii_km"]["Neptune"], "24764.0")
+        self.assertEqual(c["radii_km"]["P9"], "16564.6")  # 2.6 Earth radii, an assumption
+        self.assertAlmostEqual(float(c["radii_au"]["Jupiter"]), 71492.0 / 149597870.7, delta=1e-9)
+        self.assertIn("Archinal", c["source"])
+        self.assertIn("assumed", c["assumption"])
+
+    def test_by_name_in_any_order(self):
+        names = list(IDS)
+        for seed in range(10):
+            random.Random(seed).shuffle(names)
+            env = items(p9job.collision_env(self.job({n: IDS[n] for n in names})))
+            self.assertAlmostEqual(float(env["4"]), 24764.0 / 149597870.7, delta=1e-9)  # Neptune
+            self.assertAlmostEqual(float(env["5"]), 2.6 * 6371.0 / 149597870.7, delta=1e-9)  # Planet Nine
+
+    def test_report_of_the_program_is_checked_by_name(self):
+        job = self.job()
+        col = job["params"]["removal"]["encounter"]["collision"]["radii_au"]
+        good = "\n".join(f"collision_radius id={IDS[n]} au={col[n]}" for n in IDS)
+        self.assertAlmostEqual(p9job.check_collision_report(job, good)["Uranus"], 25559.0 / 149597870.7, delta=1e-9)
+        swapped = good.replace(f"id=3 au={col['Uranus']}", f"id=3 au={col['Jupiter']}")
+        with self.assertRaises(SystemExit):
+            p9job.check_collision_report(job, swapped)
+
+    def test_no_collision_no_variable(self):
+        self.assertIsNone(p9job.collision_env(job_with(HILL, IDS)))
+
+
 class HillRadii(unittest.TestCase):
     def test_names_ids_and_radii_from_the_start_file(self):
         with tempfile.TemporaryDirectory() as d:
@@ -144,6 +180,24 @@ class EndToEnd(unittest.TestCase):
     @unittest.skipUnless(program("P9TEST_P9GPU"), "P9TEST_P9GPU not set")
     def test_p9gpu(self):
         self.run_job(program("P9TEST_P9GPU"), "p9gpu")
+
+    @unittest.skipUnless(program("P9TEST_P9GPU"), "P9TEST_P9GPU not set")
+    def test_p9gpu_smooth_with_collisions(self):
+        prog = program("P9TEST_P9GPU")
+        with tempfile.TemporaryDirectory() as d:
+            job = Path(d) / "job"
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "make", "--out", str(job), "--t-end", "1000", "--snapshots", "1",
+                            "--n-tp", "5", "--program", "p9gpu", "--p9sim", str(prog), "--allow-dirty", "--encounter-method", "smooth"],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            j = json.loads((job / "job.json").read_text())
+            self.assertEqual(set(j["params"]["removal"]["encounter"]["collision"]["radii_au"]), set(IDS))
+            env = dict(os.environ, P9GPU_MODE="cpu")
+            subprocess.run([sys.executable, "-I", str(ROOT / "tools/p9job.py"), "run", str(job), "--p9sim", str(prog), "--any-version"],
+                           check=True, stdout=subprocess.DEVNULL, env=env)
+            res = json.loads((job / "result.json").read_text())
+            self.assertEqual(res["collision_radii_used_au"],
+                             {n: float(r) for n, r in j["params"]["removal"]["encounter"]["collision"]["radii_au"].items()})
+            self.assertEqual(res["collisions"], {n: 0 for n in IDS})
 
 
 class Mercurius(unittest.TestCase):
