@@ -5,7 +5,27 @@ project lead; no access from here). Built by `tools/make_gpu_check_package.sh`
 from the jobs in `runs/gpkg/`; instructions in the package (`README.txt`,
 from `check/README-gpu.txt`), script `check/run-gpucheck.sh`.
 
-## Package of 2026-10-20: `p9gpucheck-53a12d6.tar.gz`
+## Package of 2026-10-20, second: `p9gpucheck-07e5d2c.tar.gz` (current)
+
+sha256 `b9d06e7ee0e3ee994a21d0a2a37f30e03f2b4506d537206adde32c434e767e88`, 15 MB. The same jobs and expected hashes as
+53a12d6 below. Changed because the first one failed on the L40S server
+(Ubuntu 22.04, glibc 2.35, driver 580.178.04, no CUDA toolkit): its prebuilt
+binary, linked on this machine (glibc 2.43), needed `GLIBC_2.38`.
+
+- The prebuilt binaries are now built in NVIDIA's image
+  `nvidia/cuda:13.3.0-devel-ubuntu22.04` (CUDA 13.3, gcc 11, glibc 2.35),
+  libstdc++ and libgcc linked statically; `objdump -T`: at most `GLIBC_2.34`,
+  no `GLIBCXX`. The requirement is recorded in `bin/REQUIRES-glibc`.
+- `run-gpucheck.sh` compares it with the system's glibc (`getconf
+  GNU_LIBC_VERSION`) before running anything and stops with a clear message
+  (exit code 3) if the system is older.
+- Tested before delivery, unpacked into a plain container, without the
+  benchmark: `ubuntu:22.04` with the GPU (`docker run --gpus all`), only make,
+  gcc and g++ installed, `USE_PREBUILT=1`: **ALL SAME** (control and repro on
+  GPU and CPU, repro-df64 on the GPU); `ubuntu:20.04` (glibc 2.31): stops
+  with "the prebuilt binaries need glibc 2.34 or newer, this system has 2.31".
+
+## Package of 2026-10-20, first: `p9gpucheck-53a12d6.tar.gz` (superseded)
 
 sha256 `3a7b9d72a58ee69bde7cf86e9fc892ae7ca129f7b272ba6dc774bad733a314d7`,
 14 MB. No removal at the planets in any job (only the distance rules).
