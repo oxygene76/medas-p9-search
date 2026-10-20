@@ -95,3 +95,34 @@ The rule run computed again with the fate of every test particle
 
 Alive in the rule run but lost in MERCURIUS: 8. Difference of the survivors:
 333 + 80 + 1 + 6 − 8 = 412. Mostly Neptune, then Planet Nine.
+
+## The 74 lost only by p9gpu without removal (2026-10-20)
+
+`tools/flyby_losses.py` on the run with flyby counting
+(`runs/val/gpu-2000-count`, bit-identical to `gpu-2000-noenc`), at 50 Myr;
+`runs/val/flyby-losses/` (report.txt, flyby-losses.json).
+
+**(a) Flybys closer than 0.1 au** (counted by the run): 36 of the 74 had at
+least one before their loss (48.6 %); control group (alive in both runs, at
+least one flyby within three radii, i.e. at risk): 54 of 762 (7.1 %). Rates
+per Myr of life: 0.026 against 0.0022 (12 times). Fisher's exact test of the
+shares: p = 1e-18.
+
+**(b) The last flyby shorter than 1.5 steps, rebuilt and recomputed with
+IAS15** (62 of the 74 had one; the rebuild from a start file with only that
+particle is bit-identical with the run, checked for three particles at 1 Myr):
+
+- **32 of 74 count as numerical**: the kick (change of heliocentric orbital
+  energy over ±120 years, ±600 for Planet Nine) differs from IAS15 by more
+  than half, and the particle is lost within one orbital period afterwards
+  (mostly unbound right after the flyby). Closest distances: median 0.053 au,
+  at most 0.15 au; Neptune 29, Uranus 2, Saturn 1.
+- 5 more with a kick off by more than half, lost only millions of years later
+  (not counted); 25 with a kick within ±50 % (all at 0.085 au or more); 12
+  without a flyby shorter than 1.5 steps before their loss.
+
+Reading: without the 32 numerical losses, p9gpu would have lost 42 particles
+that MERCURIUS kept, against 53 the other way round: the excess of p9gpu's
+losses comes from close flybys (below about 0.15 au, almost all at Neptune)
+that the fixed step of 0.5 yr cannot resolve, as `flyby_check.py close`
+predicts. This is what the sub-steps (`docs/substeps-plan.md`) are for.
