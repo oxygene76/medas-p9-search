@@ -96,24 +96,29 @@ def physical_radius_au(planet_name):
 def make_radius_bodies(p, m, rp, vp, radius_au, multiples, vinf, seed=8):
     """Flybys with the pericentre at multiples of the physical radius (relative position d n, relative velocity
     perpendicular to it with the pericentre speed sqrt(vinf^2 + 2 G m / d)); the heliocentric filters of
-    flyby_check.make_test_bodies (bound, qmin)."""
+    flyby_check.make_test_bodies (bound, qmin), applied to the orbit far from the planet (planet velocity +
+    vinf u): at the pericentre itself the heliocentric speed of a deep flyby is above the Sun's escape speed."""
     rng = np.random.default_rng(seed)
     bodies = []
     for k in multiples:
         d = k * radius_au
         for vi in vinf:
             v = math.sqrt(vi * vi + 2 * fc.G * m / d)
-            n_ok = 0
+            n_ok = tries = 0
             while n_ok < fc.N_GEOMETRIES:
+                tries += 1
+                if tries > 100000:
+                    sys.exit(f"--radii: no geometry with a bound heliocentric orbit at v_inf {vi} au/yr")
                 n = rng.normal(size=3); n /= np.linalg.norm(n)
                 u = rng.normal(size=3); u -= u.dot(n) * n; u /= np.linalg.norm(u)
                 x = rp + d * n
                 w = vp + v * u
-                r = np.linalg.norm(x); w2 = w.dot(w)
+                wf = vp + vi * u
+                r = np.linalg.norm(x); w2 = wf.dot(wf)
                 if w2 >= p["bound"] * 2 * fc.G / r:
                     continue
                 a = 1.0 / (2.0 / r - w2 / fc.G)
-                h = np.cross(x, w)
+                h = np.cross(x, wf)
                 e = math.sqrt(max(0.0, 1 - h.dot(h) / fc.G / a))
                 if a * (1 - e) < p["qmin"]:
                     continue
@@ -163,7 +168,9 @@ def cmd_close(a):
         nsteps = int(math.ceil((2 * p["halfwindow_yr"] + ph * a.dt) / a.dt))
         sim = fc.base_sim(m, rp, vp, bodies)
         sim.integrator = "ias15"
-        sim.dt = -0.001
+        # IAS15 starts at the pericentres: with --radii (pericentres of a few planet radii, about 1e-4 yr long) a
+        # first step of 1e-3 yr would be far too long, so it starts with 1e-7 yr and grows from there
+        sim.dt = -1e-7 if a.radii else -0.001
         sim.integrate(t_start)
         start = sim.copy()
         e0 = fc.energy_and_h(start)[:, 0]
