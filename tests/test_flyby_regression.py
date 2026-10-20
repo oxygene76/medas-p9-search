@@ -4,7 +4,7 @@
   P9TEST_P9GPU=build/gpu-cpu/p9gpu P9TEST_P9SIM=build/test/p9sim python -I tests/test_flyby_regression.py -v
 
 For every case: p9gpu (method substep, the trigger radii of the rule at
-dt = 0.5 yr, the planets with 8 inner steps per step) from the stored state
+dt = 0.5 yr times 4, the planets with 8 inner steps per step) from the stored state
 over the stored window; the kick (change of
 the particle's heliocentric orbital energy) must be within 5 % of IAS15's,
 and the particle unbound at the end only where it is with IAS15 (no false
@@ -21,8 +21,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "tests/data/flyby-regression"
-# trigger radii: the rule at dt = 0.5 yr (Jupiter, Saturn, Uranus, Neptune, Planet Nine; ids 1..5)
-RADII = "1=1.8575,2=1.2427,3=0.6643,4=0.7759,5=0.5000"
+# trigger radii: 4 times the rule at dt = 0.5 yr (Jupiter, Saturn, Uranus, Neptune, Planet Nine; ids 1..5),
+# as p9job make --encounter-method substep (--trigger-factor 4)
+RADII = "1=7.4300,2=4.9708,3=2.6572,4=3.1036,5=2.0000"
 # the planets' inner steps per step (p9gpu P9_PLANET_SUBSTEPS; the job parameter planet_substeps of method substep)
 PLANET_SUBSTEPS = "8"
 

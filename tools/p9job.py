@@ -155,6 +155,17 @@ def encounter_radii(ic_path, dt, overrides, v99=()):
     return enc
 
 
+def substep_radii(enc, factor):
+    """Method substep: the trigger radii are factor times the rule's radii (docs/substeps-plan.md: with the rule's
+    radius itself, flybys just outside it, still under two steps long, were off by up to 40 %; with 4 times it by
+    under 1 %)."""
+    out = dict(enc)
+    out["rule_radii_au"] = enc["radii_au"]
+    out["radii_au"] = {n: f"{float(r) * factor:.4f}" for n, r in enc["radii_au"].items()}
+    out["trigger_factor"] = factor
+    return out
+
+
 def encounter_env(job):
     """P9_ENCOUNTER_RADII for a job: "id=radius,..." with each radius assigned by the body's name
     (params.removal.encounter.radii_au and .body_ids). The programs assign by id, so the order of
@@ -251,7 +262,9 @@ def cmd_make(a):
                                                                      "long (gpu/whdh.h p9_step_tp_sub, docs/substeps-plan.md); the radii are "
                                                                      "the trigger radii; only the distance rules remove"}
                                            if a.encounter_method == "substep" else {}),
-                                        **(encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
+                                        **(substep_radii(encounter_radii(ic, a.dt, a.radius, a.v99), a.trigger_factor)
+                                           if a.encounters and a.encounter_method == "substep" else
+                                           encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     job = write_job(out, params, out / "input.sa", a.program, a.p9sim, a.allow_dirty)
     print(f"job {job['id'][:16]}… -> {out}")
 
@@ -395,6 +408,8 @@ def main():
                    help="99th percentile of the encounter speed at a planet: the radius is at least 1.5 v99 dt; repeatable")
     m.add_argument("--encounter-method", choices=["step", "kick", "substep"], default="step",
                    help="close encounters by the closest approach within a step (step, default) or at the kick (kick, before 2026-10-19 evening)")
+    m.add_argument("--trigger-factor", type=float, default=4.0,
+                   help="method substep: trigger radius = this times the rule's radius (docs/substeps-plan.md)")
     m.add_argument("--planet-substeps", type=int, default=8,
                    help="method substep: inner steps of the planets per step (even; docs/substeps-plan.md)")
     m.add_argument("--no-removal", action="store_true",
