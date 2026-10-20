@@ -507,11 +507,6 @@ typedef struct {
     int j, n_want;
     double q_est, v_est, d_min, q_loc;
 } p9_capdiag;
-// Prefilter (speed only, the same bits): a planet is skipped without the straight line's closest approach (a
-// division) if the particle is so far that this approach is surely beyond r_out: with |d| >= sqrt(5) a,
-// a = max(r_out, |w| dt), the line stays at least |d| - |w| dt >= 1.24 a >= 1.24 r_out away over [-dt, dt],
-// so m2 >= 1.53 r_out^2 and the exact test would skip it as well (also the counters' 0.5625 r_out^2).
-#define P9_SMOOTH_FAR(d2, r2out, w2, dt) ((d2) >= 5.0 * (r2out) && (d2) >= 5.0 * (w2) * (dt) * (dt))
 P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
                               const double* r2out, const double* r2col, int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j,
                               double* fast_d, int* nsub, p9_capdiag* cd) {
@@ -523,7 +518,6 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         const double dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
         const double wx = uq[3 * j] - p->vx, wy = uq[3 * j + 1] - p->vy, wz = uq[3 * j + 2] - p->vz;
         const double w2 = wx * wx + wy * wy + wz * wz;
-        if (P9_SMOOTH_FAR(dx * dx + dy * dy + dz * dz, r2out[j], w2, dt)) continue;
         double tau = w2 > 0.0 ? -(dx * wx + dy * wy + dz * wz) / w2 : 0.0;
         const int inside = tau > -h && tau <= h;
         if (tau < -h) tau = -h;
@@ -544,16 +538,14 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
     p9_jump(p, wb, h);
     // A over [0, dt] after the kick: Kepler alone unless a planet comes within r_out
     double um[3 * P9_MAX_PLANETS], ac[3 * P9_MAX_PLANETS];
-    for (int c = 0; c < 3 * np; c++) um[c] = 0.5 * (uq[c] + uqb[c]);
-    const double hwx = h * wb[0], hwy = h * wb[1], hwz = h * wb[2];  // the jump term of the planets in A (once, not per planet)
+    for (int c = 0; c < 3 * np; c++) um[c] = 0.5 * (uq[c] + uqb[c]), ac[c] = (uqb[c] - uq[c]) / dt;
     int n = 1, any = 0;
     for (int j = 0; j < np; j++) {
         if (!(r2out[j] > 0.0)) continue;
         // planet (as used in A) and particle at t = 0, straight lines over [0, dt]
-        const double dx = q[3 * j] + hwx - p->x, dy = q[3 * j + 1] + hwy - p->y, dz = q[3 * j + 2] + hwz - p->z;
+        const double dx = q[3 * j] + h * wb[0] - p->x, dy = q[3 * j + 1] + h * wb[1] - p->y, dz = q[3 * j + 2] + h * wb[2] - p->z;
         const double wx = um[3 * j] - p->vx, wy = um[3 * j + 1] - p->vy, wz = um[3 * j + 2] - p->vz;
         const double w2 = wx * wx + wy * wy + wz * wz;
-        if (P9_SMOOTH_FAR(dx * dx + dy * dy + dz * dz, r2out[j], w2, dt)) continue;
         double tau = w2 > 0.0 ? -(dx * wx + dy * wy + dz * wz) / w2 : 0.0;
         if (tau < 0.0) tau = 0.0;
         if (tau > dt) tau = dt;
@@ -612,7 +604,6 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         p9_kepler(p, mu0, dt);
         return -1;
     }
-    for (int c = 0; c < 3 * np; c++) ac[c] = (uqb[c] - uq[c]) / dt;
     const double s = dt / n, hs = 0.5 * s;
     p9_kepler(p, mu0, hs);
     for (int k = 0; k < n; k++) {
@@ -622,8 +613,8 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
             p9_body b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
             p9_kepler(&b, mu0, t);
             const double t2 = 0.5 * t * t;
-            qs[3 * j] = b.x + t2 * ac[3 * j] + hwx, qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + hwy,
-                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + hwz;
+            qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
+                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
             if (cd) us[3 * j] = b.vx + t * ac[3 * j], us[3 * j + 1] = b.vy + t * ac[3 * j + 1], us[3 * j + 2] = b.vz + t * ac[3 * j + 2];
         }
         for (int j = 0; r2col && j < np; j++) {

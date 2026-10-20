@@ -226,18 +226,13 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
     p9t_kick_far(p, q, gm, r2out, np, dt);
     p9t_jump(p, wb, h);
     T um[3 * P9_MAX_PLANETS], ac[3 * P9_MAX_PLANETS];
-    for (int c = 0; c < 3 * np; c++) um[c] = L<T>(0.5) * (uq[c] + uqb[c]);
-    const T hwx = h * wb[0], hwy = h * wb[1], hwz = h * wb[2];  // the jump term of the planets in A (once, not per planet)
+    for (int c = 0; c < 3 * np; c++) um[c] = L<T>(0.5) * (uq[c] + uqb[c]), ac[c] = (uqb[c] - uq[c]) / dt;
     int n = 1, any = 0;
     for (int j = 0; j < np; j++) {
         if (!(r2out[j] > L<T>(0.0))) continue;
-        const T dx = q[3 * j] + hwx - p->x, dy = q[3 * j + 1] + hwy - p->y, dz = q[3 * j + 2] + hwz - p->z;
+        const T dx = q[3 * j] + h * wb[0] - p->x, dy = q[3 * j + 1] + h * wb[1] - p->y, dz = q[3 * j + 2] + h * wb[2] - p->z;
         const T wx = um[3 * j] - p->vx, wy = um[3 * j + 1] - p->vy, wz = um[3 * j + 2] - p->vz;
         const T w2 = wx * wx + wy * wy + wz * wz;
-        {
-            const T d2f = dx * dx + dy * dy + dz * dz;
-            if (!(d2f < L<T>(5.0) * r2out[j]) && !(d2f < L<T>(5.0) * w2 * dt * dt)) continue;  // P9_SMOOTH_FAR (whdh.h)
-        }
         T tau = w2 > L<T>(0.0) ? -(dx * wx + dy * wy + dz * wz) / w2 : L<T>(0.0);
         if (tau < L<T>(0.0)) tau = L<T>(0.0);
         if (tau > dt) tau = dt;
@@ -272,7 +267,6 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
         p9t_kepler(p, mu0, dt);
         return -1;
     }
-    for (int c = 0; c < 3 * np; c++) ac[c] = (uqb[c] - uq[c]) / dt;
     const T s = dt / L<T>((double)n), hs = L<T>(0.5) * s;
     p9t_kepler(p, mu0, hs);
     for (int k = 0; k < n; k++) {
@@ -282,8 +276,8 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
             p9t_body<T> b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
             p9t_kepler(&b, mu0, t);
             const T t2 = L<T>(0.5) * t * t;
-            qs[3 * j] = b.x + t2 * ac[3 * j] + hwx, qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + hwy,
-                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + hwz;
+            qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
+                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
         }
         for (int j = 0; r2col && j < np; j++) {
             if (!(r2col[j] > L<T>(0.0))) continue;
