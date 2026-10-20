@@ -135,21 +135,31 @@ __global__ void p9_advance_j2(p9_body* __restrict__ st, int* __restrict__ alive,
 __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const double* __restrict__ tab, int np, int nb,
                                 unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, int* __restrict__ near,
                                 int* __restrict__ fast, int* __restrict__ close, unsigned long long* __restrict__ last_step, int* __restrict__ last_j,
-                                double* __restrict__ last_d, unsigned long long* __restrict__ rm_step, int remove) {
+                                double* __restrict__ last_d, unsigned long long* __restrict__ rm_step, int remove, int sub,
+                                int* __restrict__ sub_steps, int* __restrict__ sub_max, int* __restrict__ sub_capped) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= ntp || alive[i] != 1) return;
     const double* q = tab;
     const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     const double* uq = wb + (size_t)nb * 3;
+    const double* uqb = uq + (size_t)nb * np * 3;
     int nr[P9_MAX_PLANETS] = {0}, fs[P9_MAX_PLANETS] = {0}, cl[P9_MAX_PLANETS] = {0};
     p9_body p = st[i];
     int a = 1;
     for (int k = 0; k < nb; k++) {
-        int fj = -1;
+        int fj = -1, ns = 1;
         double fd = 0.0;
-        const int enc = p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, c_r2enc, np, mu0, dt, nr, fs,
-                                        cl, &fj, &fd);
+        const int enc = sub ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm,
+                                             c_r2enc, np, mu0, dt, nr,
+                                             fs, cl, &fj, &fd, &ns)
+                            : p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c_gm, c_r2enc, np, mu0, dt, nr,
+                                              fs, cl, &fj, &fd);
+        if (ns > 1) {
+            sub_steps[i]++;
+            if (ns > sub_max[i]) sub_max[i] = ns;
+            if (ns >= P9_SUB_MAX) sub_capped[i]++;
+        }
         if (fj >= 0) last_step[i] = step0 + k + 1, last_j[i] = fj + 1, last_d[i] = fd;
         if (enc >= 0 && remove) {
             a = -1 - enc;
@@ -172,8 +182,8 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
 }
 
 struct p9g {
-    int ntp, np, max_nb, cur, real, j2, step, remove;
-    int *d_near, *d_fast, *d_close, *d_last_j;
+    int ntp, np, max_nb, cur, real, j2, step, remove, sub;
+    int *d_near, *d_fast, *d_close, *d_last_j, *d_sub_steps, *d_sub_max, *d_sub_capped;
     unsigned long long *d_last_step, *d_rm_step;
     double* d_last_d;
     p9_body* d_st;
@@ -202,7 +212,7 @@ extern "C" p9g* p9g_create(int ntp, const p9_body* st, const int* alive, int np,
     g->max_nb = max_nb;
     g->real = real;
     for (int j = 0; j < np; j++) g->gm[j] = gm[j], g->r2enc[j] = r2enc[j];
-    g->tab_doubles = (size_t)max_nb * np * 6 + (size_t)max_nb * 6;
+    g->tab_doubles = (size_t)max_nb * np * 9 + (size_t)max_nb * 6;
     cudaDeviceProp prop;
     if (fail(cudaGetDeviceProperties(&prop, 0), "device", err, errlen)) return NULL;
     snprintf(g->name, sizeof g->name, "%s sm_%d%d", prop.name, prop.major, prop.minor);
@@ -229,20 +239,22 @@ extern "C" const char* p9g_name(p9g* g) { return g->name; }
 
 static cudaError_t wait_stream(cudaStream_t s);
 
-extern "C" int p9g_set_step_method(p9g* g, int remove, char* err, int errlen) {
+extern "C" int p9g_set_step_method(p9g* g, int remove, int sub, char* err, int errlen) {
     if (g->real != P9_REAL_DOUBLE || g->j2) {
         snprintf(err, errlen, "encounter method step: model full, double only");
         return 1;
     }
     const size_t m = (size_t)(g->ntp > 0 ? g->ntp : 1), n = sizeof(int) * m * g->np;
     void** bufs[] = {(void**)&g->d_near, (void**)&g->d_fast, (void**)&g->d_close, (void**)&g->d_last_j, (void**)&g->d_last_step, (void**)&g->d_last_d,
-                     (void**)&g->d_rm_step};
-    const size_t sizes[] = {n, n, n, sizeof(int) * m, sizeof(unsigned long long) * m, sizeof(double) * m, sizeof(unsigned long long) * m};
-    for (int k = 0; k < 7; k++)
+                     (void**)&g->d_rm_step, (void**)&g->d_sub_steps, (void**)&g->d_sub_max, (void**)&g->d_sub_capped};
+    const size_t sizes[] = {n, n, n, sizeof(int) * m, sizeof(unsigned long long) * m, sizeof(double) * m, sizeof(unsigned long long) * m,
+                            sizeof(int) * m, sizeof(int) * m, sizeof(int) * m};
+    for (int k = 0; k < 10; k++)
         if (fail(cudaMalloc(bufs[k], sizes[k]), "malloc counters", err, errlen) || fail(cudaMemset(*bufs[k], 0, sizes[k]), "memset", err, errlen))
             return 1;
     g->step = 1;
     g->remove = remove;
+    g->sub = sub;
     return 0;
 }
 
@@ -256,7 +268,10 @@ extern "C" int p9g_counts(p9g* g, p9_flybys* f, char* err, int errlen) {
            fail(cudaMemcpy(f->last_j, g->d_last_j, sizeof(int) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
            fail(cudaMemcpy(f->last_step, g->d_last_step, sizeof(unsigned long long) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
            fail(cudaMemcpy(f->last_d, g->d_last_d, sizeof(double) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
-           fail(cudaMemcpy(f->rm_step, g->d_rm_step, sizeof(unsigned long long) * m, cudaMemcpyDeviceToHost), "download", err, errlen);
+           fail(cudaMemcpy(f->rm_step, g->d_rm_step, sizeof(unsigned long long) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
+           fail(cudaMemcpy(f->sub_steps, g->d_sub_steps, sizeof(int) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
+           fail(cudaMemcpy(f->sub_max, g->d_sub_max, sizeof(int) * m, cudaMemcpyDeviceToHost), "download", err, errlen) ||
+           fail(cudaMemcpy(f->sub_capped, g->d_sub_capped, sizeof(int) * m, cudaMemcpyDeviceToHost), "download", err, errlen);
 }
 
 extern "C" int p9g_set_j2(p9g* g, const double* j2, char* err, int errlen) {
@@ -307,7 +322,7 @@ static void launch_t(p9g* g, int b, size_t n, int nb, unsigned long long step0, 
 extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, char* err,
                           int errlen) {
     const int b = g->cur;
-    const size_t n = (size_t)nb * g->np * 6 + (size_t)nb * 6;
+    const size_t n = (size_t)nb * g->np * 9 + (size_t)nb * 6;
     // the table is packed for nb steps: q, then wa, then wb (p9gpu.c writes it that way)
     if (fail(cudaMemcpyAsync(g->d_tab[b], g->h_tab[b], sizeof(double) * n, cudaMemcpyHostToDevice, g->stream), "upload table", err, errlen)) return 1;
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
@@ -316,7 +331,8 @@ extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, d
         if (g->step) {
             p9_advance_step<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                                rout2, g->d_near, g->d_fast, g->d_close, g->d_last_step, g->d_last_j, g->d_last_d,
-                                                               g->d_rm_step, g->remove);
+                                                               g->d_rm_step, g->remove, g->sub, g->d_sub_steps, g->d_sub_max,
+                                                               g->d_sub_capped);
         } else if (g->j2) {
             p9_advance_j2<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                              rout2);
@@ -358,8 +374,8 @@ extern "C" void p9g_free(p9g* g) {
         cudaEventDestroy(g->copied[b]);
     }
     if (g->d_tab_t) cudaFree(g->d_tab_t);
-    void* bufs[] = {g->d_near, g->d_fast, g->d_close, g->d_last_j, g->d_last_step, g->d_last_d, g->d_rm_step};
-    for (int k = 0; k < 7; k++)
+    void* bufs[] = {g->d_near, g->d_fast, g->d_close, g->d_last_j, g->d_last_step, g->d_last_d, g->d_rm_step, g->d_sub_steps, g->d_sub_max, g->d_sub_capped};
+    for (int k = 0; k < 10; k++)
         if (bufs[k]) cudaFree(bufs[k]);
     cudaFree(g->d_st);
     cudaFree(g->d_alive);

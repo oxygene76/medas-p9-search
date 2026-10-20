@@ -16,6 +16,7 @@ typedef struct {
     int *near, *fast, *close, *last_j;
     unsigned long long *last_step, *rm_step;
     double* last_d;
+    int *sub_steps, *sub_max, *sub_capped;  // method substep: steps with sub-steps, largest n, steps at P9_SUB_MAX
 } p9_flybys;
 #ifdef __cplusplus
 extern "C" {

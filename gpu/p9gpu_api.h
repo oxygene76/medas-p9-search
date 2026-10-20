@@ -18,7 +18,8 @@ const char* p9g_name(p9g* g);
 int p9g_set_j2(p9g* g, const double* j2, char* err, int errlen);
 // Encounter method "step" (whdh.h): closest approach within the step; counts flybys per particle and planet.
 // remove = 0: close encounters are only counted, not removed.
-int p9g_set_step_method(p9g* g, int remove, char* err, int errlen);
+// sub = 1: method "substep" (whdh.h p9_step_tp_sub; nothing removed at the planets).
+int p9g_set_step_method(p9g* g, int remove, int sub, char* err, int errlen);
 // The flyby records of method "step" (summed over the run): per particle and planet (ntp x np) the flybys
 // within three radii, those shorter than 1.5 steps and those closer than 0.1 au; per particle the step, planet
 // (index + 1) and closest distance of the last flyby shorter than 1.5 steps, and the step it was removed in.

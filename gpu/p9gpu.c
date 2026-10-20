@@ -10,9 +10,12 @@
 //                        on the GPU; cpu: the same code on one CPU core (the
 //                        reference: it must give the same bits as the GPU)
 //   P9GPU_BLOCK=2000     steps per GPU launch (planets computed ahead per block)
-//   P9_ENCOUNTER_METHOD=kick|step  close encounters judged at the kick (kick,
-//                        the default for jobs without a method) or by the
-//                        closest approach within the step (step; whdh.h)
+//   P9_ENCOUNTER_METHOD=kick|step|substep  close encounters judged at the kick
+//                        (kick, the default for jobs without a method), by the
+//                        closest approach within the step (step), or followed
+//                        with sub-steps where a step is too long (substep;
+//                        nothing removed at the planets; the radii are the
+//                        trigger radii; whdh.h p9_step_tp_sub)
 //   P9_ENCOUNTER_REMOVE=0  with method step: close encounters are counted, not
 //                        removed (only the distance rules remove)
 //   P9_FLYBY_OUT=file    with method step: the flyby records per test particle
@@ -20,6 +23,11 @@
 //   P9_REMOVED_OUT=file  the fate of each test particle of the input: id, then
 //                        alive (1), distance rules (0) or the body id of the
 //                        planet of its close encounter (any method)
+//   P9_PLANET_SUBSTEPS=k  the planets take k (even) inner steps of dt/k per step
+//                        (kept synchronous); the test particles get their
+//                        positions, velocities and accelerations at the middle
+//                        of the step and the jump velocity there (default 1:
+//                        the planets step with dt, as before)
 //   P9_J2="muJ2R2,nx,ny,nz,r_remove"   model "j2" (whdh.h): the central body
 //                        has a J2 (tools/p9job.py sets it from params.model);
 //                        test particles within r_remove of the Sun are removed
@@ -71,6 +79,7 @@ typedef struct {
     double m[P9_MAX_PLANETS], gm[P9_MAX_PLANETS];
     p9_body b[P9_MAX_PLANETS];  // Q (relative to the Sun) and barycentric velocity
     int j2;                     // model "j2": J2 of the central body (j2v as in whdh.h)
+    int ksub;                   // P9_PLANET_SUBSTEPS: inner steps of the planets per step (1: as before)
     double j2v[5];
 } planets;
 
@@ -120,28 +129,89 @@ static void planets_positions(const planets* P, double* q) {
 // One step of the planets, kept half a drift ahead like the test particles
 // (whdh.h); writes the jump velocities (wa, wb) and the planets' positions at
 // the kick (q).
-static void planets_step(planets* P, double dt, double* wa, double* q, double* wb, double* uq) {
+static void planets_step(planets* P, double dt, double* wa, double* q, double* wb, double* uq, double* uqb) {
     const double h = 0.5 * dt;
     planets_w(P, wa);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wa, h);
     planets_positions(P, q);
     for (int i = 0; i < P->np; i++) uq[3 * i] = P->b[i].vx, uq[3 * i + 1] = P->b[i].vy, uq[3 * i + 2] = P->b[i].vz;
     planets_kick(P, dt);
+    for (int i = 0; i < P->np; i++) uqb[3 * i] = P->b[i].vx, uqb[3 * i + 1] = P->b[i].vy, uqb[3 * i + 2] = P->b[i].vz;
     planets_w(P, wb);
     for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], wb, h);
     for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, dt);
 }
 
+// Planet-planet (and J2) accelerations at the current positions.
+static void planets_acc(const planets* P, double a[][3]) {
+    for (int i = 0; i < P->np; i++) a[i][0] = a[i][1] = a[i][2] = 0.0;
+    for (int i = 0; i < P->np; i++) {
+        for (int j = 0; j < P->np; j++) {
+            if (j == i) continue;
+            const double dx = P->b[j].x - P->b[i].x, dy = P->b[j].y - P->b[i].y, dz = P->b[j].z - P->b[i].z;
+            const double d2 = dx * dx + dy * dy + dz * dz;
+            const double d = sqrt(d2);
+            const double k = P->gm[j] / (d2 * d);
+            a[i][0] += k * dx;
+            a[i][1] += k * dy;
+            a[i][2] += k * dz;
+        }
+    }
+    if (P->j2)
+        for (int i = 0; i < P->np; i++) p9_j2_acc(P->b[i].x, P->b[i].y, P->b[i].z, P->j2v, &a[i][0], &a[i][1], &a[i][2]);
+}
+
+// One inner step of the synchronous planets (drift-kick-drift, democratic heliocentric).
+static void planets_inner(planets* P, double s) {
+    double w[3];
+    for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, 0.5 * s);
+    planets_w(P, w);
+    for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], w, 0.5 * s);
+    planets_kick(P, s);
+    planets_w(P, w);
+    for (int i = 0; i < P->np; i++) p9_jump(&P->b[i], w, 0.5 * s);
+    for (int i = 0; i < P->np; i++) p9_kepler(&P->b[i], P->mu0, 0.5 * s);
+}
+
+// One step with inner steps (P9_PLANET_SUBSTEPS): the planets synchronous at
+// the step's start, k/2 inner steps to the middle, there the table entries
+// (positions; velocities -/+ a dt/2 around the middle, so that the sub-steps'
+// interpolation has the mean velocity and the acceleration a; the jump
+// velocity at the middle for both of the particle's jumps), k/2 inner steps
+// to the end.
+static void planets_step_fine(planets* P, double dt, double* wa, double* q, double* wb, double* uq, double* uqb) {
+    const int k = P->ksub;
+    const double s = dt / k;
+    for (int m = 0; m < k / 2; m++) planets_inner(P, s);
+    double a[P9_MAX_PLANETS][3];
+    planets_acc(P, a);
+    planets_positions(P, q);
+    planets_w(P, wa);
+    for (int c = 0; c < 3; c++) wb[c] = wa[c];
+    for (int i = 0; i < P->np; i++) {
+        const double v[3] = {P->b[i].vx, P->b[i].vy, P->b[i].vz};
+        for (int c = 0; c < 3; c++) uq[3 * i + c] = v[c] - 0.5 * dt * a[i][c], uqb[3 * i + c] = v[c] + 0.5 * dt * a[i][c];
+    }
+    for (int m = 0; m < k / 2; m++) planets_inner(P, s);
+}
+
 // Fills a table for nb steps: q[nb*np*3], then wa[nb*3], then wb[nb*3], then
-// uq[nb*np*3] (the planets' barycentric velocities at the kick, for the
-// encounter method "step").
+// uq[nb*np*3] (the planets' barycentric velocities at the kick, before it; for
+// the encounter methods "step" and "substep"), then uqb[nb*np*3] (after it; for
+// the sub-steps' interpolation of the planets).
 static void planets_block(planets* P, double dt, int nb, double* tab) {
     const int np = P->np;
     double* q = tab;
     double* wa = tab + (size_t)nb * np * 3;
     double* wb = wa + (size_t)nb * 3;
     double* uq = wb + (size_t)nb * 3;
-    for (int k = 0; k < nb; k++) planets_step(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k, uq + (size_t)k * np * 3);
+    double* uqb = uq + (size_t)nb * np * 3;
+    for (int k = 0; k < nb; k++) {
+        if (P->ksub > 1)
+            planets_step_fine(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3);
+        else
+            planets_step(P, dt, wa + 3 * k, q + (size_t)k * np * 3, wb + 3 * k, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3);
+    }
 }
 
 // ------------------------------------------------------------------ conversions
@@ -229,19 +299,29 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
     const double* wa = tab + (size_t)nb * np * 3;
     const double* wb = wa + (size_t)nb * 3;
     const double* uq = wb + (size_t)nb * 3;
+    const double* uqb = uq + (size_t)nb * np * 3;
     for (int i = 0; i < ntp; i++) {
         if (alive[i] != 1) continue;
         p9_body p = tp[i];
         int a = 1;
         for (int k = 0; k < nb; k++) {
-            int fj = -1;
+            int fj = -1, ns = 1;
             double fd = 0.0;
-            const int enc = step_method ? p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np,
+            const int enc = step_method == 2 ? p9_step_tp_sub(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k,
+                                                              wb + 3 * k, P->gm, r2enc, np,
+                                                              P->mu0, dt, F->near + (size_t)i * np, F->fast + (size_t)i * np, F->close + (size_t)i * np,
+                                                              &fj, &fd, &ns)
+                          : step_method ? p9_step_tp_step(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np,
                                                           P->mu0, dt, F->near + (size_t)i * np, F->fast + (size_t)i * np,
                                                           F->close + (size_t)i * np, &fj, &fd)
                           : P->j2 ? p9_step_tp_j2(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt, P->j2v)
                                   : p9_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, P->gm, r2enc, np, P->mu0, dt);
             if (fj >= 0) F->last_step[i] = step0 + k + 1, F->last_j[i] = fj + 1, F->last_d[i] = fd;
+            if (ns > 1) {
+                F->sub_steps[i]++;
+                if (ns > F->sub_max[i]) F->sub_max[i] = ns;
+                if (ns >= P9_SUB_MAX) F->sub_capped[i]++;
+            }
             if (enc >= 0 && (enc_remove || !step_method)) {
                 a = -1 - enc;
                 if (step_method) F->rm_step[i] = step0 + k + 1;
@@ -284,12 +364,13 @@ static int write_flybys(const char* path, const p9_flybys* F, const double* tp_i
     }
     fprintf(f, "id\tremoved_step");
     for (int j = 0; j < np; j++) fprintf(f, "\tnear_%.0f\tfast_%.0f\tclose_%.0f", ids[j], ids[j], ids[j]);
-    fprintf(f, "\tlast_fast_step\tlast_fast_planet\tlast_fast_dmin_au\n");
+    fprintf(f, "\tlast_fast_step\tlast_fast_planet\tlast_fast_dmin_au\tsub_steps\tsub_max\tsub_capped\n");
     for (int i = 0; i < ntp; i++) {
         fprintf(f, "%.0f\t%llu", tp_ids[i], alive[i] == 1 ? 0ULL : F->rm_step[i]);
         for (int j = 0; j < np; j++)
             fprintf(f, "\t%d\t%d\t%d", F->near[(size_t)i * np + j], F->fast[(size_t)i * np + j], F->close[(size_t)i * np + j]);
-        fprintf(f, "\t%llu\t%.0f\t%.6g\n", F->last_step[i], F->last_j[i] ? ids[F->last_j[i] - 1] : 0.0, F->last_d[i]);
+        fprintf(f, "\t%llu\t%.0f\t%.6g\t%d\t%d\t%d\n", F->last_step[i], F->last_j[i] ? ids[F->last_j[i] - 1] : 0.0, F->last_d[i], F->sub_steps[i],
+                F->sub_max[i], F->sub_capped[i]);
     }
     return fclose(f) != 0;
 }
@@ -310,13 +391,14 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     const int max_nb = getenv("P9GPU_BLOCK") ? atoi(getenv("P9GPU_BLOCK")) : 2000;
     const int real = p9_real_parse(getenv("P9GPU_REAL"));
     const char* method_env = getenv("P9_ENCOUNTER_METHOD");
-    if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step")) {
-        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick or step\n");
+    if (method_env && *method_env && strcmp(method_env, "kick") && strcmp(method_env, "step") && strcmp(method_env, "substep")) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD: kick, step or substep\n");
         return 2;
     }
-    const int step_method = method_env && !strcmp(method_env, "step");
+    const int sub_method = method_env && !strcmp(method_env, "substep");
+    const int step_method = method_env && (!strcmp(method_env, "step") || sub_method);
     const char* remove_env = getenv("P9_ENCOUNTER_REMOVE");
-    const int enc_remove = !(remove_env && !strcmp(remove_env, "0"));
+    const int enc_remove = !(remove_env && !strcmp(remove_env, "0")) && !sub_method;
     if (!enc_remove && !step_method) {
         fprintf(stderr, "P9_ENCOUNTER_REMOVE=0 needs P9_ENCOUNTER_METHOD=step\n");
         return 2;
@@ -376,17 +458,25 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const double e0 = p9_energy_massive(r);
     // keep every body half a drift ahead (whdh.h)
-    for (int i = 0; i < P.np; i++) p9_kepler(&P.b[i], P.mu0, 0.5 * dt);
+    const char* ks_env = getenv("P9_PLANET_SUBSTEPS");
+    P.ksub = ks_env && *ks_env ? atoi(ks_env) : 1;
+    if (P.ksub < 1 || (P.ksub > 1 && P.ksub % 2)) {
+        fprintf(stderr, "P9_PLANET_SUBSTEPS: 1 or an even number\n");
+        return 2;
+    }
+    if (P.ksub == 1)
+        for (int i = 0; i < P.np; i++) p9_kepler(&P.b[i], P.mu0, 0.5 * dt);  // planets half a drift ahead, as the test particles
     for (int i = 0; i < ntp; i++) p9_kepler(&tp[i], P.mu0, 0.5 * dt);
     p9_body* sync_tp = malloc(sizeof(p9_body) * (ntp > 0 ? ntp : 1));
     const double t0 = r->t;
     unsigned long long steps = r->steps_done;
     const unsigned long long steps0 = steps;
     double t = r->t;
-    const size_t tab_doubles = (size_t)max_nb * P.np * 6 + (size_t)max_nb * 6;
+    const size_t tab_doubles = (size_t)max_nb * P.np * 9 + (size_t)max_nb * 6;
     const size_t m1 = (size_t)(ntp > 0 ? ntp : 1);
     p9_flybys F = {calloc(m1 * P.np, sizeof(int)), calloc(m1 * P.np, sizeof(int)), calloc(m1 * P.np, sizeof(int)), calloc(m1, sizeof(int)),
-                   calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(double))};
+                   calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(unsigned long long)), calloc(m1, sizeof(double)),
+                   calloc(m1, sizeof(int)), calloc(m1, sizeof(int)), calloc(m1, sizeof(int))};
     int *near = F.near, *fast = F.fast;
     double* cpu_tab = use_gpu ? NULL : malloc(sizeof(double) * tab_doubles);
     char err[256] = "";
@@ -399,7 +489,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
             return 3;
         }
         fprintf(stderr, "device: %s\n", p9g_name(g));
-        if (step_method && p9g_set_step_method(g, enc_remove, err, sizeof err)) {
+        if (step_method && p9g_set_step_method(g, enc_remove, sub_method, err, sizeof err)) {
             fprintf(stderr, "GPU: %s\n", err);
             return 3;
         }
@@ -440,7 +530,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 planets_block(&P, dt, nb, cpu_tab);
                 planet_s += now_s() - p0;
                 if (real == P9_REAL_DOUBLE)
-                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method, enc_remove, &F);
+                    cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method + sub_method, enc_remove, &F);
                 else
                     p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT);
             }
@@ -456,7 +546,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         drop_dead(r, alive, was_alive, ntp);
         // the synchronous states for the output; the integration continues from the others
         planets Ps = P;
-        for (int i = 0; i < P.np; i++) Ps.b[i] = p9_synchronous(P.b[i], P.mu0, dt);
+        if (P.ksub == 1)
+            for (int i = 0; i < P.np; i++) Ps.b[i] = p9_synchronous(P.b[i], P.mu0, dt);  // else they are synchronous already
         for (int i = 0; i < ntp; i++) sync_tp[i] = alive[i] == 1 ? p9_synchronous(tp[i], P.mu0, dt) : tp[i];
         from_dh(r, &Ps, sync_tp, alive, ntp, &com, t - t0);
         r->t = t;
@@ -495,6 +586,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         return 3;
     }
 #endif
+    long long n_sub = 0, n_capped = 0;
+    int sub_max = 1;
+    for (int i = 0; i < ntp; i++) {
+        n_sub += F.sub_steps[i], n_capped += F.sub_capped[i];
+        if (F.sub_max[i] > sub_max) sub_max = F.sub_max[i];
+    }
     char near_text[256] = "", fast_text[256] = "", close_text[256] = "";
     for (int j = 0; j < P.np; j++) {
         long long sn = 0, sf = 0, sc = 0;
@@ -519,12 +616,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s removed_inner=%zu removed_by=%s encounter_method=%s encounter_remove=%d flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
+           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f "
            "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
-           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", removed_inner, by_text, step_method ? "step" : "kick",
-           enc_remove, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
+           use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text,
+           sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
@@ -535,6 +632,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     free(was_alive);
     free(cpu_tab);
     free(F.near), free(F.fast), free(F.close), free(F.last_j), free(F.last_step), free(F.rm_step), free(F.last_d);
+    free(F.sub_steps), free(F.sub_max), free(F.sub_capped);
     free(tp_ids);
     reb_simulation_free(r);
     return 0;

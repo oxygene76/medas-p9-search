@@ -284,6 +284,135 @@ P9_HD int p9_step_tp_step(p9_body* p, const double* q, const double* uq, const d
     return enc;
 }
 
+// ------------------------------------------------------------------ sub-steps (method "substep")
+// docs/substeps-plan.md. A step whose predicted closest approach to a planet
+// is too close or too short gets n sub-steps of dt/n, for this particle only.
+// Trigger (at the start of the step, from the particle's position at the kick
+// and the planet's position and velocity there; linear approximation, as a
+// comparison of squared distances): closest distance below the planet's
+// trigger radius (r2trig[j]) or a flyby shorter than 2 steps. n: the smallest
+// power of two (at most P9_SUB_MAX) with which the flyby lasts at least 8
+// sub-steps and the orbit around the planet at that distance at least 164
+// sub-steps (d^3 >= (164 / (2 pi))^2 (dt/n)^2 G m_j), the accuracy of the
+// radius rule; for a slow flyby the distance and speed at the pericentre of
+// the two-body orbit around the planet (gravitational focusing), where that is
+// closer than the straight line. Only + - * / and sqrt: CPU and GPU decide
+// alike. The planets' own accuracy matters as much (docs/substeps-plan.md):
+// the method is meant for P9_PLANET_SUBSTEPS=8 (p9gpu.c).
+// The sub-steps: the particle back to the synchronous state, then
+// drift-kick-drift with dt/n; the planets at each sub-step's kick from their
+// state at the step's kick, drifted on two-body orbits around the Sun (as
+// RMVS, Levison & Duncan 1994), to second order: from the planet's position q
+// at the kick and its mean velocity across the kick (uq before, uqb after it)
+// a Kepler drift over t, plus a t^2 / 2 with a = (uqb - uq) / dt (the
+// planets' pull on each other), plus the jump term of democratic
+// heliocentric coordinates, t w with w = sum m_j u_j / m_0 (the Sun's
+// barycentric motion, about 3e-3 au/yr). Each of the last two moves a planet
+// by up to 1e-4 to 1e-3 au over half a step, which changes the kick of a slow
+// close flyby by per cents. The particle's jump from the planets' velocities
+// there (u = Kepler velocity + a t).
+#define P9_SUB_MAX 4096
+#define P9_SUB_ORBIT 681.3  // (164 / (2 pi))^2, rounded up
+P9_HD int p9_sub_n(double m2, double w2, double gm, double dt) {
+    if (!(m2 > 0.0)) return P9_SUB_MAX;
+    const double d3 = m2 * sqrt(m2);
+    int n = 1;
+    for (; n < P9_SUB_MAX; n *= 2) {
+        const double s = dt / n;  // dt over a power of two: exact
+        if (m2 >= 64.0 * w2 * s * s && d3 >= P9_SUB_ORBIT * s * s * gm) break;
+    }
+    return n;
+}
+
+// One step with sub-steps where needed. Counts as p9_kick_tp_step (near, fast,
+// close, *fast_j, *fast_d; counters may be NULL); *nsub: the sub-steps used (1:
+// none). Nothing is removed at the planets. Returns -1.
+P9_HD int p9_step_tp_sub(p9_body* p, const double* q, const double* uq, const double* uqb, const double* wa, const double* wb, const double* gm,
+                         const double* r2trig,
+                         int np, double mu0, double dt, int* near, int* fast, int* close, int* fast_j, double* fast_d, int* nsub) {
+    const double h = 0.5 * dt;
+    // the particle at the kick (after the first jump), as the step would have it
+    const double xk = p->x + h * wa[0], yk = p->y + h * wa[1], zk = p->z + h * wa[2];
+    int n = 1;
+    for (int j = 0; j < np; j++) {
+        if (r2trig[j] <= 0.0) continue;
+        const double dx = q[3 * j] - xk, dy = q[3 * j + 1] - yk, dz = q[3 * j + 2] - zk;
+        const double wx = uq[3 * j] - p->vx, wy = uq[3 * j + 1] - p->vy, wz = uq[3 * j + 2] - p->vz;
+        const double w2 = wx * wx + wy * wy + wz * wz;
+        const double dw = dx * wx + dy * wy + dz * wz;
+        double tau = w2 > 0.0 ? -dw / w2 : 0.0;
+        const int inside = tau > -h && tau <= h;
+        if (tau < -h) tau = -h;
+        if (tau > h) tau = h;
+        const double ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+        const double m2 = ex * ex + ey * ey + ez * ez;
+        if (inside && near && m2 < 9.0 * r2trig[j]) {
+            near[j]++;
+            if (m2 < 0.01) close[j]++;
+            if (m2 < 2.25 * w2 * dt * dt) {
+                fast[j]++;
+                *fast_j = j;
+                *fast_d = sqrt(m2);
+            }
+        }
+        if (m2 < r2trig[j] || m2 < 4.0 * w2 * dt * dt) {
+            // gravitational focusing: the pericentre q of the two-body orbit around the planet
+            // (from distance and relative velocity at the kick) and the speed there; the
+            // straight line overestimates the closest distance of a slow flyby
+            const double d2 = dx * dx + dy * dy + dz * dz;
+            const double r = sqrt(d2), mu = gm[j];
+            const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+            const double L2 = cx * cx + cy * cy + cz * cz;
+            const double en = 0.5 * w2 - mu / r;
+            double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
+            if (e2 < 0.0) e2 = 0.0;
+            const double qp = L2 / mu / (1.0 + sqrt(e2));
+            double m2e = m2, w2e = w2;
+            if (qp * qp < m2e) {
+                m2e = qp * qp;
+                w2e = 2.0 * en + 2.0 * mu / qp;  // vis-viva at the pericentre
+            }
+            const int nj = p9_sub_n(m2e, w2e > w2 ? w2e : w2, gm[j], dt);
+            if (nj > n) n = nj;
+        }
+    }
+    *nsub = n;
+    double none[P9_MAX_PLANETS];
+    for (int j = 0; j < np; j++) none[j] = 0.0;
+    if (n == 1) return p9_step_tp(p, q, wa, wb, gm, none, np, mu0, dt);
+    // sub-steps: from the synchronous state at the step's start
+    p9_body x = *p;
+    p9_kepler(&x, mu0, -h);
+    const double s = dt / n, hs = 0.5 * s;
+    double wk[3] = {0.0, 0.0, 0.0}, um[3 * P9_MAX_PLANETS], ac[3 * P9_MAX_PLANETS];
+    for (int c = 0; c < 3 * np; c++) um[c] = 0.5 * (uq[c] + uqb[c]), ac[c] = (uqb[c] - uq[c]) / dt;
+    for (int j = 0; j < np; j++) wk[0] += gm[j] * um[3 * j], wk[1] += gm[j] * um[3 * j + 1], wk[2] += gm[j] * um[3 * j + 2];
+    wk[0] = wk[0] / mu0, wk[1] = wk[1] / mu0, wk[2] = wk[2] / mu0;  // jump velocity at the step's kick
+    p9_kepler(&x, mu0, hs);
+    for (int k = 0; k < n; k++) {
+        const double t = (k + 0.5) * s - h;  // this sub-step's kick, relative to the step's kick (never 0: n is even)
+        double qs[3 * P9_MAX_PLANETS], ws[3];
+        double px = 0.0, py = 0.0, pz = 0.0;
+        for (int j = 0; j < np; j++) {
+            p9_body b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
+            p9_kepler(&b, mu0, t);
+            const double t2 = 0.5 * t * t;
+            qs[3 * j] = b.x + t2 * ac[3 * j], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1], qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2];
+            px += gm[j] * (b.vx + t * ac[3 * j]), py += gm[j] * (b.vy + t * ac[3 * j + 1]), pz += gm[j] * (b.vz + t * ac[3 * j + 2]);
+        }
+        ws[0] = px / mu0, ws[1] = py / mu0, ws[2] = pz / mu0;
+        // the jump of the planets' heliocentric positions from the kick to t: trapezoid of w
+        for (int j = 0; j < np; j++)
+            for (int c = 0; c < 3; c++) qs[3 * j + c] += t * 0.5 * (wk[c] + ws[c]);
+        p9_jump(&x, ws, hs);
+        p9_kick_tp(&x, qs, gm, none, np, s);
+        p9_jump(&x, ws, hs);
+        p9_kepler(&x, mu0, k == n - 1 ? hs + h : s);
+    }
+    *p = x;
+    return -1;
+}
+
 // The synchronous state of a body kept half a drift ahead.
 P9_HD p9_body p9_synchronous(p9_body y, double mu0, double dt) {
     p9_kepler(&y, mu0, -0.5 * dt);
