@@ -249,23 +249,17 @@ P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* 
             const T a = -mu / (L<T>(2.0) * en);
             if (!(L<T>(P9_PI2) * a * a * a > L<T>(4.0) * dt * dt * mu)) peri = 1;
         }
-        T m2e, w2e;
-        if (peri) {
-            const T cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
-            const T L2 = cx * cx + cy * cy + cz * cz;
-            T e2 = L<T>(1.0) + L<T>(2.0) * en * L2 / (mu * mu);
-            if (e2 < L<T>(0.0)) e2 = L<T>(0.0);
-            const T qp = L2 / mu / (L<T>(1.0) + p9_sqrt(e2));
-            m2e = m2, w2e = w2;
-            if (qp * qp < m2e) {
-                m2e = qp * qp;
-                w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
-            }
-        } else {
-            m2e = L<T>(0.5) * m2;
-            w2e = L<T>(2.0) * en + L<T>(2.0) * mu / p9_sqrt(m2e);
+        const T cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+        const T L2 = cx * cx + cy * cy + cz * cz;
+        T e2 = L<T>(1.0) + L<T>(2.0) * en * L2 / (mu * mu);
+        if (e2 < L<T>(0.0)) e2 = L<T>(0.0);
+        const T qp = L2 / mu / (L<T>(1.0) + p9_sqrt(e2));
+        T m2e = m2, w2e = w2;
+        if (qp * qp < m2e) {
+            m2e = qp * qp;
+            w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
         }
-        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), P9_SMOOTH_MAX);
+        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0), peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
         if (nj > n) n = nj;
     }
     *nsub = any ? n : 1;

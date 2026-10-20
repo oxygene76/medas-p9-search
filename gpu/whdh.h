@@ -556,7 +556,9 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
         const double d2 = dx * dx + dy * dy + dz * dz;
         const double r = sqrt(d2), mu = gm[j];
         const double en = 0.5 * w2 - mu / r;
-        // Is the pericentre of the two-body orbit around the planet reached within the step? The particle
+        // Is the pericentre of the two-body orbit around the planet reached within the step? Only then may n
+        // exceed P9_SUB_MAX (4,096), up to P9_SMOOTH_MAX: the steps at the edge of r_out, where the two-body
+        // estimate is tiny but the particle never comes close, stay at 4,096 as before. The particle
         // approaches (r.v < 0) and the straight line's closest approach -r.v / v^2 or the fall time
         // sqrt(r^3 / mu) is at most 2 dt, or it is bound to the planet with half a period (pi sqrt(a^3 / mu))
         // of at most 2 dt. The factor 2: in a check against the exact two-body time (Jupiter, Neptune, Planet
@@ -567,30 +569,23 @@ P9_HD int p9_step_tp_smooth_d(p9_body* p, const double* q, const double* uq, con
             const double a = -mu / (2.0 * en);
             if (P9_PI2 * a * a * a <= 4.0 * dt * dt * mu) peri = 1;
         }
-        double m2e, w2e;
-        if (peri) {
-            // focusing: distance and speed at the pericentre, where that is closer than the straight line
-            const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
-            const double L2 = cx * cx + cy * cy + cz * cz;
-            double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
-            if (e2 < 0.0) e2 = 0.0;
-            const double qp = L2 / mu / (1.0 + sqrt(e2));
-            m2e = m2, w2e = w2;
-            if (qp * qp < m2e) {
-                m2e = qp * qp;
-                w2e = 2.0 * en + 2.0 * mu / qp;
-            }
-        } else {
-            // the smallest distance within the step: the straight line's, with m2 halved, as the planet's pull
-            // brings the particle up to 1/0.68 closer within the step; the speed there from the energy
-            // (two-body check: n then never too small, docs/substeps-plan.md)
-            m2e = 0.5 * m2;
-            w2e = 2.0 * en + 2.0 * mu / sqrt(m2e);
+        // focusing: distance and speed at the pericentre, where that is closer than the straight line (in every
+        // step: with the straight line's distance where the pericentre comes later, the Jacobi constant drifted,
+        // t^0.92 instead of t^0.56, docs/substeps-plan.md)
+        const double cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+        const double L2 = cx * cx + cy * cy + cz * cz;
+        double e2 = 1.0 + 2.0 * en * L2 / (mu * mu);
+        if (e2 < 0.0) e2 = 0.0;
+        const double qp = L2 / mu / (1.0 + sqrt(e2));
+        double m2e = m2, w2e = w2;
+        if (qp * qp < m2e) {
+            m2e = qp * qp;
+            w2e = 2.0 * en + 2.0 * mu / qp;
         }
         // the near part is integrated in A with a leapfrog whose n changes from step to step: finer than
         // for the hard switch (32 sub-steps per flyby, 656 per orbit), so that its error stays below 1e-3
         // of the kick (docs/substeps-plan.md)
-        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0, P9_SMOOTH_MAX);
+        const int nj = p9_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, 1024.0, 16.0, peri ? P9_SMOOTH_MAX : P9_SUB_MAX);
         if (nj > n) n = nj;
         if (cd && nj >= P9_CAPDIAG_MIN && (cd->j < 0 || m2e < cd->q_est * cd->q_est)) {
             const double v2 = w2e > w2 ? w2e : w2, d3 = m2e * sqrt(m2e);
