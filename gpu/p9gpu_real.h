@@ -26,8 +26,9 @@ int p9_real_parse(const char* text);
 const char* p9_real_name(int real);
 // One block of steps on the CPU in the given type (gpu/cpu_t.cpp), as the
 // kernel does it: the same bits as the GPU.
+// smooth: method "smooth" (the radii r2enc are then r_out^2; nothing removed at the planets).
 void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, double mu0, const double* tab, int nb,
-                    unsigned long long step0, double dt, int check_every, double rin2, double rout2);
+                    unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth);
 #ifdef __cplusplus
 }
 #endif

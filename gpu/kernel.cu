@@ -70,16 +70,21 @@ __global__ void p9_convert(const double* __restrict__ src, T* __restrict__ dst, 
 
 template <class T>
 __global__ void p9_advance_t(p9_body* __restrict__ st, int* __restrict__ alive, int ntp, const T* __restrict__ tab, int np, int nb,
-                             unsigned long long step0, T dt, T mu0, int check_every, T rin2, T rout2, p9t_consts<T> c) {
+                             unsigned long long step0, T dt, T mu0, int check_every, T rin2, T rout2, p9t_consts<T> c, int smooth) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= ntp || alive[i] != 1) return;
     const T* q = tab;
     const T* wa = tab + (size_t)nb * np * 3;
     const T* wb = wa + (size_t)nb * 3;
+    const T* uq = wb + (size_t)nb * 3;
+    const T* uqb = uq + (size_t)nb * np * 3;
     p9t_body<T> p = p9t_load<T>(st[i]);
     int a = 1;
     for (int k = 0; k < nb; k++) {
-        const int enc = p9t_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm, c.r2enc, np, mu0, dt);
+        int ns;
+        const int enc = smooth ? p9t_step_tp_smooth(&p, q + (size_t)k * np * 3, uq + (size_t)k * np * 3, uqb + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm,
+                                                    c.r2enc, np, mu0, dt, &ns)
+                               : p9t_step_tp(&p, q + (size_t)k * np * 3, wa + 3 * k, wb + 3 * k, c.gm, c.r2enc, np, mu0, dt);
         if (enc >= 0) {
             a = -1 - enc;
             break;
@@ -242,8 +247,8 @@ extern "C" const char* p9g_name(p9g* g) { return g->name; }
 static cudaError_t wait_stream(cudaStream_t s);
 
 extern "C" int p9g_set_step_method(p9g* g, int remove, int sub, char* err, int errlen) {
-    if (g->real != P9_REAL_DOUBLE || g->j2) {
-        snprintf(err, errlen, "encounter method step: model full, double only");
+    if ((g->real != P9_REAL_DOUBLE && !(sub == 2 && !remove)) || g->j2) {
+        snprintf(err, errlen, "encounter methods step and substep: model full, double only; smooth: model full, any number type");
         return 1;
     }
     const size_t m = (size_t)(g->ntp > 0 ? g->ntp : 1), n = sizeof(int) * m * g->np;
@@ -317,7 +322,7 @@ static void launch_t(p9g* g, int b, size_t n, int nb, unsigned long long step0, 
     for (int j = 0; j < P9_MAX_PLANETS; j++) c.gm[j] = L<T>(g->gm[j]), c.r2enc[j] = L<T>(g->r2enc[j]);
     const int threads = 128;
     p9_advance_t<T><<<(g->ntp + threads - 1) / threads, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, tab, g->np, nb, step0, L<T>(dt), L<T>(mu0),
-                                                                                  check_every, L<T>(rin2), L<T>(rout2), c);
+                                                                                  check_every, L<T>(rin2), L<T>(rout2), c, g->sub == 2);
 }
 
 // Uploads the table filled last and launches the kernel; returns at once.
@@ -330,7 +335,7 @@ extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, d
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
     if (g->ntp > 0) {
         const int threads = 128, blocks = (g->ntp + threads - 1) / threads;
-        if (g->step) {
+        if (g->step && g->real == P9_REAL_DOUBLE) {
             p9_advance_step<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                                rout2, g->d_near, g->d_fast, g->d_close, g->d_last_step, g->d_last_j, g->d_last_d,
                                                                g->d_rm_step, g->remove, g->sub, g->d_sub_steps, g->d_sub_max,

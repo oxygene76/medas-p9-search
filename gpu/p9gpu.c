@@ -352,9 +352,9 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
 int p9_real_parse(const char* text) { return !text || !*text || !strcmp(text, "double") ? P9_REAL_DOUBLE : -1; }
 const char* p9_real_name(int real) { return real == P9_REAL_DOUBLE ? "double" : "?"; }
 void p9_cpu_block_t(int real, p9_body* tp, int* alive, int ntp, int np, const double* gm, const double* r2enc, double mu0, const double* tab, int nb,
-                    unsigned long long step0, double dt, int check_every, double rin2, double rout2) {
+                    unsigned long long step0, double dt, int check_every, double rin2, double rout2, int smooth) {
     (void)real, (void)tp, (void)alive, (void)ntp, (void)np, (void)gm, (void)r2enc, (void)mu0, (void)tab, (void)nb, (void)step0, (void)dt,
-        (void)check_every, (void)rin2, (void)rout2;
+        (void)check_every, (void)rin2, (void)rout2, (void)smooth;
 }
 #endif
 
@@ -409,8 +409,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         fprintf(stderr, "P9_ENCOUNTER_REMOVE=0 needs P9_ENCOUNTER_METHOD=step\n");
         return 2;
     }
-    if (step_method && (real != P9_REAL_DOUBLE || getenv("P9_J2"))) {
-        fprintf(stderr, "P9_ENCOUNTER_METHOD=step: model full, double only (so far)\n");
+    if (step_method && ((real != P9_REAL_DOUBLE && sub_method != 2) || getenv("P9_J2"))) {
+        fprintf(stderr, "P9_ENCOUNTER_METHOD step and substep: model full, double only; smooth: model full, any number type\n");
         return 2;
     }
     if (real < 0) {
@@ -538,7 +538,8 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 if (real == P9_REAL_DOUBLE)
                     cpu_block(tp, alive, ntp, &P, r2enc, cpu_tab, nb, steps, dt, step_method + sub_method, enc_remove, &F);
                 else
-                    p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT);
+                    p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT,
+                                   sub_method == 2);
             }
             steps += (unsigned long long)nb;
             need -= nb;

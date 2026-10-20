@@ -157,6 +157,128 @@ P9_HDT int p9t_step_tp(p9t_body<T>* p, const T* q, const T* wa, const T* wb, con
     return enc;
 }
 
+// ------------------------------------------------------------------ smooth transition (whdh.h p9_step_tp_smooth)
+// The same expressions in the same order; the flyby counters are left out.
+template <class T>
+P9_HDT T p9t_far(T d, T rout) {
+    const T rin = L<T>(0.1) * rout;
+    if (!(d < rout)) return L<T>(1.0);
+    if (!(d > rin)) return L<T>(0.0);
+    const T y = (d - rin) / (rout - rin);
+    const T y2 = y * y, y3 = y2 * y, y6 = y3 * y3;
+    return (L<T>(462.0) - L<T>(1980.0) * y + L<T>(3465.0) * y2 - L<T>(3080.0) * y3 + L<T>(1386.0) * y2 * y2 - L<T>(252.0) * y2 * y3) * y6;
+}
+
+template <class T>
+P9_HDT void p9t_kick_far(p9t_body<T>* p, const T* q, const T* gm, const T* r2out, int np, T h) {
+    T ax = L<T>(0.0), ay = L<T>(0.0), az = L<T>(0.0);
+    for (int j = 0; j < np; j++) {
+        const T dx = q[3 * j] - p->x, dy = q[3 * j + 1] - p->y, dz = q[3 * j + 2] - p->z;
+        const T d2 = dx * dx + dy * dy + dz * dz;
+        const T d = p9_sqrt(d2);
+        T k = gm[j] / (d2 * d);
+        if (r2out[j] > L<T>(0.0) && d2 < r2out[j]) k = k * p9t_far(d, p9_sqrt(r2out[j]));
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+}
+
+template <class T>
+P9_HDT void p9t_kick_near(p9t_body<T>* p, const T* qs, const T* gm, const T* r2out, int np, T h) {
+    T ax = L<T>(0.0), ay = L<T>(0.0), az = L<T>(0.0);
+    for (int j = 0; j < np; j++) {
+        if (!(r2out[j] > L<T>(0.0))) continue;
+        const T dx = qs[3 * j] - p->x, dy = qs[3 * j + 1] - p->y, dz = qs[3 * j + 2] - p->z;
+        const T d2 = dx * dx + dy * dy + dz * dz;
+        if (!(d2 < r2out[j])) continue;
+        const T d = p9_sqrt(d2);
+        const T k = gm[j] / (d2 * d) * (L<T>(1.0) - p9t_far(d, p9_sqrt(r2out[j])));
+        ax += k * dx;
+        ay += k * dy;
+        az += k * dz;
+    }
+    p->vx += h * ax;
+    p->vy += h * ay;
+    p->vz += h * az;
+}
+
+template <class T>
+P9_HDT int p9t_sub_n_k(T m2, T w2, T gm, T dt, T k2, T orb) {
+    if (!(m2 > L<T>(0.0))) return P9_SUB_MAX;
+    const T d3 = m2 * p9_sqrt(m2);
+    int n = 1;
+    for (; n < P9_SUB_MAX; n *= 2) {
+        const T s = dt / L<T>((double)n);
+        if (!(m2 < k2 * w2 * s * s) && !(d3 < orb * L<T>(P9_SUB_ORBIT) * s * s * gm)) break;
+    }
+    return n;
+}
+
+template <class T>
+P9_HDT int p9t_step_tp_smooth(p9t_body<T>* p, const T* q, const T* uq, const T* uqb, const T* wa, const T* wb, const T* gm, const T* r2out, int np,
+                              T mu0, T dt, int* nsub) {
+    const T h = L<T>(0.5) * dt;
+    p9t_jump(p, wa, h);
+    p9t_kick_far(p, q, gm, r2out, np, dt);
+    p9t_jump(p, wb, h);
+    T um[3 * P9_MAX_PLANETS], ac[3 * P9_MAX_PLANETS];
+    for (int c = 0; c < 3 * np; c++) um[c] = L<T>(0.5) * (uq[c] + uqb[c]), ac[c] = (uqb[c] - uq[c]) / dt;
+    int n = 1, any = 0;
+    for (int j = 0; j < np; j++) {
+        if (!(r2out[j] > L<T>(0.0))) continue;
+        const T dx = q[3 * j] + h * wb[0] - p->x, dy = q[3 * j + 1] + h * wb[1] - p->y, dz = q[3 * j + 2] + h * wb[2] - p->z;
+        const T wx = um[3 * j] - p->vx, wy = um[3 * j + 1] - p->vy, wz = um[3 * j + 2] - p->vz;
+        const T w2 = wx * wx + wy * wy + wz * wz;
+        T tau = w2 > L<T>(0.0) ? -(dx * wx + dy * wy + dz * wz) / w2 : L<T>(0.0);
+        if (tau < L<T>(0.0)) tau = L<T>(0.0);
+        if (tau > dt) tau = dt;
+        const T ex = dx + wx * tau, ey = dy + wy * tau, ez = dz + wz * tau;
+        const T m2 = ex * ex + ey * ey + ez * ez;
+        if (!(m2 < r2out[j])) continue;
+        any = 1;
+        const T d2 = dx * dx + dy * dy + dz * dz;
+        const T r = p9_sqrt(d2), mu = gm[j];
+        const T cx = dy * wz - dz * wy, cy = dz * wx - dx * wz, cz = dx * wy - dy * wx;
+        const T L2 = cx * cx + cy * cy + cz * cz;
+        const T en = L<T>(0.5) * w2 - mu / r;
+        T e2 = L<T>(1.0) + L<T>(2.0) * en * L2 / (mu * mu);
+        if (e2 < L<T>(0.0)) e2 = L<T>(0.0);
+        const T qp = L2 / mu / (L<T>(1.0) + p9_sqrt(e2));
+        T m2e = m2, w2e = w2;
+        if (qp * qp < m2e) {
+            m2e = qp * qp;
+            w2e = L<T>(2.0) * en + L<T>(2.0) * mu / qp;
+        }
+        const int nj = p9t_sub_n_k(m2e, w2e > w2 ? w2e : w2, gm[j], dt, L<T>(1024.0), L<T>(16.0));
+        if (nj > n) n = nj;
+    }
+    *nsub = any ? n : 1;
+    if (!any) {
+        p9t_kepler(p, mu0, dt);
+        return -1;
+    }
+    const T s = dt / L<T>((double)n), hs = L<T>(0.5) * s;
+    p9t_kepler(p, mu0, hs);
+    for (int k = 0; k < n; k++) {
+        const T t = L<T>(k + 0.5) * s;
+        T qs[3 * P9_MAX_PLANETS];
+        for (int j = 0; j < np; j++) {
+            p9t_body<T> b = {q[3 * j], q[3 * j + 1], q[3 * j + 2], um[3 * j], um[3 * j + 1], um[3 * j + 2]};
+            p9t_kepler(&b, mu0, t);
+            const T t2 = L<T>(0.5) * t * t;
+            qs[3 * j] = b.x + t2 * ac[3 * j] + h * wb[0], qs[3 * j + 1] = b.y + t2 * ac[3 * j + 1] + h * wb[1],
+                  qs[3 * j + 2] = b.z + t2 * ac[3 * j + 2] + h * wb[2];
+        }
+        p9t_kick_near(p, qs, gm, r2out, np, s);
+        p9t_kepler(p, mu0, k == n - 1 ? hs : s);
+    }
+    return -1;
+}
+
 template <class T>
 P9_HDT p9t_body<T> p9t_synchronous(p9t_body<T> y, T mu0, T dt) {
     p9t_kepler(&y, mu0, L<T>(-0.5) * dt);
