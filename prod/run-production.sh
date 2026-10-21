@@ -6,7 +6,8 @@
 # run/input.sa, segment k from the last snapshot of segment k - 1 (bin/p9sim last). A segment counts as done only
 # when its result is written (segments/segNNN/DONE). After an interruption (stop.sh, reboot, crash) the next start
 # skips the done segments and computes the interrupted one again from its input: the run gives the same bits
-# with or without interruptions (each segment is a deterministic function of its input).
+# with or without interruptions (each segment is a deterministic function of its input; the input file written
+# again may differ in REBOUND's bookkeeping bytes, the state in it does not).
 set -u
 cd "$(dirname "$0")"
 . ./params.env
@@ -19,10 +20,14 @@ log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> production.log
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 finish() { rm -f production.pid; }
 trap finish EXIT
-trap 'log "stopped (signal)"; exit 130' INT TERM HUP
+# the programs run in the background and the script waits for them, so that a signal (stop.sh) stops them at once
+child=""
+stopped() { log "stopped (signal)"; [ -n "$child" ] && kill -TERM "$child" 2>/dev/null; exit 130; }
+trap stopped INT TERM HUP
+runbg() { "$@" & child=$!; wait "$child"; rc=$?; child=""; return $rc; }
 
 log "start, package $(cat PACKAGE-VERSION), p9gpu sha256 $(sha $GPU)"
-if ! sh check.sh > check/report.txt 2>&1; then
+if ! runbg sh check.sh > check/report.txt 2>&1; then
   log "CHECK FAILED: the production run is not started (see check/report.txt)"
   exit 3
 fi
@@ -39,13 +44,13 @@ while [ "$k" -lt "$SEGMENTS" ]; do
     cp run/input.sa "$d/input.sa"
   else
     prev=segments/seg$(printf %03d $((k - 1)))
-    "$SIM" last "$prev/output.sa" "$d/input.tmp" > /dev/null || { log "segment $k: no input from $prev"; exit 4; }
+    runbg "$SIM" last "$prev/output.sa" "$d/input.tmp" > /dev/null || { log "segment $k: no input from $prev"; exit 4; }
     mv "$d/input.tmp" "$d/input.sa"
   fi
   t_end=$(awk -v k="$k" -v s="$SEGMENT_YR" 'BEGIN { printf "%.17g", (k + 1) * s }')
   log "segment $k: start ($d, input sha256 $(sha "$d/input.sa"), to t = $t_end yr)"
-  P9_FLYBY_OUT=$d/flybys.tsv P9_REMOVED_OUT=$d/removed.tsv "$GPU" run "$d/input.sa" "$t_end" "$SNAPSHOTS_PER_SEGMENT" "$d/output.sa" "$d/final.state" \
-    > "$d/result.txt" 2> "$d/stderr.txt" || { log "segment $k: p9gpu FAILED (see $d/stderr.txt)"; exit 4; }
+  runbg env P9_FLYBY_OUT="$d/flybys.tsv" P9_REMOVED_OUT="$d/removed.tsv" "$GPU" run "$d/input.sa" "$t_end" "$SNAPSHOTS_PER_SEGMENT" "$d/output.sa" \
+    "$d/final.state" > "$d/result.txt" 2> "$d/stderr.txt" || { log "segment $k: p9gpu FAILED (see $d/stderr.txt)"; exit 4; }
   line=$(grep '^result_sha256=' "$d/result.txt") || { log "segment $k: no result line"; exit 4; }
   { echo "input_sha256=$(sha "$d/input.sa")"; echo "output_sha256=$(sha "$d/output.sa")"; echo "$line"; } > "$d/DONE.tmp"
   mv "$d/DONE.tmp" "$d/DONE"

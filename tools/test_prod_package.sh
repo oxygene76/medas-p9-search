@@ -23,5 +23,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PKG:/pkg.tar.gz:ro" ubu
   got2=\$(tail -n 1 segments.tsv | cut -f5)
   [ \"\$got2\" = \"\$want\" ] && echo \"TEST resume: SAME (\$got2)\" || { echo \"TEST resume: DIFFERENT \$got2\"; exit 1; }
   sh status.sh
-  sh start.sh || true; sh stop.sh
+  rm -rf segments segments.tsv; sh start.sh; sleep 20; sh stop.sh
+  [ -f production.pid ] && { echo 'TEST stop: still running'; exit 1; }
+  grep -q 'stopped (signal)' production.log && echo 'TEST stop: stopped during the check' || { echo 'TEST stop: no stop in the log'; exit 1; }
   echo 'TEST PASSED'"

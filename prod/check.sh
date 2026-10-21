@@ -16,6 +16,9 @@ GPU=bin/p9gpu
 SIM=bin/p9sim
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 say() { printf '%s\n' "$*"; }
+child=""
+trap '[ -n "$child" ] && kill -TERM "$child" 2>/dev/null; exit 130' INT TERM HUP
+runbg() { "$@" & child=$!; wait "$child"; rc=$?; child=""; return $rc; }
 fail=0
 mkdir -p check/out
 say "== check, package $(cat PACKAGE-VERSION), $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -37,13 +40,15 @@ envfor() {
 while read -r name profile input t_mid t_end expected; do
   case "$name" in ''|'#'*) continue ;; esac
   o=check/out/$name
+  rm -f "$o.out" "$o.sa" "$o-a.sa" "$o-b-in.sa"
   if [ "$t_mid" = - ]; then
-    line=$(env $(envfor "$profile") "$GPU" run "$input" "$t_end" 1 "$o.sa" 2> "$o.err" | grep '^result_sha256=') || line=""
+    runbg env $(envfor "$profile") "$GPU" run "$input" "$t_end" 1 "$o.sa" > "$o.out" 2> "$o.err"
   else
-    line=$(env $(envfor "$profile") "$GPU" run "$input" "$t_mid" 1 "$o-a.sa" 2> "$o.err" | grep '^result_sha256=') &&
-      "$SIM" last "$o-a.sa" "$o-b-in.sa" > /dev/null &&
-      line=$(env $(envfor "$profile") "$GPU" run "$o-b-in.sa" "$t_end" 1 "$o.sa" 2>> "$o.err" | grep '^result_sha256=') || line=""
+    runbg env $(envfor "$profile") "$GPU" run "$input" "$t_mid" 1 "$o-a.sa" > /dev/null 2> "$o.err" &&
+      runbg "$SIM" last "$o-a.sa" "$o-b-in.sa" > /dev/null &&
+      runbg env $(envfor "$profile") "$GPU" run "$o-b-in.sa" "$t_end" 1 "$o.sa" > "$o.out" 2>> "$o.err"
   fi
+  line=$(grep '^result_sha256=' "$o.out" 2> /dev/null) || line=""
   if [ -z "$line" ]; then say "$name: FAILED (see $o.err)"; fail=1; continue; fi
   got=$(printf '%s' "$line" | sed 's/^result_sha256=\([0-9a-f]*\).*/\1/')
   wall=$(printf '%s' "$line" | sed 's/.*wall_s=\([0-9.]*\).*/\1/')
