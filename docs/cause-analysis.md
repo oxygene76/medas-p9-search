@@ -76,6 +76,14 @@ Tests that separate the hypotheses:
   member 0 on the laptop (`runs/cause/wh05`, running): like p9gpu → the
   difference lies in MERCURIUS' treatment of encounters (IAS15 zone);
   like MERCURIUS → something particular to p9gpu.
-- Package for the GPU server (`build/p9cause-*` on branch feat/cause-package):
-  the ensemble with half the time step (J1) and with a 20.95-au transition
-  zone around Planet Nine (J2), unchanged p9gpu v5.
+- Package for the GPU server: `p9cause-008aaae.tar.gz` (sha256
+  `6c5dffd4239efaaf30934865e1a89693190edd32c639e7e9f653fc7497ea6fbf`, branch
+  feat/cause-package, worktree medas-p9-search-cause): the ensemble with half
+  the time step (J1) and with a 20.95-au transition zone around Planet Nine
+  (J2), with the unchanged binary of p9prod-9a084ed (integrator identical to
+  v5; on the ensemble's settings it gives the ensemble's bits, checked at
+  1 Myr). Tested locally from an unpacked copy: check ALL SAME (40 of 40),
+  both jobs write snapshots, stop.sh stops at once. Measured on the laptop with
+  both jobs at once: J1 552 s/Myr, J2 305 s/Myr; on the L40S with the FP64
+  factor 2.0 about 15 h and 8.5 h (with 8,000 particles the factor may be
+  smaller, down to about 1).
