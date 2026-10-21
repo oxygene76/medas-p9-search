@@ -114,6 +114,9 @@ def planets(args, runs):
             out["g " + p] = line_freq(t, z, LITERATURE["g " + p])[0] * ARCSEC
             if p != "Jupiter":
                 out["s " + p] = line_freq(t, zeta, LITERATURE["s " + p])[0] * ARCSEC
+        res[label] = out
+        if "P9" not in names:
+            continue
         # Planet Nine: barycentric varpi and Omega, mean drift
         rows = [[(n, mm, xv[k, i, :3], xv[k, i, 3:]) for i, (n, mm) in enumerate(zip(names, [m.get(n, 0.0) for n in names])) if mm > 0] for k in range(len(t))]
         vps, oms = [], []
