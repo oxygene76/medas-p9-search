@@ -72,12 +72,15 @@ the RTX 5080 Laptop GPU, 8,000 test particles, 6,022 left at 200 Myr), M0
   −1.52 and −1.45); R(ΔΩ) holds at all three times.
 - Criterion 2 applies: at 200 Myr all four p9gpu values of R(Δϖ) lie below
   both MERCURIUS values. Not an accident of the last time: from 135 Myr on all
-  G lie below all M at every time (d down to −3.1 at 165 Myr); up to 130 Myr
-  the two agree within the scatter (|d| ≤ 1.0 with one exception, −1.35 for
-  R(ΔΩ) at 35 Myr).
-- Everything else holds in all 27 single comparisons per time (survivors, KS,
-  McNemar p 0.21 to 1.00), apart from single R comparisons within 2 bootstrap
-  SE (G0 at 200 Myr, as in the first comparison).
+  G lie below all M at every time, 14 times in a row (d down to −3.1 at
+  165 Myr). Up to 130 Myr the two agree within the scatter: |d| ≤ 1 but for
+  +1.02 (R(Δϖ), 20 Myr), +1.02 (R(ΔΩ), 25 Myr) and −1.35 (R(ΔΩ), 35 Myr), and
+  all G below all M only twice, at 15 and 35 Myr, not in a row.
+- The per-run criteria (27 comparisons: each G against M0 and M1, M1 against
+  M0, at 100, 150, 200 Myr): survivors, KS and McNemar (p 0.21 to 1.00) hold in
+  all; R within 2 bootstrap SE fails in 4: G2–M1 R(ΔΩ) distant at 100 Myr,
+  G0–M0 R(Δϖ) distant, G0–M1 R(Δϖ) distant and all, G3–M0 R(ΔΩ) distant at
+  200 Myr. M1 against M0 passes everything.
 
 As decided, the cause is searched with cheap analyses only (no new long runs
 without the project lead); see below.
