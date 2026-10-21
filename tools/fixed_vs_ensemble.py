@@ -19,7 +19,7 @@ run = sys.argv[1] if len(sys.argv) > 1 else "F:G:0:runs/val/gpu-2000-count,runs/
 ens = json.load(open("runs/val/eval-ensemble.json"))
 course = {r["t"]: r for r in ens["course"]}
 fixed = ee.parse_run(run)
-print("Fixed step (gpu-2000-count/count2: p9gpu without sub-steps, planets 1 step, the start values of G0 and M0) against the ensemble:")
+print(f"{run} against the ensemble (default: the fixed step, gpu-2000-count/count2: p9gpu without sub-steps, planets 1 step, the start values of G0 and M0):")
 print("d_F = (R_F - m_M) / (2 s), s the run-to-run scatter of the ensemble (G0-G3, M0-M1); for comparison d_G of the ensemble")
 for key in ("dvarpi", "dOmega"):
     print(f"\n{key}:   t |   R_F   m_M    M0    M1   m_G    2s |   d_F   d_G | F below both M")

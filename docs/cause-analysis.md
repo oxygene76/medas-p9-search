@@ -113,3 +113,35 @@ Wisdom–Holman step without an encounter zone around the planets (MERCURIUS
 switches to IAS15 within a few Hill radii). The planets of the fixed-step run
 use one step per dt (like REBOUND WHFast), those of v5 eight; that it deviates
 alike points away from the planets' secular frequencies as well.
+
+## 7. REBOUND WHFast without an encounter zone follows MERCURIUS in R(Δϖ)
+
+`runs/cause/wh05`: member 0 with p9sim WHFast (democratic heliocentric,
+dt 0.5 yr, no encounter zone, like p9gpu's fixed step), 0–200 Myr, 16 slices
+(2.3 h). Against the ensemble (`tools/fixed_vs_ensemble.py`, output
+`runs/cause/wh05-vs-ensemble.txt`; d_W = (R_W − m_M) / 2s, and the same against
+the p9gpu mean m_G):
+
+| t (Myr) | R_W | m_M | m_G | d_W against M | (R_W − m_G) / 2s |
+|---|---|---|---|---|---|
+| 100 | 0.684 | 0.691 | 0.687 | −0.53 | −0.25 |
+| 140 | 0.695 | 0.693 | 0.682 | +0.28 | +2.17 |
+| 150 | 0.688 | 0.691 | 0.669 | −0.20 | +1.36 |
+| 165 | 0.662 | 0.674 | 0.647 | −1.34 | +1.67 |
+| 180 | 0.641 | 0.650 | 0.612 | −0.44 | +1.45 |
+| 200 | 0.599 | 0.609 | 0.569 | −0.34 | +1.07 |
+
+R(Δϖ) of WHFast stays with MERCURIUS up to 150 Myr and slightly below it
+afterwards (within 1.34 limits; the p9gpu runs reach −3.1), and from 140 Myr it
+lies 1.1 to 2.2 limits above the p9gpu mean; at 200 Myr 0.599, above all four
+p9gpu runs (at most 0.581). Without an encounter zone WHFast loses more
+particles (survivors 1,454 against 1,504 at 200 Myr; McNemar fails at 100, 150
+and 200 Myr) and has a lower R(ΔΩ) at 50–75 Myr (to −5 limits, where 2s is
+only 0.004–0.006). One run only.
+
+So a Wisdom–Holman step of the same size without an encounter zone does not by
+itself give p9gpu's lower R(Δϖ): the missing encounter zone is not the
+explanation. The deviation comes from something p9gpu does differently from
+WHFast, in its fixed step as well as in v5. Next: a direct comparison of p9gpu
+(fixed step, planets 1 step) with WHFast on identical start values and step,
+step by step from the start.
