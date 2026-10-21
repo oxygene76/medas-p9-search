@@ -145,3 +145,76 @@ explanation. The deviation comes from something p9gpu does differently from
 WHFast, in its fixed step as well as in v5. Next: a direct comparison of p9gpu
 (fixed step, planets 1 step) with WHFast on identical start values and step,
 step by step from the start.
+
+## 8. Direct comparison p9gpu against WHFast: the same integrator
+
+`tools/direct_wh.c` runs p9gpu's integrator (gpu/whdh.h and the planets of
+gpu/p9gpu.c, included unchanged; fixed step, planets one step per dt, no
+removal at the planets) and REBOUND 5.2.2 WHFast (democratic heliocentric,
+safe_mode 1, as p9sim) on the same start file (`runs/val/ens-gpu/input.sa`,
+member 0, dt 0.5 yr) in lockstep and compares the synchronous states
+(outputs `runs/cause/direct/`; evaluation `tools/direct_wh_eval.py`).
+
+**Step 0** (the state after reading and converting the start file, before the
+first step; REBOUND's `from_inertial` against p9gpu's `to_dh`): bit-identical
+for all 2,005 bodies (also for all 8,005 of the four members): masses, G,
+G m_Sun as Kepler mass, the centre-of-mass velocity, Q and u. The setup that
+WHFast and MERCURIUS share with p9gpu has no difference.
+
+**Operator order.** Both: kepler(dt/2), jump(dt/2), kick(dt), jump(dt/2),
+kepler(dt/2) (drift-kick-drift with the Kepler parts outside). WHFast with
+safe_mode 1 does both Kepler halves and converts from and to the inertial
+frame in every step; p9gpu joins the two halves into one Kepler step of dt and
+keeps the state half a drift ahead (synchronised for outputs with
+kepler(−dt/2)). Same operators, one at a time from the same state:
+- Kepler drift: Kepler mass G m_Sun in both (test particles and planets);
+  results differ by at most 2.2e-16 relative (one rounding unit; REBOUND's
+  solver iterates to convergence, p9gpu's does three Halley iterations), in
+  1,774 of 2,005 bodies in some bit.
+- Jump (P/m_Sun from the planets' barycentric momenta, test particles
+  massless): bit-identical.
+- Kick (planets on each other and on the test particles, not the Sun;
+  Planet Nine a massive planet in both): bit-identical for all bodies.
+
+**Step by step** (1,000 steps, every step): after step 1 the test particles
+differ by 1.3e-16 (median) and 4.8e-16 (max) relative in position, after
+1,000 steps by 2.9e-15 (median) and 9.1e-14 (max); none above 1e-12. Planets
+and Planet Nine after 1,000 steps: 1.6e-15 (Planet Nine) to 1.5e-12
+(Jupiter) in position; elements equal to 1e-14 (a, e) and 1e-11 deg (ϖ, Ω).
+
+**Over 10 Myr** (2,000 test particles, compared every 10 yr): the first time
+the position difference of a test particle exceeds a threshold, against the
+chaos baseline of the same code with start positions 1e-12 apart (member 0
+against member 1):
+
+| pair | > 1e-8 by 1 Myr | median time to 1e-8 | to 1e-4 | median time 1e-12 → 1e-4 |
+|---|---|---|---|---|
+| p9gpu against WHFast (member 0) | 96.7 % | 0.100 Myr | 0.236 Myr | 0.227 Myr |
+| p9gpu, member 0 against 1 | 96.0 % | 0.074 Myr | 0.215 Myr | 0.212 Myr |
+| WHFast, member 0 against 1 | 96.3 % | 0.074 Myr | 0.215 Myr | 0.212 Myr |
+
+p9gpu and WHFast separate exactly as fast as either code from itself after a
+1e-12 perturbation; they start from a 1e-16 difference instead of 1e-12, so
+they reach each threshold a little later. 99.5 % of the separations (1e-8 and
+1e-4) happen away from close approaches (Neptune farther than 5 au and Planet
+Nine farther than 21 au in the 1 to 2 kyr before), spread over q like the
+population (q < 42 au 60 %, 42–50 au 36 %, > 50 au 4 %): the ordinary
+chaotic growth of rounding differences, not a difference at encounters.
+Planets and Planet Nine over 10 Myr: no systematic drift; Jupiter's position
+differs by 1.8e-6 at 1 Myr and 1.3e-4 at 10 Myr (the phase of the rounding
+differences), elements by at most |Δa/a| 3e-6, |Δe| 2e-6, |Δϖ| 0.03 deg
+(Neptune), 7e-4 deg (Planet Nine).
+
+**Consequence.** p9gpu's fixed step and WHFast are the same integrator; their
+trajectories differ only by rounding, amplified by the chaos at the same rate
+as between ensemble members. The fixed-step run F (0.578 at 200 Myr) and the
+WHFast run W (0.599) are therefore two realisations of one method; their
+difference (0.021) is within the ensemble's 2s (0.028). The conclusion of
+section 7 (the deviation is particular to p9gpu) does not hold: single runs
+can not separate p9gpu's fixed step from WHFast. What stands: the four v5 runs
+(mean 0.569) lie below both MERCURIUS runs (mean 0.609); the two fixed-step
+Wisdom–Holman runs lie between (0.578, 0.599; mean 0.589). Whether the plain
+Wisdom–Holman step (without an encounter zone) deviates from MERCURIUS, and
+whether v5 deviates from the plain step, needs an ensemble of fixed-step runs
+(members 1–3; p9gpu fixed step on the GPU or WHFast, which are equivalent).
+No cause in p9gpu's integrator was found; nothing to fix.
