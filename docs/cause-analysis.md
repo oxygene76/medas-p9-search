@@ -218,3 +218,24 @@ Wisdom–Holman step (without an encounter zone) deviates from MERCURIUS, and
 whether v5 deviates from the plain step, needs an ensemble of fixed-step runs
 (members 1–3; p9gpu fixed step on the GPU or WHFast, which are equivalent).
 No cause in p9gpu's integrator was found; nothing to fix.
+
+## 9. Night of 2026-10-21/22: more runs for the group comparison
+
+Started 23:48–23:50 on the laptop (decision of the project lead; nothing on
+appmdp-05, p9gpu unchanged):
+
+- **Fixed step, members 1–3** (`runs/cause/ensfix/m123`, one p9gpu job with
+  6,000 test particles on the GPU, 10 segments of 20 Myr, `tools/chain_run.sh`):
+  binary `build/gpu-v5/p9gpu` (79c16e2) with `--encounter-method step
+  --no-removal`, planets one step per dt, the settings of `gpu-2000-count`.
+  Checked first: member 0 over 1 Myr with these settings gives the state of
+  `gpu-2000-count` at 1 Myr bit for bit (state sha256 `5e4dc9cb…a36a2`).
+- **MERCURIUS M2 = member 5, M3 = member 6** (`runs/cause/ensmerc`, settings
+  of M1, `runs/val/ens-merc`): 15 single-core jobs with nice (member 5 in 8
+  slices of 250, member 6 in 7 slices of 285–286). MERCURIUS cost is linear in
+  the number of particles (1 Myr: 37 s for 125, 78 s for 250), about 50 core
+  hours per member under full load (M1); two members fit into the night, three
+  do not.
+
+With them: plain Wisdom–Holman F, W, F1–F3 (5 runs), MERCURIUS M0–M3
+(4 runs), v5 G0–G3 (4 runs).
