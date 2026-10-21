@@ -5,6 +5,9 @@
   python tools/manifest.py make SPEC.json OUT.json      write the manifest (and print its SHA-256)
   python tools/manifest.py verify MANIFEST.json [--root DIR] [--repo NAME=DIR ...]
                                                          check every listed file against its hash
+  python tools/manifest.py archive MANIFEST.json OUT.tar --repo NAME=DIR ...
+                                                         the files without git, as REPO/PATH, and the
+                                                         manifest itself (for a backup and for the reveal)
 
 The SHA-256 of the manifest file (its exact bytes) is what goes into the notary as the entry's
 content (the web app: Submit, "A file"; docs/notary.md). After the reveal anyone checks each file on
@@ -130,14 +133,32 @@ def verify(a):
     sys.exit(1 if bad else 0)
 
 
+def archive(a):
+    import tarfile
+    m = json.loads(Path(a.manifest).read_bytes())
+    dirs = {k: Path(v) for k, v in (x.split("=", 1) for x in a.repo)}
+    with tarfile.open(a.out, "w") as t:
+        t.add(a.manifest, arcname=Path(a.manifest).name)
+        for f in m["files"]:
+            if f["git"]:
+                continue
+            p = dirs[f["repo"]] / f["path"]
+            if sha256_bytes(p.read_bytes()) != f["sha256"]:
+                sys.exit(f"{f['repo']}/{f['path']} does not match the manifest")
+            t.add(str(p), arcname=f"{f['repo']}/{f['path']}")
+    print(f"{a.out}: the manifest and {sum(1 for f in m['files'] if not f['git'])} files")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("make"); m.add_argument("spec"); m.add_argument("out")
     v = sub.add_parser("verify"); v.add_argument("manifest"); v.add_argument("--root", default=".")
     v.add_argument("--repo", action="append", default=[], metavar="NAME=DIR"); v.add_argument("--verbose", action="store_true")
+    r = sub.add_parser("archive"); r.add_argument("manifest"); r.add_argument("out")
+    r.add_argument("--repo", action="append", default=[], metavar="NAME=DIR")
     a = ap.parse_args()
-    {"make": make, "verify": verify}[a.cmd](a)
+    {"make": make, "verify": verify, "archive": archive}[a.cmd](a)
 
 
 if __name__ == "__main__":
