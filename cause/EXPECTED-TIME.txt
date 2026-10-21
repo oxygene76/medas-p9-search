@@ -1,1 +1,12 @@
-(measured locally before delivery, see the package's docs)
+Expected time (measured 2026-10-21 on the reference laptop, RTX 5080 Laptop GPU, both jobs at the same time,
+8,000 test particles each, from an unpacked copy of the package started with start.sh):
+  check                   4.7 min (ALL SAME, 40 of 40)
+  J1-dt025 (dt 0.25 yr)   552 s per Myr   -> 200 Myr about 31 h on the laptop
+  J2-p9zone21             305 s per Myr   -> 200 Myr about 17 h on the laptop
+(fewer particles later: some 10 % less.)
+On the L40S, scaled with the measured L40S/laptop factor 2.0 for FP64 (docs/gpu-check.md, 64,000
+particles): J1 about 15 h, J2 about 8.5 h; both at the same time: done after about 15 h.
+Caveat: the factor 2.0 was measured with 64,000 particles; with 8,000 neither GPU is full and the factor can
+be smaller (down to about 1: J1 about 30 h). The first segment (20 Myr) gives the real rate: J1 about 1.5 h
+(factor 2) to 3 h (factor 1), J2 about 0.8 to 1.7 h.
+Resources: the GPU (about 400 MiB of its memory), one CPU core per job (nice 5), about 1 GB of disk.
