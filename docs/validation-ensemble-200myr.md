@@ -56,6 +56,28 @@ bootstrap standard errors, losses paired by test particle with McNemar) for
 each G_k against M0 and against M1, and M1 against M0, at 100, 150 and
 200 Myr; the collisions per planet and the steps at the cap.
 
-## Result
+## Result (2026-10-21, `runs/val/eval-ensemble.txt`): **not passed**, the difference is systematic
 
-(added by the evaluation)
+Runs: G0–G3 `runs/val/ens-gpu` (v5, 79c16e2; result 5345318f…, 36,045 s on
+the RTX 5080 Laptop GPU, 8,000 test particles, 6,022 left at 200 Myr), M0
+(`runs/val/merc`, `merc2`), M1 (`runs/val/ens-merc`, 3.2 h on 16 cores).
+
+| t | R(Δϖ) G0, G1, G2, G3 | M0, M1 | m_G − m_M | 2 s | R(ΔΩ): m_G − m_M, 2 s |
+|---|---|---|---|---|---|
+| 100 Myr | 0.690, 0.678, 0.692, 0.686 | 0.695, 0.686 | −0.004 | 0.012 | +0.013, 0.028 |
+| 150 Myr | 0.669, 0.667, 0.679, 0.661 | 0.686, 0.695 | **−0.022** | 0.014 | −0.011, 0.017 |
+| 200 Myr | 0.545, 0.575, 0.574, 0.581 | 0.608, 0.610 | **−0.040** | 0.028 | −0.020, 0.026 |
+
+- Criterion 1 fails: R(Δϖ) at 150 and 200 Myr (d = (m_G − m_M) / 2 s =
+  −1.52 and −1.45); R(ΔΩ) holds at all three times.
+- Criterion 2 applies: at 200 Myr all four p9gpu values of R(Δϖ) lie below
+  both MERCURIUS values. Not an accident of the last time: from 135 Myr on all
+  G lie below all M at every time (d down to −3.1 at 165 Myr); up to 130 Myr
+  the two agree within the scatter (|d| ≤ 1.0 with one exception, −1.35 for
+  R(ΔΩ) at 35 Myr).
+- Everything else holds in all 27 single comparisons per time (survivors, KS,
+  McNemar p 0.21 to 1.00), apart from single R comparisons within 2 bootstrap
+  SE (G0 at 200 Myr, as in the first comparison).
+
+As decided, the cause is searched with cheap analyses only (no new long runs
+without the project lead); see below.
