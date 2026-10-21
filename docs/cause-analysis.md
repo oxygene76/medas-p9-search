@@ -87,3 +87,29 @@ Tests that separate the hypotheses:
   both jobs at once: J1 552 s/Myr, J2 305 s/Myr; on the L40S with the FP64
   factor 2.0 about 15 h and 8.5 h (with 8,000 particles the factor may be
   smaller, down to about 1).
+
+## 6. The fixed-step run shows the deviation too: not caused by v5
+
+The validation's run with a fixed step (`runs/val/gpu-2000-count`,
+`-count2`: p9gpu without sub-steps, planets with 1 step, dt 0.5, the start
+values of G0 and M0), measured against the ensemble's MERCURIUS runs in units
+of the ensemble's run-to-run scatter s (`tools/fixed_vs_ensemble.py`, output
+`runs/cause/fixed-vs-ensemble.txt`; d_F = (R_F − m_M) / 2s):
+
+| t (Myr) | R_F | m_M | m_G | d_F | d_G |
+|---|---|---|---|---|---|
+| 100 | 0.688 | 0.691 | 0.687 | −0.22 | −0.33 |
+| 125 | 0.680 | 0.695 | 0.694 | −4.56 | −0.30 |
+| 140 | 0.676 | 0.693 | 0.682 | −2.73 | −1.71 |
+| 165 | 0.653 | 0.674 | 0.647 | −2.40 | −3.12 |
+| 200 | 0.578 | 0.609 | 0.569 | −1.12 | −1.45 |
+
+R(Δϖ) of the fixed-step run lies below both MERCURIUS runs at every time from
+105 Myr on (and at most times from 40 Myr), with d_F of the same size as the
+ensemble's d_G. R(ΔΩ) stays within the scatter (d_F −1.75 to +0.35). So the
+deviation does not come from the sub-steps of v5 (smooth transition, collision
+radii). What remains common to all p9gpu runs and absent in MERCURIUS: the
+Wisdom–Holman step without an encounter zone around the planets (MERCURIUS
+switches to IAS15 within a few Hill radii). The planets of the fixed-step run
+use one step per dt (like REBOUND WHFast), those of v5 eight; that it deviates
+alike points away from the planets' secular frequencies as well.
