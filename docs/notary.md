@@ -72,5 +72,7 @@ for good.
 | | specification | entered |
 |---|---|---|
 | (a) validation up to 2026-10-21 | `runs/notary/spec-a-validation.json` | not yet |
+| (a2) (a) plus the status note on the open deviation | `runs/notary/spec-a2-validation-status.json` | never: superseded by (a3) |
+| (a3) (a2) plus the addendum on single runs and means | `runs/notary/spec-a3-validation-status.json` | not yet; the one to enter |
 | (b) production run, before its start | `runs/notary/spec-b-production-TEMPLATE.json` (criteria file to be written) | not yet |
 | trial | `runs/notary/spec-trial.json` | not yet |
