@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 . ./params.env
 export P9_ENCOUNTER_METHOD P9_ENCOUNTER_RADII P9_COLLISION_RADII P9_PLANET_SUBSTEPS P9_R_IN P9GPU_REAL
 unset P9_ENCOUNTER_REMOVE P9_J2 P9_CAPPED_OUT P9_SUBSTEPS_OUT
-export P9GPU_MODE=gpu
+export P9GPU_MODE=${P9PROD_MODE:-gpu}  # P9PROD_MODE=cpu: the CPU twin, for testing the package only
 GPU=bin/p9gpu
 SIM=bin/p9sim
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> production.log; }

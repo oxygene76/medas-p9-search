@@ -10,7 +10,7 @@
 set -u
 cd "$(dirname "$0")"
 . ./params.env
-export P9GPU_MODE=gpu P9GPU_REAL=double
+export P9GPU_MODE=${P9PROD_MODE:-gpu} P9GPU_REAL=double  # P9PROD_MODE=cpu: for testing the package only
 unset P9_ENCOUNTER_REMOVE P9_J2 P9_CAPPED_OUT P9_SUBSTEPS_OUT P9_FLYBY_OUT P9_REMOVED_OUT
 GPU=bin/p9gpu
 SIM=bin/p9sim
@@ -19,7 +19,8 @@ say() { printf '%s\n' "$*"; }
 fail=0
 mkdir -p check/out
 say "== check, package $(cat PACKAGE-VERSION), $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-say "gpu: $(nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader | head -n 1)"
+say "mode: $P9GPU_MODE"
+command -v nvidia-smi > /dev/null 2>&1 && say "gpu: $(nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader | head -n 1)"
 say "p9gpu: $($GPU version) sha256 $(sha $GPU)"
 for f in bin/p9gpu bin/p9sim; do
   [ "$(sha "$f")" = "$(cut -d' ' -f1 "bin/SHA256-$(basename "$f")")" ] || { say "$f does not match its sha256"; exit 2; }

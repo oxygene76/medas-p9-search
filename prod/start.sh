@@ -7,7 +7,7 @@ if [ -f production.pid ] && kill -0 "$(cat production.pid)" 2>/dev/null; then
   echo "already running (pid $(cat production.pid)); sh status.sh"; exit 1
 fi
 [ "$(id -u)" != 0 ] || { echo "please run as a normal user, not as root"; exit 1; }
-command -v nvidia-smi > /dev/null 2>&1 || { echo "no nvidia-smi: is the NVIDIA driver installed?"; exit 2; }
+[ "${P9PROD_MODE:-gpu}" = cpu ] || command -v nvidia-smi > /dev/null 2>&1 || { echo "no nvidia-smi: is the NVIDIA driver installed?"; exit 2; }
 need=$(cat bin/REQUIRES-glibc)
 have=$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')
 if [ -z "$have" ] || [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n 1)" != "$need" ]; then
