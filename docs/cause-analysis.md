@@ -271,3 +271,41 @@ What remains open: v5 about 0.02 below both, not resolved with 4 to 5 runs per
 group. The ensemble of `docs/validation-ensemble-200myr.md` stays failed by
 its criteria (they are not re-judged); a new decision needs new criteria,
 fixed before new runs.
+
+## 11. Withdrawn: conclusions from single runs
+
+Decision of the project lead of 2026-10-22 after section 10:
+
+- **Section 6 is withdrawn.** Its conclusion (the deviation does not come from
+  v5's sub-steps or collision radii, and points away from the planets'
+  secular frequencies) rested on one fixed-step run against the two
+  MERCURIUS runs M0 and M1, which lie at the top of MERCURIUS' scatter
+  (section 10). It no longer holds. (Section 7 is withdrawn in section 8.)
+- Sections 4 and 5 compare v5 with M0 and M1 only; their findings describe
+  that comparison and are not causes.
+- **Open:** whether v5 differs from plain Wisdom–Holman (and from MERCURIUS)
+  at all. If it does, the candidates are v5's three differences from plain
+  Wisdom–Holman: the sub-steps during flybys, the planets with eight inner
+  steps, the collisions at the planets' radii. Or chance: with 4 to 5 runs
+  per group, a difference of 0.02 is within the noise.
+- All runs so far count as hypothesis; a decision comes only from new runs
+  under criteria fixed before them (`docs/equivalence-criteria.md`).
+
+## 12. The scatter between runs is sampling noise
+
+`tools/r_bootstrap.py` (output `runs/cause/r-bootstrap.txt`): bootstrap of the
+2,000 particles of each run (the same draw at all times) against the scatter
+between the runs of a group.
+
+| | sd between runs | bootstrap error within a run | ratio |
+|---|---|---|---|
+| R(Δϖ) at 200 Myr, pooled (df 10) | 0.0166 | 0.0176 | 0.95 |
+| mean over 160–200 Myr, pooled (df 10) | 0.0121 | 0.0154 | 0.78 |
+
+With 10 degrees of freedom a ratio between 0.57 and 1.43 is consistent with
+1: the scatter between runs is the noise of the finite number of particles
+(about 940 distant ones at 200 Myr), nothing more. It falls as
+1/√N: a run with 4,000 particles is worth two with 2,000. The between-run sd
+of the 160–200-Myr mean lies below the bootstrap error because the members
+share one set of start values (the bootstrap also covers that set; about
+0.009 of the 0.015 is common to all members).
