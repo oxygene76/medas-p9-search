@@ -239,3 +239,35 @@ appmdp-05, p9gpu unchanged):
 
 With them: plain Wisdom–Holman F, W, F1–F3 (5 runs), MERCURIUS M0–M3
 (4 runs), v5 G0–G3 (4 runs).
+
+## 10. Result of the night: MERCURIUS scatters more than assumed
+
+`tools/groups_eval.py` (plan `docs/ensemble-groups-plan.md`, committed before
+the results), output `runs/cause/groups-eval.txt`. R(Δϖ) of the distant
+survivors at 200 Myr:
+
+| group | runs | mean | sd |
+|---|---|---|---|
+| WH (plain Wisdom–Holman) | F 0.578, W 0.599, F1 0.590, F2 0.600, F3 0.602 | 0.594 | 0.010 |
+| M (MERCURIUS) | M0 0.608, M1 0.610, **M2 0.588, M3 0.561** | 0.592 | 0.023 |
+| V5 (p9gpu v5) | G0 0.545, G1 0.575, G2 0.574, G3 0.581 | 0.569 | 0.016 |
+
+Welch t-tests at 200 Myr (the plan's statistic); in brackets the mean over
+160–200 Myr, for information:
+
+- WH − M: +0.002, 95 % [−0.032, +0.037], p = 0.86 (+0.002, p = 0.84)
+- V5 − WH: −0.025, 95 % [−0.049, −0.001], p = 0.043 (−0.022, p = 0.009)
+- V5 − M: −0.023, 95 % [−0.058, +0.012], p = 0.16 (−0.020, p = 0.11)
+
+The plan names no correction for three comparisons; with Bonferroni
+(α = 0.017) none of the three is significant at 200 Myr.
+
+M2 and M3 are complete (all 15 slices; 1,483 and 1,495 survivors, 933 and
+970 distant ones, like M0 and M1). The two MERCURIUS runs of the ensemble
+(0.608, 0.610) lay at the top of MERCURIUS' own scatter; with four runs
+MERCURIUS' sd is 0.023, larger than the 0.015 assumed. Plain Wisdom–Holman
+and MERCURIUS agree (no sign of a deviation of WH without an encounter zone).
+What remains open: v5 about 0.02 below both, not resolved with 4 to 5 runs per
+group. The ensemble of `docs/validation-ensemble-200myr.md` stays failed by
+its criteria (they are not re-judged); a new decision needs new criteria,
+fixed before new runs.
