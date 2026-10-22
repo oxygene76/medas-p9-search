@@ -15,7 +15,8 @@ mkdir -p runs/pids
 echo $$ > "runs/pids/$name.pid"
 trap 'rm -f "runs/pids/$name.pid"' EXIT
 child=""
-trap '[ -n "$child" ] && kill -TERM "$child" 2>/dev/null; rm -f "runs/pids/$name.pid"; exit 130' INT TERM HUP
+# the segment runs in its own process group (setsid), so a stop also ends the program under p9job.py
+trap '[ -n "$child" ] && kill -TERM -"$child" 2>/dev/null; rm -f "runs/pids/$name.pid"; exit 130' INT TERM HUP
 py=build/venv/bin/python
 n=$(python3 -I -c "import math; print(math.ceil($t_end / $seg))")
 echo "== start $(date -Iseconds) $n segments of $seg yr" >> "$dir/run.log"
@@ -28,7 +29,7 @@ while [ "$k" -lt "$n" ]; do
       --snapshots "$snaps" --p9sim "$bin" >> "$dir/run.log" 2>&1
   fi
   if [ ! -f "$dir/$s/result.json" ]; then
-    nice -n 10 $py -I tools/p9job.py run "$dir/$s" --p9sim "$bin" --any-version >> "$dir/run.log" 2>&1 &
+    setsid nice -n 10 $py -I tools/p9job.py run "$dir/$s" --p9sim "$bin" --any-version >> "$dir/run.log" 2>&1 &
     child=$!
     wait "$child"
     child=""
