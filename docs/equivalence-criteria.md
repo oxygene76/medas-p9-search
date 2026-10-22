@@ -1,7 +1,9 @@
-# Criteria: is the production method equivalent to MERCURIUS? (draft)
+# Criteria: is the production method equivalent to MERCURIUS?
 
-Written 2026-10-22, before any of the runs below exists. A draft for the
-project lead; binding only once accepted, and not changed afterwards. All
+Written 2026-10-22, before any of the runs below exists. **Accepted by the
+project lead on 2026-10-22 with the margin ±0.035**, together with the two
+sections "What follows from each outcome" and "Scope and residual risk",
+which were added before the start; not changed afterwards. All
 earlier runs (`docs/cause-analysis.md`, `docs/validation-*.md`) count as
 hypothesis; this decision rests only on the new runs below.
 
@@ -106,3 +108,48 @@ Cost (estimates; the first segment of each kind gives the real rate):
 
 (18 × 2,000 costs the same for M and about twice the GPU time, because the
 GPU time per run hardly depends on the number of particles up to 6,000.)
+
+
+## What follows from each outcome
+
+Fixed before the runs. "Passed" means "equivalent"; "not shown" and
+"different" both count as not passed. The number of runs is not raised after
+the result; a new attempt needs new criteria and new seeds.
+
+| (1) V5 ≡ M | (2) WH ≡ M | production run |
+|---|---|---|
+| passed | passed | **v5** (the prepared package p9prod-9a084ed, unchanged). v5 also resolves close encounters (sub-steps, collisions at the planets' radii); plain WH loses more bodies at encounters (the night's WHFast run: 1,454 against about 1,500 survivors at 200 Myr). |
+| passed | not passed | **v5**, as above. |
+| not passed | passed | **plain Wisdom–Holman** (the same p9gpu binary with `--encounter-method step --no-removal`, planets one step per dt): a new production package with these settings and its own check on the L40S, nothing else changed. Its results then claim only what the equivalence covers: the clustering of the distant bodies, not the losses at close encounters. In parallel v5's three differences are examined on their own branch (variants with one difference switched off each), with new criteria. |
+| not passed | not passed | **no production run.** MERCURIUS itself is too slow for the production run (64,000 particles over 4 Gyr: about 25,000–30,000 core hours, months on appmdp-05). Next: examine v5's three differences and plain WH with new criteria; the project lead decides then, possibly on a smaller production run. |
+
+## Scope and residual risk
+
+**Scope:** the equivalence holds for the configuration tested (Brown & Batygin
+2021 start conditions, dt 0.5 yr, 4.5 au, 4,000 particles per run) and for
+0–200 Myr, for the clustering statistic S (R(Δϖ) of the bodies with
+a > 230 au, q > 42 au). Not covered: other statistics (losses, the
+distribution of a, q, i), and the reference MERCURIUS is not mercury6 of
+Brown & Batygin (other implementation of the hybrid method, dt 300 days).
+
+**Residual risk for the 4 Gyr of the production run** (analysed there: 1–4 Gyr,
+as Brown & Batygin):
+- A small bias per unit time that stays below the noise in 200 Myr can grow
+  over 20 times the time, e.g. in how fast the longitudes of perihelion of the
+  detached bodies disperse (the quantity that differed in the hypothesis
+  data, `docs/cause-analysis.md` section 4).
+- Secular phases of the planets drift apart with time between integrators
+  (MERCURIUS with dt 0.5 yr: 3e-5 to 3e-4 against IAS15, v5: about 5e-6), over
+  4 Gyr 20 times more than in 200 Myr.
+- Fewer distant bodies survive at late times, so the statistic gets noisier and
+  a bias is harder to see.
+
+**Check later with a few long runs:** 3 new seeds (110–112) with 2,000
+particles each, V5 (L40S) and M (CPU) paired by seed, 0 to 4 Gyr, a snapshot
+every 10 Myr; statistic the mean of R(Δϖ) over 1–4 Gyr. Cost: V5 a few days on
+the L40S; M about 300–600 core hours per run (2,000 particles, fewer and fewer
+survivors), about 1–2 months on 16 threads for all three, or on the laptop at
+night. With 3 pairs only large biases are found (about 0.05 and more); the aim
+is to rule out a bias growing with time: the difference of each pair at 0.5,
+1, 2 and 4 Gyr, with its own criteria fixed before these runs. The paused
+4-Gyr comparison run (`runs/gpu-4gyr-c`) is not part of this.
