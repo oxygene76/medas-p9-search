@@ -148,8 +148,8 @@ as Brown & Batygin):
 particles each, V5 (L40S) and M (CPU) paired by seed, 0 to 4 Gyr, a snapshot
 every 10 Myr; statistic the mean of R(Δϖ) over 1–4 Gyr. Cost: V5 a few days on
 the L40S; M about 300–600 core hours per run (2,000 particles, fewer and fewer
-survivors), about 1–2 months on 16 threads for all three, or on the laptop at
-night. With 3 pairs only large biases are found (about 0.05 and more); the aim
+survivors), 900–1,800 core hours for all three: about 2.5–5 days on 16
+threads, or about 8–15 nights on the laptop. With 3 pairs only large biases are found (about 0.05 and more); the aim
 is to rule out a bias growing with time: the difference of each pair at 0.5,
 1, 2 and 4 Gyr, with its own criteria fixed before these runs. The paused
 4-Gyr comparison run (`runs/gpu-4gyr-c`) is not part of this.
