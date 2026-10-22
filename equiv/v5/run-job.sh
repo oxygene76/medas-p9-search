@@ -1,0 +1,50 @@
+#!/bin/sh
+# MEDAS p9-search, equivalence test, group V5: one job as a chain of segments (started by run-all.sh).
+#   sh run-job.sh JOB      jobs/JOB/input.sa, jobs/JOB/params.env -> jobs/JOB/segments/segNNN
+# Segment k runs from k * SEGMENT_YR to (k + 1) * SEGMENT_YR: segment 0 from jobs/JOB/input.sa, segment k
+# from the last snapshot of segment k - 1 (bin/p9sim last). A segment counts as done only when its result is
+# written (DONE). After an interruption the next start skips the done segments and computes the interrupted
+# one again from its input: the same bits with or without interruptions.
+set -u
+cd "$(dirname "$0")"
+JOB=$1
+J=jobs/$JOB
+. "$J/params.env"
+export P9_ENCOUNTER_METHOD P9_ENCOUNTER_RADII P9_COLLISION_RADII P9_PLANET_SUBSTEPS P9_R_IN P9GPU_REAL
+unset P9_ENCOUNTER_REMOVE P9_J2 P9_CAPPED_OUT P9_SUBSTEPS_OUT
+export P9GPU_MODE=${P9EQUIV_MODE:-gpu}  # P9EQUIV_MODE=cpu: the CPU twin, for testing the package only
+GPU=bin/p9gpu
+SIM=bin/p9sim
+log() { printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$JOB" "$*" >> run.log; }
+sha() { sha256sum "$1" | cut -d' ' -f1; }
+child=""
+trap '[ -n "$child" ] && kill -TERM "$child" 2>/dev/null; log "stopped (signal)"; exit 130' INT TERM HUP
+runbg() { "$@" & child=$!; wait "$child"; rc=$?; child=""; return $rc; }
+
+mkdir -p "$J/segments"
+k=0
+while [ "$k" -lt "$SEGMENTS" ]; do
+  d=$J/segments/seg$(printf %03d "$k")
+  if [ -f "$d/DONE" ]; then k=$((k + 1)); continue; fi
+  mkdir -p "$d"
+  rm -f "$d/output.sa" "$d/final.state" "$d/flybys.tsv" "$d/removed.tsv" "$d/result.txt" "$d/stderr.txt"
+  if [ "$k" -eq 0 ]; then
+    cp "$J/input.sa" "$d/input.sa"
+  else
+    prev=$J/segments/seg$(printf %03d $((k - 1)))
+    runbg "$SIM" last "$prev/output.sa" "$d/input.tmp" > /dev/null || { log "segment $k: no input from $prev"; exit 4; }
+    mv "$d/input.tmp" "$d/input.sa"
+  fi
+  t_end=$(awk -v k="$k" -v s="$SEGMENT_YR" 'BEGIN { printf "%.17g", (k + 1) * s }')
+  log "segment $k: start (to t = $t_end yr)"
+  runbg env P9_FLYBY_OUT="$d/flybys.tsv" P9_REMOVED_OUT="$d/removed.tsv" nice -n 5 "$GPU" run "$d/input.sa" "$t_end" "$SNAPSHOTS_PER_SEGMENT" \
+    "$d/output.sa" "$d/final.state" > "$d/result.txt" 2> "$d/stderr.txt" || { log "segment $k: p9gpu FAILED (see $d/stderr.txt)"; exit 4; }
+  line=$(grep '^result_sha256=' "$d/result.txt") || { log "segment $k: no result line"; exit 4; }
+  { echo "input_sha256=$(sha "$d/input.sa")"; echo "output_sha256=$(sha "$d/output.sa")"; echo "$line"; } > "$d/DONE.tmp"
+  mv "$d/DONE.tmp" "$d/DONE"
+  get() { printf '%s\n' "$line" | tr ' ' '\n' | sed -n "s/^$1=//p"; }
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$k" "$t_end" "$(get N_end)" "$(get wall_s)" "$(get result_sha256)" "$(get collisions)" >> "$J/segments.tsv"
+  log "segment $k: done, N_end $(get N_end), wall $(get wall_s) s, result $(get result_sha256)"
+  k=$((k + 1))
+done
+log "complete: $SEGMENTS segments"

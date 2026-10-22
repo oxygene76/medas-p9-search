@@ -1,0 +1,8 @@
+Expected time (from the MERCURIUS runs on the reference laptop, 2026-10-21/22: 15 slices of 250-286 test particles
+at the same time, one thread each, 200 Myr in 6.1-7.2 h per slice; one slice of 250 alone: 78 s per Myr at the start):
+  check                   about 2 min (the 1-Myr case takes most of it)
+  one slice (250 test particles, 200 Myr)   about 6.5 h per thread under full load, at the laptop's speed per thread
+  all 144 slices, THREADS=14                about 10.3 rounds: about 67 h (2.8 days) at the laptop's speed per thread
+A thread of a virtual server can be slower (shared cores, hyperthreads): up to about 1.3-1.5 times, i.e. 3.5-4 days.
+The first segments (20 Myr each, about 40 min per slice) give the real rate: sh status.sh shows it.
+Resources: THREADS CPU threads (nice 10), about 40 MB of memory per process, about 1.5 GB of disk.
