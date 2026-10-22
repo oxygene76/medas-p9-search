@@ -276,6 +276,8 @@ fixed before new runs.
 
 Decision of the project lead of 2026-10-22 after section 10:
 
+- The plan `docs/ensemble-groups-plan.md` (e5ea8ee) is accepted for the
+  night's runs; section 10 is its evaluation.
 - **Section 6 is withdrawn.** Its conclusion (the deviation does not come from
   v5's sub-steps or collision radii, and points away from the planets'
   secular frequencies) rested on one fixed-step run against the two
