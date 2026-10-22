@@ -19,15 +19,16 @@ touched (a separate directory).
 
 Start (as a normal user, in the unpacked directory):
   sh check.sh       only the check (a few minutes), nothing else
-  sh start.sh       the check, then the jobs, 3 at the same time, in the background
+  sh start.sh       the check, then the jobs one after the other, in the background
   sh status.sh      state of the check and the jobs
   sh stop.sh        stops; running segments are computed again on the next start
   sh start.sh       again: resumes with the first segments not done
-  AT_ONCE=2 sh start.sh          2 jobs at the same time instead of 3
+  AT_ONCE=2 sh start.sh          2 jobs at the same time (on the laptop GPU this was
+                                 slower in all; worth a try on the L40S only)
   JOBS="V5-s101 V5-s102" sh start.sh    only these jobs
 
 The p9gpu processes run with nice (5) and use one CPU core each besides the
-GPU (3 with the default AT_ONCE=3). Every start first runs the check
+GPU. Every start first runs the check
 (check.sh): the 32 regression cases and 4 deep Neptune flybys of the
 production package, and every job's start values over 10,000 years, alone
 and as two joined segments; only if all match (ALL SAME in check/report.txt)

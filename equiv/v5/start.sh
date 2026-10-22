@@ -1,6 +1,6 @@
 #!/bin/sh
 # MEDAS p9-search, equivalence test, group V5: starts (or resumes) the check and the jobs in the background, as the current user.
-#   AT_ONCE=3 sh start.sh  jobs at the same time on the GPU (default 3); JOBS="V5-s101 V5-s102" only these
+#   AT_ONCE=2 sh start.sh  jobs at the same time on the GPU (default 1); JOBS="V5-s101 V5-s102" only these
 #   sh start.sh     then: sh status.sh   (stop: sh stop.sh; start.sh again resumes)
 set -eu
 cd "$(dirname "$0")"

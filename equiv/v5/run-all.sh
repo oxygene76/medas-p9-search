@@ -1,11 +1,12 @@
 #!/bin/sh
 # MEDAS p9-search, equivalence test, group V5: the check, then the jobs (started by start.sh; not meant to be run
-# directly). The jobs of JOBS (default: all in jobs/) run in AT_ONCE lanes at the same time on the GPU (default 3;
+# directly). The jobs of JOBS (default: all in jobs/) run in AT_ONCE lanes at the same time on the GPU (default 1: on the laptop GPU
+# three processes at once were slower in all than one after the other;
 # each lane one job after the other, each job a separate p9gpu process with one CPU core).
 set -u
 cd "$(dirname "$0")"
 JOBS=${JOBS:-$(ls jobs)}
-AT_ONCE=${AT_ONCE:-3}
+AT_ONCE=${AT_ONCE:-1}
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> run.log; }
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 pids=""
