@@ -311,3 +311,34 @@ With 10 degrees of freedom a ratio between 0.57 and 1.43 is consistent with
 of the 160–200-Myr mean lies below the bootstrap error because the members
 share one set of start values (the bootstrap also covers that set; about
 0.009 of the 0.015 is common to all members).
+
+## 13. Equivalence test: runs and packages (2026-10-22)
+
+Under `docs/equivalence-criteria.md` (accepted 2026-10-22, margin ±0.035):
+
+- **Start values:** seeds 101–109, 4,000 test particles each, production
+  configuration. Checked: the same particles (and planets, settings) in WH, V5
+  and every MERCURIUS slice for all 9 seeds.
+- **WH** (laptop GPU, medas-p9-search-bb2021 `runs/equiv/wh`, the p9gpu binary
+  of p9prod-9a084ed with `--encounter-method step --no-removal`): GPU and CPU
+  twin give the same bits over 10 kyr. Started 10:49 in three lanes; three runs
+  at once took 3,050 s per 20-Myr segment each, one alone 863 s, so from 11:44
+  one run after the other (about 21 h). The three lanes did not stop cleanly
+  (the programs under p9job.py ran on); stopped by PID, and `tools/chain_run.sh`
+  now runs each segment in its own process group and stops the whole group.
+- **Packages** (worktree medas-p9-search-equiv, branch `feat/equiv-packages`,
+  `tools/make_equiv_packages.sh`, commit 47c7381):
+  - `p9equiv-v5-47c7381.tar.gz` (sha256 `c392ab0a…46178d6`): the 9 V5 jobs for
+    the L40S, check 54 of 54 SAME on the laptop GPU.
+  - `p9equiv-merc-47c7381.tar.gz` (sha256 `d7c09bf6…e07a1a0`): MERCURIUS, 144
+    slices of 250 particles. Check 19 of 19 SAME on the laptop (glibc 2.43)
+    and in ubuntu:22.04 (glibc 2.35, as appmdp-05): p9sim gives the same bits
+    under both glibc versions. A shortened chain of 3 segments with an
+    interruption gives the same bits; its second segment equals the check's
+    chain case.
+  - Found in the local test: `kill -TERM -- -PGID` fails in dash ("Illegal
+    number"), so `stop.sh` fell back to stopping only the main shell, and the
+    slices under xargs ran on. Fixed in both packages (`kill -TERM -PGID`).
+    The production package and p9cause have the same line but were not changed:
+    there the traps of the scripts end the programs (tested when they were
+    built).
