@@ -342,3 +342,8 @@ Under `docs/equivalence-criteria.md` (accepted 2026-10-22, margin ±0.035):
     The production package and p9cause have the same line but were not changed:
     there the traps of the scripts end the programs (tested when they were
     built).
+- **WH complete** on 2026-10-23 at 13:04: all 9 seeds, 90 of 90 segments of
+  20 Myr (medas-p9-search-bb2021 `runs/equiv/wh`, 773 MB), with three pauses
+  for transport (stopped at or right after a segment boundary, resumed from the
+  last finished segment). Not evaluated: the criteria allow no look before all
+  three groups are complete.
