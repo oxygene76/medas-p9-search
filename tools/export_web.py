@@ -80,7 +80,7 @@ def snapshots(run: Path, every: float, until: float | None):
 
 def segment_results(run: Path):
     res = []
-    for s in sorted(run.glob("chain*/seg*")) or [run]:
+    for s in sorted(run.glob("chain*/seg*")) or sorted(run.glob("seg*")) or [run]:
         if (s / "result.json").exists():
             j = json.loads((s / "job.json").read_text())
             r = json.loads((s / "result.json").read_text())
@@ -100,6 +100,9 @@ def main():
     ap.add_argument("--a-min", type=float, default=150.0)
     ap.add_argument("--until", type=float, default=None)
     ap.add_argument("--name", default=None, help="title of the run on the page")
+    ap.add_argument("--member", type=int, default=None,
+                    help="ensemble member to export (tools/make_ic.py --members): only its test particles, with their index in "
+                         "the set (name tp<member * 100000 + index>); default: all, as named")
     a = ap.parse_args()
     run, out = Path(a.run), Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -124,8 +127,10 @@ def main():
         rows, mu = barycentric(uniq)
         p9 = [x for x in rows if x[0] == "P9"][0]
         tps = [x for x in rows if x[0].startswith("tp")]
+        if a.member is not None:
+            tps = [x for x in tps if int(x[0][2:]) // 100000 == a.member]
         pa = elements_full(mu, p9[2][None, :], p9[3][None, :])
-        idx = np.array([int(x[0][2:]) for x in tps], dtype=np.int64)
+        idx = np.array([int(x[0][2:]) % 100000 if a.member is not None else int(x[0][2:]) for x in tps], dtype=np.int64)
         if len(idx) and idx.max() > 65535:
             sys.exit("more than 65536 test particles: the format has 16-bit indices")
         A, E, I, Om, W = elements_full(mu, np.array([x[2] for x in tps]), np.array([x[3] for x in tps]))
@@ -143,7 +148,7 @@ def main():
         counts.append(int(keep.sum()))
         print(f"t = {t / 1e6:7.1f} Myr: {int(keep.sum())} distant test particles", file=sys.stderr)
     (out / "data.bin").write_bytes(bytes(body))
-    first = sorted(run.glob("chain*/seg000/job.json")) or [run / "job.json"]
+    first = sorted(run.glob("chain*/seg000/job.json")) or sorted(run.glob("seg*/job.json"))[:1] or [run / "job.json"]
     j0 = json.loads(first[0].read_text())
     manifest = {
         "schema": "medas-p9-search/web/1",
@@ -152,6 +157,7 @@ def main():
         "run": {"directory": run.name, "chains": len(sorted(run.glob("chain*"))) or 1, "case": j0["params"]["case"],
                 "params": {k: j0["params"][k] for k in ("integrator", "coordinates", "dt_yr", "removal") if k in j0["params"]},
                 "test_particles": j0["params"]["ic"]["n_tp"],
+                **({"member": a.member} if a.member is not None else {}),
                 "ic": j0["params"]["ic"], "code": j0["code"], "segments": segment_results(run)},
         "export": {"tool": "tools/export_web.py", "every_yr": a.every, "a_min_au": a.a_min, "elements": "barycentric osculating, ecliptic J2000",
                    "snapshots": len(snaps), "t_first_yr": snaps[0][0], "t_last_yr": snaps[-1][0], "counts": counts},
