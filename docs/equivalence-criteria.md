@@ -64,6 +64,20 @@ less noise (between runs 0.012 instead of 0.017 with 2,000 particles,
 R at 200 Myr, and S with the cut of the observed sample (150 < a < 1,000 au,
 q > 42 au).
 
+**Clarification of 2026-10-23** (written after group WH was complete and while
+V5 and M were running, before any result of these runs was looked at; it fixes
+what the text above leaves implicit, it changes no criterion):
+- For M, the 16 slices of a seed are one run. At each time their distant
+  survivors are pooled into one sample before R is computed; S is not the mean
+  of 16 values of R, because R of a small sample is biased upwards.
+- Elements are barycentric (as `tools/eval_ensemble.py`); Δϖ of a body is its
+  ϖ minus that of the Planet Nine of the same simulation (for M: of its slice)
+  at the same snapshot.
+- The times are the snapshots at 160, 165, …, 200 Myr; in the packages'
+  segments of 20 Myr with 20 snapshots, time T lies in segment ⌈T / 20 Myr⌉ − 1.
+- The evaluation is `tools/equiv_eval.py`, committed before the evaluation and
+  not changed afterwards.
+
 ## Test
 
 Per seed s: d_s = S(V5, s) − S(M, s) and e_s = S(WH, s) − S(M, s). For each
