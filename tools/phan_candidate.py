@@ -68,6 +68,27 @@ def jitter(ra, dec, sig_arcsec, rng, n):
     return ra + rng.normal(0, s, n) / math.cos(math.radians(dec)), dec + rng.normal(0, s, n)
 
 
+def draws(n, seed):
+    """Monte Carlo draws: distance d, heliocentric position P2 at the AKARI epoch t2, velocity V (au/yr)."""
+    from astropy.time import Time
+    rng = np.random.default_rng(seed)
+    d = rng.uniform(500, 700, n)
+    t1 = Time(IRAS_T[0]) + (Time(IRAS_T[1]) - Time(IRAS_T[0])) * rng.uniform(0, 1, n)
+    t2 = Time([AKARI_T] * n)
+    E1, E2 = earth_helio(t1), earth_helio(t2)
+    r1, d1 = jitter(*IRAS, 20.0, rng, n)
+    r2, d2 = jitter(*AKARI, 8.0, rng, n)
+    P1, P2 = helio(E1, unit(r1, d1), d), helio(E2, unit(r2, d2), d)
+    dt12 = (t2 - t1).to_value("jd") / 365.25
+    return d, P2, (P2 - P1) / dt12[:, None], Time(AKARI_T)
+
+
+def directions(P2, V, t2, t):
+    """Geocentric RA, Dec (deg) of the draws at the astropy Time t."""
+    E = earth_helio(t.reshape(1))[0]
+    return radec(P2 + V * ((t - t2).to_value("jd") / 365.25) - E)
+
+
 def main():
     from astropy.time import Time
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -75,21 +96,9 @@ def main():
     ap.add_argument("--n", type=int, default=20000)
     ap.add_argument("--seed", type=int, default=2025)
     a = ap.parse_args()
-    rng = np.random.default_rng(a.seed)
     n = a.n
-    d = rng.uniform(500, 700, n)
-    t1 = Time(IRAS_T[0]) + (Time(IRAS_T[1]) - Time(IRAS_T[0])) * rng.uniform(0, 1, n)
-    t2 = Time([AKARI_T] * n)
-    t3 = Time(a.date)
-    E1, E2 = earth_helio(t1), earth_helio(t2)
-    E3 = earth_helio(Time([a.date]))[0]
-    r1, d1 = jitter(*IRAS, 20.0, rng, n)
-    r2, d2 = jitter(*AKARI, 8.0, rng, n)
-    P1, P2 = helio(E1, unit(r1, d1), d), helio(E2, unit(r2, d2), d)
-    dt12 = (t2 - t1).to_value("jd") / 365.25
-    V = (P2 - P1) / dt12[:, None]                      # au / yr
-    P3 = P2 + V * ((t3 - t2).to_value("jd") / 365.25)[:, None]
-    ra3, de3 = radec(P3 - E3)
+    d, P2, V, t2 = draws(n, a.seed)
+    ra3, de3 = directions(P2, V, t2, Time(a.date))
     # region on the sky: tangent plane at the mean direction
     c = np.array(radec(np.mean(unit(ra3, de3), axis=0)))
     x = (ra3 - c[0] + 180) % 360 - 180
