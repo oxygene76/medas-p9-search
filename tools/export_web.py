@@ -80,7 +80,8 @@ def snapshots(run: Path, every: float, until: float | None):
 
 def segment_results(run: Path):
     res = []
-    for s in sorted(run.glob("chain*/seg*")) or sorted(run.glob("seg*")) or [run]:
+    for s in (sorted(run.glob("chain*/seg*")) or sorted(run.glob("seg*"))
+              or [c for c in sorted(run.glob("chain*")) if (c / "job.json").exists()] or [run]):
         if (s / "result.json").exists():
             j = json.loads((s / "job.json").read_text())
             r = json.loads((s / "result.json").read_text())
@@ -148,7 +149,8 @@ def main():
         counts.append(int(keep.sum()))
         print(f"t = {t / 1e6:7.1f} Myr: {int(keep.sum())} distant test particles", file=sys.stderr)
     (out / "data.bin").write_bytes(bytes(body))
-    first = sorted(run.glob("chain*/seg000/job.json")) or sorted(run.glob("seg*/job.json"))[:1] or [run / "job.json"]
+    first = (sorted(run.glob("chain*/seg000/job.json")) or sorted(run.glob("seg*/job.json"))[:1]
+             or sorted(run.glob("chain*/job.json"))[:1] or [run / "job.json"])
     j0 = json.loads(first[0].read_text())
     manifest = {
         "schema": "medas-p9-search/web/1",
