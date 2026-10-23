@@ -32,3 +32,5 @@ Belyakov et al. 2022), the Legacy Surveys DR10 (DECam), SkyMapper (to about 20â€
 **ASROC 2026 poster** (Phan, "Searching for triple-detection Planet Nine candidates using far-infrared all-sky
 survey data", contribution 138): the public abstract gives no coordinates and no number of candidates; the poster
 file is protected. No atlas layer until coordinates are published.
+
+DES check (footprint, exposures, TNO catalogue, detectability): `docs/phan-des.md`.
