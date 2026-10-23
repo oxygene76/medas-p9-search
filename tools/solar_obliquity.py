@@ -24,6 +24,10 @@ Omega_ps = 2 pi / 55.8 Gyr (P/lambda / 10 d)^-1; for comparison with Lai's figur
           start file for p9gpu/p9sim: the Sun (with the inner planets), Jupiter-Neptune (tools/make_ic.py) and
           Planet Nine with these elements relative to the giant planets' plane; --reverse flips all velocities
           (a forward run of the reversed state is the backward run of the original)
+  python tools/solar_obliquity.py snapshots --run DIR [--every 20]
+          side metric of a run (reported, decides nothing): the tilt of the four giants' common plane against its
+          direction at t = 0, from the planets in the snapshots (a p9job job or chain, or a package job), with the
+          secular value for the same geometry
   python tools/solar_obliquity.py nbody-eval --ic ic.txt --out output.sa [--p9sim build/gcc-O3/p9sim]
           the angle between the giant planets' total angular momentum at each snapshot and at t = 0 (the
           obliquity against a solar axis that is parallel at t = 0), against the secular model for the
@@ -33,6 +37,7 @@ Omega_ps = 2 pi / 55.8 Gyr (P/lambda / 10 d)^-1; for comparison with Lai's figur
 import argparse
 import math
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -295,6 +300,65 @@ def cmd_nbody_eval(a):
     print(f"snapshots: {k}; largest difference N-body - secular: {worst:.3f} deg")
 
 
+def run_snapshots(run):
+    """The snapshot files of a run in time order: [(output.sa, index, t)] and the start file. Layouts: a p9job job
+    (job.json in the directory), a p9job chain (seg* with job.json), a package job (params.env, segments/segNNN)."""
+    import json
+    run = Path(run)
+    if (run / "params.env").exists():
+        env = dict(l.split("=", 1) for l in (run / "params.env").read_text().splitlines() if "=" in l and not l.startswith("#"))
+        seg_yr, per, nseg = float(env["SEGMENT_YR"]), int(env["SNAPSHOTS_PER_SEGMENT"]), int(env["SEGMENTS"])
+        segs = [(run / "segments" / f"seg{k:03d}", k * seg_yr, (k + 1) * seg_yr, per) for k in range(nseg)]
+        segs = [x for x in segs if (x[0] / "DONE").exists()]
+        start = run / "input.sa"
+    else:
+        dirs = [run] if (run / "job.json").exists() else sorted(run.glob("seg*"))
+        segs = []
+        for d in dirs:
+            if not (d / "result.json").exists():
+                continue
+            q = json.loads((d / "job.json").read_text())["params"]
+            segs.append((d, float(q["t_start_yr"]), float(q["t_end_yr"]), int(q["snapshots"])))
+        start = dirs[0] / "input.sa"
+    out = []
+    for d, t0, t1, n in segs:
+        out += [(d / "output.sa", k, t0 + (t1 - t0) * (k + 1) / n) for k in range(n)]
+    return out, start
+
+
+def cmd_snapshots(a):
+    """Side metric (reported, decides nothing): tilt of the four giants' common plane (total orbital angular
+    momentum, heliocentric, without Planet Nine) against its direction at t = 0, from the planets in the snapshots."""
+    from analyze import dump
+    snaps, start = run_snapshots(a.run)
+    _, rows0 = dump(a.p9sim, start, 0)
+    rows0 = [(n, m, np.asarray(p), np.asarray(v)) for n, m, p, v in rows0 if not n.startswith("tp")]
+    Lg0, L90 = ang_mom(rows0)
+    sun = next(r for r in rows0 if r[0] == "Sun"); p9 = next(r for r in rows0 if r[0] == "P9")
+    rr, vv = p9[2] - sun[2], p9[3] - sun[3]
+    mu = G * (sun[1] + p9[1])
+    a9 = 1 / (2 / np.linalg.norm(rr) - vv @ vv / mu)
+    e9 = math.sqrt(max(0.0, 1 - np.linalg.norm(np.cross(rr, vv)) ** 2 / (mu * a9)))
+    inc0 = math.degrees(math.acos(np.dot(unit(Lg0), unit(L90))))
+    L, Lp, om = rates(p9[1] / M_EARTH, a9, e9, planet_set("giants"), sun[1])
+    print(f"{a.run}: {len(snaps)} snapshots; Planet Nine {p9[1] / M_EARTH:.2f} M_E, a {a9:.1f} au, e {e9:.3f}, "
+          f"inclination to the giants' plane {inc0:.2f} deg")
+    print("  t [Myr] | tilt of the giants' plane [deg] | secular (fixed axis) [deg]")
+    last = None
+    for k, (sa, idx, t) in enumerate(snaps):
+        if not (k % a.every == a.every - 1 or k == len(snaps) - 1):
+            continue
+        _, rows = dump(a.p9sim, sa, idx)
+        rows = [(n, m, np.asarray(p), np.asarray(v)) for n, m, p, v in rows if not n.startswith("tp")]
+        Lg, _ = ang_mom(rows)
+        tilt = math.degrees(math.acos(min(1.0, max(-1.0, np.dot(unit(Lg), unit(Lg0))))))
+        sec, _ = analytic_fixed(L, Lp, om, inc0, t)
+        print(f"{t / 1e6:9.0f} | {tilt:31.4f} | {float(sec):26.4f}")
+        last = (t, tilt, float(sec))
+    if last:
+        print(f"at {last[0] / 1e6:.0f} Myr: tilt {last[1]:.4f} deg (secular {last[2]:.4f} deg)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -314,8 +378,13 @@ def main():
     e.add_argument("--out", required=True)
     e.add_argument("--p9sim", default="build/gcc-O3/p9sim")
     e.add_argument("--every", type=int, default=10)
+    w = sub.add_parser("snapshots")
+    w.add_argument("--run", required=True, help="a p9job job or chain directory, or a package job directory")
+    w.add_argument("--p9sim", default="build/gcc-O3/p9sim")
+    w.add_argument("--every", type=int, default=20)
     a = ap.parse_args()
-    {"secular": cmd_secular, "check": cmd_check, "nbody-ic": cmd_nbody_ic, "nbody-eval": cmd_nbody_eval}[a.cmd](a)
+    {"secular": cmd_secular, "check": cmd_check, "nbody-ic": cmd_nbody_ic, "nbody-eval": cmd_nbody_eval,
+     "snapshots": cmd_snapshots}[a.cmd](a)
 
 
 if __name__ == "__main__":
