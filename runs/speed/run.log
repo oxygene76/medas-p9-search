@@ -1,0 +1,16 @@
+== start 2026-10-23T19:24:48+02:00
+wh-gpu 1 459.525 2ce24189b69f58bb 19:32:27
+wh-gpu 2 446.419 2ce24189b69f58bb 19:39:54
+wh-gpu 3 447.22 2ce24189b69f58bb 19:47:21
+v5-gpu 1 884.358 9ed8e5f8afa413cc 20:02:05
+v5-gpu 2 884.143 9ed8e5f8afa413cc 20:16:50
+v5-gpu 3 884.04 9ed8e5f8afa413cc 20:31:34
+== cpu half stopped at 20:34 for cooling; restart after 1800 s pause
+== cpu start 2026-10-23T21:05:12+02:00
+whfast-cpu 1 10024.792 3e10bbab9a6312e6
+whfast-cpu 2 10026.324 3e10bbab9a6312e6
+whfast-cpu 3 10027.499 3e10bbab9a6312e6
+merc-cpu 1 15052.022 32823da9a5193db6
+merc-cpu 2 15050.87 32823da9a5193db6
+merc-cpu 3 15052.107 32823da9a5193db6
+== end 2026-10-24T01:16:04+02:00
