@@ -43,8 +43,13 @@ All four runs compute in FP64 (`real: double` in every result.json):
 - No fused multiply-add:
   - p9sim and the host part of p9gpu: `-ffp-contract=off`.
   - CUDA: `--fmad=false -prec-div=true -prec-sqrt=true`.
-- On GeForce Blackwell GPUs, FP64 throughput is a small fraction (1/64) of FP32. The GPU figures are therefore not
-  helped by a strong FP64 unit.
+- FP64 on the GPU:
+  - According to the NVIDIA whitepaper "NVIDIA RTX Blackwell GPU Architecture" (p. 9), GB202 has two FP64 units per SM, and its FP64 rate is 1/64 of the FP32 rate.
+  - The paper gives no separate value for GB203 (the RTX 5080 Laptop GPU), but its SM architecture is the same.
+  - So the GPU figures do not rest on a strong FP64 unit.
+- Fairness:
+  - Both sides are built to be reproducible: no FMA, no `-march`.
+  - With `-march=native`, REBOUND would probably be somewhat faster, but no longer bit-identical on other machines.
 
 ## Programs and build
 
