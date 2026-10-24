@@ -44,12 +44,19 @@ All four runs compute in FP64 (`real: double` in every result.json):
   - p9sim and the host part of p9gpu: `-ffp-contract=off`.
   - CUDA: `--fmad=false -prec-div=true -prec-sqrt=true`.
 - FP64 on the GPU:
-  - According to the NVIDIA whitepaper "NVIDIA RTX Blackwell GPU Architecture" (p. 9), GB202 has two FP64 units per SM, and its FP64 rate is 1/64 of the FP32 rate.
-  - The paper gives no separate value for GB203 (the RTX 5080 Laptop GPU), but its SM architecture is the same.
+  - NVIDIA, "NVIDIA RTX Blackwell GPU Architecture", V1.1 (© 2025), p. 8, note below Figure 3: "The GB202 GPU also
+    includes 384 FP64 Cores (two per SM) which are not depicted in the above diagram. The FP64 TFLOP rate is 1/64th
+    the TFLOP rate of FP32 operations."
+  - The whitepaper gives no value of its own for GB203, the chip of the RTX 5080 Laptop GPU. Jarmusch, Graddon &
+    Chandrasekaran, "Dissecting the NVIDIA Blackwell Architecture with Microbenchmarks", arXiv:2507.10789, section
+    IV-C: "The GB203 chip has two FP64 execution units per SM"; Table I lists 2 FP64 units per SM for GB203 (measured
+    on the desktop RTX 5080).
   - So the GPU figures do not rest on a strong FP64 unit.
 - Fairness:
   - Both sides are built to be reproducible: no FMA, no `-march`.
-  - With `-march=native`, REBOUND would probably be somewhat faster, but no longer bit-identical on other machines.
+  - A build tuned to the processor (`-march=native`) could make REBOUND somewhat faster, but it would no longer run on
+    every processor. The comparison uses the builds we also compute with. The repetition on appmdp-05 measures that
+    variant too.
 
 ## Programs and build
 
