@@ -13,7 +13,8 @@ end at different times is visible).
 Per member, time and selection: n, R and circular mean of dvarpi = varpi - varpi_P9 (barycentric elements, as in
 tools/analyze.py) and the Rayleigh p-value (tools/analyze.py circ). Anti-alignment with Planet Nine is a mean near
 180 deg. Selections: a >= 250 au; a >= 250 au and q > 30 au; a > 230 au and q > 30 au (Brown & Batygin 2019);
-for reference a > 230 au and q > 42 au (tools/analyze.py, tools/eval_ensemble.py).
+for reference a > 230 au and q > 42 au (tools/analyze.py, tools/eval_ensemble.py); 150 < a < 1000 au and q > 42 au
+(Brown & Batygin).
 At t = 0 the input.sa of the segment starting at 0 is used.
 """
 
@@ -33,6 +34,7 @@ SELECTIONS = {
     "a>=250,q>30": lambda x: (x["a"] >= 250) & (x["q"] > 30),
     "a>230,q>30": lambda x: (x["a"] > 230) & (x["q"] > 30),
     "a>230,q>42": lambda x: (x["a"] > 230) & (x["q"] > 42),
+    "150<a<1000,q>42": lambda x: (x["a"] > 150) & (x["a"] < 1000) & (x["q"] > 42),
 }
 
 
