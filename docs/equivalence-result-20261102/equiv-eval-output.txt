@@ -1,0 +1,23 @@
+seed 101: S  V5 0.6308  WH 0.6272  M 0.6034
+seed 102: S  V5 0.6092  WH 0.6115  M 0.6094
+seed 103: S  V5 0.6262  WH 0.6385  M 0.6164
+seed 104: S  V5 0.6133  WH 0.6231  M 0.6032
+seed 105: S  V5 0.6219  WH 0.6181  M 0.6282
+seed 106: S  V5 0.6194  WH 0.6122  M 0.6160
+seed 107: S  V5 0.6092  WH 0.6086  M 0.6085
+seed 108: S  V5 0.6082  WH 0.6239  M 0.6201
+seed 109: S  V5 0.6264  WH 0.6263  M 0.6295
+
+S (decision):
+  (1) V5 - M: mean +0.0033, 95 % [-0.0055, +0.0121] -> equivalent
+  (2) WH - M: mean +0.0061, 95 % [-0.0036, +0.0158] -> equivalent
+
+R200 (information):
+  (1) V5 - M: mean +0.0045, 95 % [-0.0070, +0.0161] -> equivalent
+  (2) WH - M: mean +0.0078, 95 % [-0.0033, +0.0188] -> equivalent
+
+S_obs_cut (information):
+  (1) V5 - M: mean +0.0058, 95 % [-0.0078, +0.0195] -> equivalent
+  (2) WH - M: mean +0.0033, 95 % [-0.0111, +0.0177] -> equivalent
+
+production run, method side (criteria: decided by (1) on S): equivalent

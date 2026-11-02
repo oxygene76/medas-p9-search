@@ -1,0 +1,7 @@
+date_utc 2026-11-02T14:57:42Z
+checkout c45833a6e5ec11c26ee51b4e50ddd5b1adbab84a
+python 3.14.4 numpy 2.5.4
+p9sim b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65  /home/medas/dev/medas/medas-p9-search-bb2021/build/equiv-bin/p9sim
+tarball 1d6c1c0bb55f7fba24db5d118bcc65a31577b9dee6cc615df4eada1648629d3b  /home/medas/dev/medas/medas-p9-search/runs/notary/equiv-results/equiv-results-20261102T1434Z.tar.gz
+list c5f55d82c4d473f39d958a11c800bd9434fcd3acc006e7a63ad873cec691955d  /home/medas/dev/medas/medas-p9-search/runs/notary/equiv-results/equiv-results-sha256-20261102T1337Z.txt
+command build/venv/bin/python -I tools/equiv_eval.py --wh <bb2021>/runs/equiv/wh --v5 <import>/p9equiv-v5-47c7381 --m <import>/p9equiv-merc-47c7381 --p9sim <bb2021>/build/equiv-bin/p9sim --json equiv-eval.json
