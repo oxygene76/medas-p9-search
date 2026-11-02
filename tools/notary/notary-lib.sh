@@ -30,7 +30,11 @@ manifest_of() {
         MANIFEST_SHA=89ddbf2fb75c0c1e38f571a09a17658f4536592c50fe34c936a670a99f8a227e
         EXPECT="medas-p9-search=c45833a6e5ec11c26ee51b4e50ddd5b1adbab84a medas-p9-search-bb2021=69b84122c16f0b91fe14207ea32c742bbdd40942 medas-p9-search-equiv=47c7381774e2d1b7edd91ff4eaa9563bfb2fb8c7"
         WH=1 ;;
-    *) die "unknown manifest name '$1' (a3 or e2)" ;;
+    e3) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261102.json; SPEC=$NOTARY_DIR/spec-e3-production-20261102.json
+        MANIFEST_SHA=7ecd6320435a1dd13fc592e900b803c3cb166ff4eb5e57fcdfed693b2576ca15
+        EXPECT="medas-p9-search=8debfcf6c8e0e85f1f1e83e9b4d4b456d7bcbf67 medas-p9-search-bb2021=32defaf0e413ca14778391fd3baaec55967e8105"
+        WH=0 ;;
+    *) die "unknown manifest name '$1' (a3, e2 or e3)" ;;
   esac
 }
 

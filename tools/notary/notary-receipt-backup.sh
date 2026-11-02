@@ -2,7 +2,7 @@
 # Backup of a notary receipt (it holds the secret salt): encrypted to the backup key, to OneDrive and the USB drive,
 # then the plain receipt is deleted. For any entry, e.g. the receipt of (a3) or of (e2).
 #   bash runs/notary/notary-receipt-backup.sh NAME FINGERPRINT USB_DIR RECEIPT
-#   NAME         a short name for the file, e.g. a3 or e2
+#   NAME         a short name for the file, e.g. a3, e2 or e3
 #   FINGERPRINT  the full fingerprint (40 hex digits) of the backup key (public key in the keyring)
 #   USB_DIR      a directory on the USB drive (must exist)
 #   RECEIPT      the receipt file saved by the web application
