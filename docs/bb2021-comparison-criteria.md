@@ -304,3 +304,20 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
 - D3: where to compute (L40S or A100) and when. Not on appmdp-05 before the speed benchmark and the main run there.
 - D4: mercury6 counter-run: always, or only for outcomes 3 and 4; and the licence question P1.
 - D5: entry type and order in the notary (this file before the start, with entry 3).
+
+## 11. Decisions of the project lead (2026-11-02)
+
+- **The text above:** sections 1-10 are the draft of 224b7a1 (tag `bb2021-criteria-draft-1`), unchanged.
+  - That file was stamped with OpenTimestamps on 2026-11-02, as `runs/notary/bb2021-comparison-criteria-224b7a1.md`.
+  - SHA-256 `6a08d162339513d6d92014d50eef041524cc1e39de6c005c1d45ed50aa40c3af`, git blob
+    `99b646d8e19ac9d1c9014d9cd27992569ee343ce`.
+- **D1:** sets A and B as proposed (section 2).
+- **D2:** tolerances as proposed (section 5).
+- **D3:** computed on the A100, after its acceptance test. Not on appmdp-05's L40S, and not before the speed
+  benchmark.
+- **D4:** no mercury6 counter-run for now.
+  - Only for outcome 3 (cluster in the wrong direction) or 4 (no cluster) of section 6.
+  - Before that, the licence question P1 has to be settled.
+- **D5:** these criteria go into entry 3, together with the result of the equivalence test and the package of the
+  production run.
+- **Before the runs:** the prerequisites V1-V3 of section 7.
