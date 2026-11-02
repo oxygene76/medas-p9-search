@@ -6,7 +6,7 @@
       --slice runs/cause/ensmerc/m5/part00,runs/night-20261024/merc-m5/part00 --slice ... [--every 1e7] [--json out.json]
 
 A slice is one integration of the same planets with a different set of test particles (comma-separated job or
-chain directories, in time order; tools/analyze.py at_time finds the snapshot). At every snapshot time held by all
+chain directories, in time order, or a job of an equivalence package with params.env and segments/segNNN). At every snapshot time held by all
 slices (or every --every years): the sha256 of the massive bodies' masses, positions and velocities as float64
 (from p9sim dump, which prints 17 significant digits, so the values are exact), per slice; the number of distinct
 hashes; and the largest difference between slices in the position of each planet (au).
@@ -28,10 +28,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analyze import dump  # noqa: E402
 
 
+def package_snapshots(job):
+    """{time: (output.sa, index)} of a job of an equivalence package (params.env, segments/segNNN with DONE), with
+    the same times as tools/equiv_eval.py package_file: snapshot j of segment k at (k + (j + 1) / per) * SEGMENT_YR."""
+    env = dict(l.split("=", 1) for l in (job / "params.env").read_text().splitlines() if "=" in l and not l.startswith("#"))
+    seg_yr, per, nseg = float(env["SEGMENT_YR"]), int(env["SNAPSHOTS_PER_SEGMENT"]), int(env["SEGMENTS"])
+    out = {}
+    for k in range(nseg):
+        seg = job / "segments" / f"seg{k:03d}"
+        if not (seg / "DONE").exists():
+            continue
+        for j in range(per):
+            out[round(k * seg_yr + (j + 1) * seg_yr / per)] = (seg / "output.sa", j)
+    return out
+
+
 def snapshots(dirs):
-    """{time: (output.sa, index)} over the segments of the directories."""
+    """{time: (output.sa, index)} over the segments of the directories (p9job chains or jobs of a package)."""
     out = {}
     for d in dirs:
+        if (d / "params.env").exists() and (d / "segments").is_dir():
+            out.update(package_snapshots(d))
+            continue
         for seg in ([d] if (d / "job.json").exists() else sorted(d.glob("seg*"))):
             if not (seg / "result.json").exists():
                 continue
