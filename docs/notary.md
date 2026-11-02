@@ -73,7 +73,20 @@ for good.
 |---|---|---|
 | (a) validation up to 2026-10-21 | `runs/notary/spec-a-validation.json` | not yet |
 | (a2) (a) plus the status note on the open deviation | `runs/notary/spec-a2-validation-status.json` | never: superseded by (a3) |
-| (a3) (a2) plus the addendum on single runs and means | `runs/notary/spec-a3-validation-status.json` | not yet; the one to enter |
-| (e2) equivalence test fixed before its evaluation (note, refers to the (a3) entry) | `runs/notary/spec-e2-equivalence-20261023.json` | not yet |
+| (a3) (a2) plus the addendum on single runs and means | `runs/notary/spec-a3-validation-status.json` | entry #2, 2026-11-02 12:08:31 UTC, block 10694917, commitment `b00d53999d1ca2a8be260c2b84c3e941a4eab52e5843c295c280a1bb968ba2a4` |
+| (e2) equivalence test fixed before its evaluation (note, refers to the (a3) entry) | `runs/notary/spec-e2-equivalence-20261023.json` | entry #3 (refers to #2), 2026-11-02 12:14:09 UTC, block 10694977, commitment `795a8c58735ef5fa62a1ad5549b740f04178eaf64b4a1f4f64d3f47ea4fcc343` |
 | (b) production run, before its start | `runs/notary/spec-b-production-TEMPLATE.json` (criteria file to be written) | not yet |
 | trial | `runs/notary/spec-trial.json` | not yet |
+
+Both entries were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
+contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`; their receipts are backed up encrypted
+and checked with `notary-restore-check.sh`.
+
+## Backup scripts
+
+`tools/notary/` (versioned): `notary-backup.sh` (a manifest with everything it lists, encrypted, to OneDrive and a
+USB drive), `notary-receipt-backup.sh` (a receipt), `notary-restore-check.sh` (restore check with the private key in
+a temporary GNUPGHOME) and `notary-lib.sh`. `runs/notary/` has symlinks to them, so they are called as
+`bash runs/notary/notary-....sh`; machine-specific settings (the OneDrive folder) are in `runs/notary/local.env`,
+not in git.
+
