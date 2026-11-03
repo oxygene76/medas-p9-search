@@ -16,6 +16,11 @@ Bodies, in this order (the first six are massive, N_active = 6):
            circular means of the reference population (CaltechDATA
            doi:10.22002/8fjad-x7y61): varpi = 248.5 deg, Omega = 98.5 deg, mean
            anomaly 180 deg (its median). Heliocentric elements, ecliptic J2000.
+           Other values with --p9 (e.g. the sets of the comparison with
+           Brown & Batygin, docs/bb2021-comparison-criteria.md:
+           --p9 m_earth=7,a=500,e=0.33,inc=17,varpi=250,Omega=100,M=0), and
+           with --p9-plane invariable the angles inc, Omega and varpi refer to
+           the invariable plane of Jupiter to Neptune (see below).
   tp00000… test particles (massless) in the distant Kuiper belt: a uniform in
            150-550 au, perihelion uniform in 30-50 au, inclination uniform in
            0-10 deg (other ranges with --a-range, --q-range, --inc-range;
@@ -33,6 +38,20 @@ do not interact).
 Frame: ecliptic and equinox J2000 (the elements of the reference population
 refer to it), barycentric; units au, year (365.25 d), solar mass, G = (k *
 365.25)^2 with the Gaussian constant k.
+
+Invariable plane (--p9-plane invariable; Brown & Batygin 2021, §4.1, p. 8: the
+initial plane of their simulations): the plane normal to the total orbital
+angular momentum of Jupiter, Saturn, Uranus and Neptune, heliocentric (about
+the Sun with the inner planets), from the same DE440s states. Its inclination
+I and ascending node N on the ecliptic J2000 follow from that pole. Planet
+Nine's inc is then measured against this plane, and its longitudes Omega and
+varpi as "dog-leg" longitudes: from the equinox along the ecliptic to N, then
+along the invariable plane (so they differ from ecliptic longitudes only by
+terms of order I^2). The state is computed in the frame of the plane and
+rotated to the ecliptic by Rz(N) Rx(I). The test particles stay in the ecliptic
+frame, as before (their angles are uniform, so the plane matters only for
+Planet Nine). Without these options the output is unchanged (test hashes:
+tests/test_make_ic.py).
 
 All conversions (DE440s, rotation, elements to states) happen here once; the
 file holds every value as the shortest decimal that reads back to the same
@@ -159,17 +178,45 @@ def absorb(bodies, names):
     return rest, j2
 
 
-def build(n_tp, seed, tp_from, tp_to, j2_names=None):
+def invariable_plane(bodies):
+    """Inclination I and ascending node N (radians, on the ecliptic J2000) of the plane normal to the total
+    heliocentric orbital angular momentum of Jupiter to Neptune."""
+    sun = bodies[0]
+    L = np.zeros(3)
+    for name, m, p, v in bodies[1:]:
+        if name in ("Jupiter", "Saturn", "Uranus", "Neptune"):
+            L += m * np.cross(p - sun[2], v - sun[3])
+    n = L / np.linalg.norm(L)
+    return math.acos(n[2]), math.atan2(n[0], -n[1])
+
+
+def rot_from_plane(I, N):
+    """Rz(N) Rx(I): vectors from the frame of a plane (x to its ascending node, z to its pole) to the ecliptic."""
+    cI, sI, cN, sN = math.cos(I), math.sin(I), math.cos(N), math.sin(N)
+    return np.array([[cN, -sN * cI, sN * sI], [sN, cN * cI, -cN * sI], [0.0, sI, cI]])
+
+
+def build(n_tp, seed, tp_from, tp_to, j2_names=None, p9_plane="ecliptic"):
     bodies = planets()
     j2 = None
     if j2_names:
         bodies, j2 = absorb(bodies, j2_names)
     sun = bodies[0]
     m9 = P9["m_earth"] * EARTH_IN_SUN
-    e9 = 1 - P9["q"] / P9["a"]
+    e9 = P9["e"] if "e" in P9 else 1 - P9["q"] / P9["a"]
     d = math.radians
+    plane = None
+    if p9_plane == "invariable":
+        I, N = invariable_plane(bodies)
+        plane = {"inclination_deg": math.degrees(I), "node_deg": math.degrees(N) % 360}
+        Om9 = d(P9["Omega"]) - N   # dog-leg longitude -> angle from the plane's node
+    else:
+        Om9 = d(P9["Omega"])
     p9_p, p9_v = elements_to_state(G * (sun[1] + m9), np.array([P9["a"]]), np.array([e9]), np.array([d(P9["inc"])]),
-                                   np.array([d(P9["Omega"])]), np.array([d(P9["varpi"] - P9["Omega"])]), np.array([d(P9["M"])]))
+                                   np.array([Om9]), np.array([d(P9["varpi"] - P9["Omega"])]), np.array([d(P9["M"])]))
+    if plane:
+        R = rot_from_plane(I, N)
+        p9_p, p9_v = p9_p @ R.T, p9_v @ R.T
     bodies.append(("P9", m9, sun[2] + p9_p[0], sun[3] + p9_v[0]))
     # test particles: all n_tp drawn, then the slice [tp_from, tp_to) kept (work packages)
     rng = np.random.default_rng(seed)
@@ -186,7 +233,24 @@ def build(n_tp, seed, tp_from, tp_to, j2_names=None):
     # ids: 0..5 the massive bodies, 6 + i test particle i of the whole set (also in a slice)
     for i in range(tp_from, tp_to):
         rows.append((f"tp{i:05d}", 0.0, sun[2] + tp_p[i] - com_p, sun[3] + tp_v[i] - com_v, len(bodies) + i))
-    return rows, j2
+    return rows, j2, plane
+
+
+P9_KEYS = ("m_earth", "a", "e", "q", "inc", "varpi", "Omega", "M")
+
+
+def parse_p9(text):
+    """--p9 "key=value,...": Planet Nine's values instead of the defaults (e or q, not both)."""
+    out = {}
+    for item in text.split(","):
+        k, _, v = item.partition("=")
+        k = k.strip()
+        if k not in P9_KEYS or not v:
+            sys.exit(f"--p9: '{item}' (keys: {', '.join(P9_KEYS)})")
+        out[k] = float(v)
+    if "e" in out and "q" in out:
+        sys.exit("--p9: give e or q, not both")
+    return out
 
 
 def main():
@@ -206,11 +270,23 @@ def main():
                     help="p9sim's integrator (mercurius: hybrid, resolves close encounters with IAS15)")
     ap.add_argument("--j2", default=None, help='model "j2": planets merged into the central body, e.g. Jupiter,Saturn,Uranus')
     ap.add_argument("--j2-out", default=None, help="file for the J2 parameters (JSON)")
+    ap.add_argument("--p9", default=None, help='Planet Nine instead of the defaults: "m_earth=7,a=500,e=0.33,inc=17,varpi=250,Omega=100,M=0" '
+                                                "(any subset; e or q)")
+    ap.add_argument("--p9-plane", choices=["ecliptic", "invariable"], default="ecliptic",
+                    help="the plane of Planet Nine's inc, Omega, varpi: the ecliptic J2000 (default) or the invariable plane of Jupiter-Neptune")
     args = ap.parse_args()
+    if args.p9_plane != "ecliptic" and args.j2:
+        sys.exit("--p9-plane invariable: not with --j2 (the plane needs Jupiter to Neptune)")
+    default_p9 = dict(P9)
+    if args.p9:
+        given = parse_p9(args.p9)
+        if "e" in given:
+            P9.pop("q")
+        P9.update(given)
     tp_to = args.n_tp if args.tp_to is None else args.tp_to
     default_ranges = dict(TP)
     TP.update(a=tuple(args.a_range), q=tuple(args.q_range), inc=tuple(args.inc_range))
-    rows, j2 = build(args.n_tp, args.seed, args.tp_from, tp_to, args.j2.split(",") if args.j2 else None)
+    rows, j2, plane = build(args.n_tp, args.seed, args.tp_from, tp_to, args.j2.split(",") if args.j2 else None, args.p9_plane)
     members = [int(m) for m in args.members.split(",")]
     if members != [0]:
         if args.n_tp > 100000 or min(members) < 0 or max(members) > 9 or len(set(members)) != len(members):
@@ -234,6 +310,11 @@ def main():
         f.write(f"# test particles {args.tp_from}..{tp_to - 1} of {args.n_tp}, seed {args.seed}"
                 + (f", members {args.members} (positions perturbed by {args.perturb:g} relative)" if members != [0] else "")
                 + (f", a {TP['a']} au, q {TP['q']} au, i {TP['inc']} deg" if TP != default_ranges else "") + "\n")
+        if P9 != default_p9 or plane:
+            f.write("# Planet Nine " + ", ".join(f"{k} {P9[k]!r}" for k in P9_KEYS if k in P9)
+                    + (f"; inc, Omega, varpi relative to the invariable plane of Jupiter-Neptune (inclination "
+                       f"{plane['inclination_deg']!r} deg, node {plane['node_deg']!r} deg on the ecliptic J2000; dog-leg longitudes)"
+                       if plane else "; ecliptic J2000") + "\n")
         f.write(f"G {G!r}\ndt {args.dt!r}\nN_active {sum(1 for r in rows if r[1] > 0)}\ncorrector 0\n")
         if args.integrator != "whfast":
             f.write(f"integrator {args.integrator}\n")

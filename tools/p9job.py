@@ -291,6 +291,10 @@ def cmd_make(a):
         if a.program != "p9gpu":
             sys.exit("--j2 needs --program p9gpu")
         cmd += ["--j2", a.j2, "--j2-out", str(out / "j2.json")]
+    if a.p9:
+        cmd += ["--p9", a.p9]
+    if a.p9_plane != "ecliptic":
+        cmd += ["--p9-plane", a.p9_plane]
     subprocess.run(cmd, check=True)
     subprocess.run([str(DEFAULT_P9SIM if a.program == "p9gpu" else a.p9sim), "init", str(ic), str(out / "input.sa")], check=True, stdout=subprocess.DEVNULL)
     params = {"case": "Brown & Batygin (2021): Sun (+ inner planets), Jupiter-Neptune (DE440s, JD 2458270.0), Planet Nine, test particles",
@@ -298,7 +302,8 @@ def cmd_make(a):
                      "tp_to": a.tp_to if a.tp_to is not None else a.n_tp, "ic_sha256": sha256_file(ic),
                      **({"members": [int(m) for m in a.members.split(",")], "perturb_position_relative": a.perturb}
                         if a.members != "0" else {}),
-                     **({"ranges": ranges} if ranges else {})},
+                     **({"ranges": ranges} if ranges else {}),
+                     **({"p9": a.p9} if a.p9 else {}), **({"p9_plane": a.p9_plane} if a.p9_plane != "ecliptic" else {})},
               **({"real": a.real} if a.real != "double" else {}),
               **({"model": {"name": "j2", **json.loads((out / "j2.json").read_text())}} if a.j2 else {}),
               "integrator": a.integrator, "coordinates": "democraticheliocentric", "safe_mode": 1, "corrector": 0, "dt_yr": a.dt,
@@ -498,6 +503,9 @@ def main():
     m.add_argument("--q-range", type=float, nargs=2, default=None, help="perihelia (au; default 30 50)")
     m.add_argument("--inc-range", type=float, nargs=2, default=None, help="inclinations (deg; default 0 10)")
     m.add_argument("--r-in", type=float, default=5.0, help="inner removal distance (au; Brown & Batygin 2021: 4.5)")
+    m.add_argument("--p9", default=None, help='Planet Nine instead of the defaults (tools/make_ic.py --p9), e.g. "m_earth=7,a=500,e=0.33,inc=17,varpi=250,Omega=100,M=0"')
+    m.add_argument("--p9-plane", choices=["ecliptic", "invariable"], default="ecliptic",
+                   help="plane of Planet Nine's angles (tools/make_ic.py --p9-plane)")
     m.add_argument("--members", default="0",
                    help="ensemble members (tools/make_ic.py): 0 = the start values themselves, m >= 1 with perturbed positions; e.g. 0,1,2,3")
     m.add_argument("--perturb", type=float, default=1e-12, help="relative perturbation of the positions of members >= 1")
