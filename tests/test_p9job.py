@@ -239,5 +239,22 @@ class Mercurius(unittest.TestCase):
             self.assertIn("mercurius", (job / "ic.txt").read_text())
 
 
+class CollisionRadius(unittest.TestCase):
+    """Planet Nine's collision radius with its mass (same density, decision of 2026-11-03); unchanged at 6.2 Earth masses."""
+
+    def test_reference_mass_unchanged(self):
+        base = p9job.collision_radii({"P9": 5, "Neptune": 4})
+        self.assertEqual(p9job.collision_radii({"P9": 5, "Neptune": 4}, 6.2 * 3.003489596e-6), base)
+        self.assertEqual(base["radii_km"]["P9"], "16564.6")
+
+    def test_scaled_with_cube_root_of_mass(self):
+        for m, km in ((7.0, "17248.4"), (5.0, "15418.4")):
+            c = p9job.collision_radii({"P9": 5, "Neptune": 4}, m * 3.003489596e-6)
+            self.assertEqual(c["radii_km"]["P9"], km)
+            self.assertAlmostEqual(float(c["radii_km"]["P9"]), 2.6 * 6371.0 * (m / 6.2) ** (1 / 3), delta=0.05)
+            self.assertEqual(c["radii_km"]["Neptune"], "24764.0")
+            self.assertIn("cube root", c["assumption"])
+
+
 if __name__ == "__main__":
     unittest.main()

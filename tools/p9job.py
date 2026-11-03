@@ -165,14 +165,27 @@ COLLISION_SOURCE = ("equatorial radii (1 bar), IAU WGCCRE 2015 (Archinal et al. 
                     "P9: assumption 2.6 Earth radii (6,371.0 km) for 6.2 Earth masses")
 
 
-def collision_radii(body_ids):
-    """params.removal.encounter.collision for method smooth: the physical radii of the job's planets."""
+P9_REF_MASS = 6.2 * 3.003489596e-6   # the Planet Nine of the assumed radius (tools/make_ic.py: m_earth * EARTH_IN_SUN)
+
+
+def collision_radii(body_ids, m_p9=None):
+    """params.removal.encounter.collision for method smooth: the physical radii of the job's planets. Planet Nine
+    with another mass than 6.2 Earth masses (m_p9, solar masses): 2.6 Earth radii scaled with (m / 6.2 Earth
+    masses)^(1/3), the same density (decision of 2026-11-03); for 6.2 Earth masses the values are as before."""
     missing = sorted(set(body_ids) - set(PHYSICAL_RADII_KM))
     if missing:
         raise SystemExit(f"no physical radius for {missing}")
-    return {"radii_km": {n: f"{PHYSICAL_RADII_KM[n]:.1f}" for n in sorted(body_ids)},
-            "radii_au": {n: f"{PHYSICAL_RADII_KM[n] / AU_KM:.6e}" for n in sorted(body_ids)}, "source": COLLISION_SOURCE,
-            "assumption": "P9" in body_ids and "the radius of Planet Nine (2.6 Earth radii) is assumed" or None}
+    km = dict(PHYSICAL_RADII_KM)
+    scale = (m_p9 / P9_REF_MASS) ** (1 / 3) if m_p9 is not None and m_p9 != P9_REF_MASS else None
+    if scale is not None:
+        km["P9"] = PHYSICAL_RADII_KM["P9"] * scale
+    out = {"radii_km": {n: f"{km[n]:.1f}" for n in sorted(body_ids)},
+           "radii_au": {n: f"{km[n] / AU_KM:.6e}" for n in sorted(body_ids)}, "source": COLLISION_SOURCE,
+           "assumption": "P9" in body_ids and "the radius of Planet Nine (2.6 Earth radii) is assumed" or None}
+    if scale is not None and "P9" in body_ids:
+        out["assumption"] = (f"the radius of Planet Nine is assumed: 2.6 Earth radii for 6.2 Earth masses, scaled with the cube root "
+                             f"of the mass (same density): {m_p9 / 3.003489596e-6:.4g} Earth masses, {2.6 * scale:.4f} Earth radii")
+    return out
 
 
 def substep_radii(enc, factor):
@@ -328,7 +341,7 @@ def cmd_make(a):
                                            encounter_radii(ic, a.dt, a.radius, a.v99) if a.encounters else {"radii_au": {}, "body_ids": {}})}}}
     enc = params["removal"]["encounter"]
     if a.encounter_method == "smooth" and not a.no_collision:
-        enc["collision"] = collision_radii(enc["body_ids"])
+        enc["collision"] = collision_radii(enc["body_ids"], masses(ic).get("P9"))
         enc["note"] = ("close encounters are followed with sub-steps (gpu/whdh.h p9_step_tp_smooth, docs/substeps-plan.md); the radii "
                        "are r_out of the smooth transition; removed by the distance rules and by a collision with a planet (closer than "
                        "its physical radius, collision.radii_au)")
