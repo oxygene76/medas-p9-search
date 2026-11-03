@@ -60,6 +60,10 @@ Part of entry 3. **Nothing is started.** The run starts only:
   - window 1–4 Gyr (301 snapshots);
   - elements barycentric, angles in the frame of Jupiter's orbital plane at each snapshot (prerequisite V3 there).
 - **Precision:** 4 subsets of 16,000 test particles (0–15,999, …), whose scatter is the statistical error.
+- **Tool:** `tools/prod_eval.py` at the tag `prod-eval-v1` (tested on synthetic runs of known orientation,
+  `tests/test_prod_eval.py`; it is also prerequisite V3 of the comparison with Brown & Batygin). Conventions fixed
+  in it: varpi = Omega + omega; Jupiter's plane from its heliocentric orbit at each snapshot; dog-leg longitudes from
+  the run's equinox; M4 bins with fewer than 10 particles count as missing; M5 with a circular 10° moving average.
 - **Information, not judged:**
   - the time series of M1–M3;
   - the selections S1–S3 of `docs/night-20261024.md`;
