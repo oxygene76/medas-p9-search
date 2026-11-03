@@ -295,8 +295,26 @@ def inclination_invariable(h):
 
 # --- PNG map -----------------------------------------------------------------------------------------------------------
 
+def ellipse(ra, dec, centre):
+    """The 95 % error ellipse of the points in the tangent plane at centre: semi-axes (arcmin) and position angle
+    of the major axis (deg, east of north), from their covariance (chi-square 2 dof: 5.991)."""
+    ra0, de0 = math.radians(centre[0]), math.radians(centre[1])
+    r_, d_ = np.radians(ra), np.radians(dec)
+    cosc = math.sin(de0) * np.sin(d_) + math.cos(de0) * np.cos(d_) * np.cos(r_ - ra0)
+    x = np.degrees(np.cos(d_) * np.sin(r_ - ra0) / cosc) * 60          # east, arcmin
+    y = np.degrees((math.cos(de0) * np.sin(d_) - math.sin(de0) * np.cos(d_) * np.cos(r_ - ra0)) / cosc) * 60
+    C = np.cov(np.stack([x, y]))
+    val, vec = np.linalg.eigh(C)
+    k = math.sqrt(5.991)
+    major = vec[:, 1]
+    return {"semi_major_arcmin": round(k * math.sqrt(val[1]), 2), "semi_minor_arcmin": round(k * math.sqrt(val[0]), 2),
+            "pa_deg": round(math.degrees(math.atan2(major[0], major[1])) % 180, 1),
+            "centre_offset_arcmin": [round(float(np.mean(x)), 2), round(float(np.mean(y)), 2)]}, x, y
+
+
 def png_map(path, ra, dec, w, reg, centre, half=None):
-    """A small density map (gnomonic, 400 x 400 px) around centre with the 68/95 % regions' points marked."""
+    """A density map (gnomonic, 400 x 400 px, north up, east left) around centre: the points (3 px), the 95 %
+    ellipse and a 10' scale bar."""
     from math import cos, sin, radians
     ra0, de0 = radians(centre[0]), radians(centre[1])
     r_, d_ = np.radians(ra), np.radians(dec)
@@ -308,9 +326,20 @@ def png_map(path, ra, dec, w, reg, centre, half=None):
     ix = np.clip(((-x / half + 1) / 2 * (N - 1)).astype(int), 0, N - 1)       # east to the left
     iy = np.clip(((-y / half + 1) / 2 * (N - 1)).astype(int), 0, N - 1)       # north up
     img = np.zeros((N, N))
-    np.add.at(img, (iy, ix), w)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            np.add.at(img, (np.clip(iy + dy, 0, N - 1), np.clip(ix + dx, 0, N - 1)), w)
     g = (255 * (1 - np.sqrt(img / max(img.max(), 1e-30)))).astype(np.uint8)
     rgb = np.stack([g, g, g], -1)
+    el, _, _ = ellipse(ra, dec, centre)
+    a_, b_, pa = math.radians(el["semi_major_arcmin"] / 60), math.radians(el["semi_minor_arcmin"] / 60), math.radians(el["pa_deg"])
+    for t in np.linspace(0, 2 * math.pi, 720):
+        e_, n_ = a_ * math.cos(t) * math.sin(pa) + b_ * math.sin(t) * math.cos(pa), a_ * math.cos(t) * math.cos(pa) - b_ * math.sin(t) * math.sin(pa)
+        px, py = int((-e_ / half + 1) / 2 * (N - 1)), int((-n_ / half + 1) / 2 * (N - 1))
+        if 0 <= px < N and 0 <= py < N:
+            rgb[py, px] = (220, 30, 30)
+    bar = int(math.radians(10 / 60) / (2 * half) * (N - 1))
+    rgb[N - 12:N - 9, 10:10 + max(bar, 1)] = (30, 30, 220)
     raw = b"".join(b"\x00" + rgb[r].tobytes() for r in range(N))
     chunk = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
     Path(path).write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", N, N, 8, 2, 0, 0, 0))
@@ -388,6 +417,8 @@ def evaluate(name, fam, flux_fit, des, open_pix32, outdir, single):
                              "dec_range_95": [float(np.percentile(de26, 2.5)), float(np.percentile(de26, 97.5))]}
     np.savez_compressed(outdir / f"{name}-region.npz", pix68=reg["68"]["pixels"], pix95=reg["95"]["pixels"], nside=256)
     res["map_half_width_deg"] = png_map(outdir / f"{name}-2026-11.png", ra26, de26, w, reg, cen)
+    res["search_2026_11"]["ellipse_95"] = ellipse(ra26, de26, cen)[0]
+    np.savez_compressed(outdir / f"{name}-points-2026-11.npz", ra=ra26, dec=de26, r_au=r26, delta_au=d26)
     # still open (2.7): share of the 95 % pixels whose nside-32 parent is in the open 90 % band
     parents = reg["95"]["pixels"] // 64
     res["still_open_share_of_95"] = float(np.isin(parents, list(open_pix32)).mean()) if open_pix32 is not None else None
