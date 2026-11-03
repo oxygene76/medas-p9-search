@@ -363,8 +363,10 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
 - **V2, accepted with a condition:** the equivalence test (v5 ≡ MERCURIUS, `docs/equivalence-result-20261102/`) counts
   for sets A and B if, before the 4-Gyr run of a set, a short v5 run of that set shows an encounter regime like that
   of the equivalence runs.
-  - The short run: 4,000 test particles, 50 Myr, with the flyby log (`flybys.tsv`).
-  - Compared, per planet, against the V5 runs of the equivalence test (9 × 4,000, 0–200 Myr, per particle and Myr):
+  - The short run: 4,000 test particles, 0–60 Myr (three segments of 20 Myr, as the equivalence runs), with the flyby
+    log (`flybys.tsv`).
+  - Compared, per planet, against the V5 runs of the equivalence test over the same 0–60 Myr (9 × 4,000 test
+    particles):
     - the share of test particles with a flyby shorter than 1.5 steps;
     - the share with a flyby within 0.1 au.
   - Within the limits if both hold:
@@ -372,11 +374,10 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
     - Planet Nine is at most twice its equivalence values.
   - Outside the limits: a paired test V5 against MERCURIUS for that set before its 4-Gyr run, with criteria fixed
     beforehand.
-  - Reference values of the equivalence runs (0–200 Myr, share of particles):
-    - Neptune 33.7 % fast, 11.8 % within 0.1 au;
-    - Uranus 15.6 % and 6.3 %;
-    - Planet Nine 3.0 % and 0.8 %.
-    - The short runs give these per 50 Myr. They are compared as rates per Myr.
+  - Reference values of the equivalence runs, 0–60 Myr, share of the test particles with at least one such flyby:
+    - Neptune 17.61 % fast, 4.47 % within 0.1 au;
+    - Uranus 2.75 % and 0.84 %;
+    - Planet Nine 1.09 % and 0.26 %.
 - **V3 done:** `tools/prod_eval.py` (tag `prod-eval-v1`). M1–M5 in Jupiter's plane and in the ecliptic, tested on
   synthetic runs of known orientation (`tests/test_prod_eval.py`).
   - Conventions: varpi = Omega + omega; Jupiter's plane from its heliocentric orbit at each snapshot; dog-leg
