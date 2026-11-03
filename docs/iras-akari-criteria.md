@@ -173,3 +173,40 @@ computed:
 - A V range that spans the survey limits leads to "not decidable" under 3, as fixed.
 
 Nothing in sections 1–4 is changed by this addendum.
+
+## Addendum B (2026-11-03): written after reading the survey papers, before any computation
+
+The survey papers named in 2.5 give several limits each. Fixed here, before any orbit, place or coverage is computed:
+
+**B1. Limits** (the one tied to each survey's own detection rule; "would have detected" stays V ≤ limit − 0.5 mag
+in the footprint, as in 2.5):
+- ZTF: V = 20.5, the 95 % limit for at least 7 detections (Brown & Batygin 2022, Fig. 1).
+- Pan-STARRS1: V = 21.0, the median 95 % limit for at least 9 detections outside the galactic plane (Brown, Holman &
+  Batygin 2024, arXiv:2401.17977).
+- DES: r = 23.8, the typical limit (Belyakov, Bernardinelli & Brown 2022). With V − r = 0.2 (2.5) this is V = 24.0.
+
+**B2. Footprints:**
+- ZTF and Pan-STARRS1: declination above −30° (both papers). For ZTF additionally the galactic latitude |b| > 5°
+  (the paper names a strip of about 10° around the galactic plane).
+- DES: the papers show the footprint only as a figure. Used instead: the DES round 19 footprint polygon (E. Neilsen,
+  2019-03-19), file `des-round19-poly.txt` of the skymap package (github.com/kadrlica/skymap, branch master,
+  read 2026-11-03, sha256 `e0f3a1e06ce31284…`).
+
+**B3. Epochs:** the middles of the periods in the papers:
+- ZTF 2019-05-20 (2018-06-01 to 2020-05-07);
+- DES 2016-07-01 (2013–2019);
+- Pan-STARRS1 2012-07-01 (2009–2015).
+
+**B4. Error ellipses (A1):**
+- The IRAS Faint Source Catalog could not be read on 2026-11-03: VizieR at CDS and its CfA mirror timed out, IRSA
+  answered 504.
+- The fallback of A1 applies: a circle of 1σ = 30″ for both detections of Phan et al., and the variant with 90″.
+
+**B5. Planet Nine posterior (2.6),** checked against the abstract of Brown & Batygin 2021 (arXiv:2108.09868):
+- m = 6.2 +2.2/−1.3 Earth masses;
+- a = 380 +140/−80 au;
+- i = 16 ± 5°;
+- q = 300 +85/−60 au.
+- These are the values of 2.6. The ZTF paper quotes q as 300 +85/−80 au; 2.6 stays with the source.
+
+Nothing in sections 1–4 or in addendum A is changed by this addendum.
