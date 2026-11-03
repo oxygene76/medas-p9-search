@@ -1,4 +1,4 @@
-# Paired long runs, seeds 110–112: criteria, fixed before the runs (draft 2026-11-03, for the project lead's review)
+# Paired long runs, seeds 110–112: criteria, fixed before the runs (2026-11-03; decisions Q1–Q3 in section 7)
 
 Part of entry 3 (decision of 2026-11-03, `docs/production-criteria.md` section 6). They check the residual risk that
 `docs/equivalence-criteria.md` names under "Scope and residual risk": the equivalence of v5 and MERCURIUS was shown
@@ -42,7 +42,9 @@ barycentric), per snapshot.
   - |d̄(4 Gyr)| ≥ 0.05, and |d̄(4 Gyr)| > 2 standard errors; and
   - d̄ has the same sign at 1, 2 and 4 Gyr, and |d̄(4 Gyr)| > |d̄(0.5 Gyr)|.
 - **Otherwise: no growing bias found** within what three pairs can see (about 0.05, `docs/equivalence-criteria.md`).
-- **Too few survivors:** if a run has fewer than 30 distant survivors in more than half of the snapshots of a window,
+- **Power:** three pairs can find only large biases. "No growing bias found" is not evidence that there is none; the
+  report states this explicitly, with d̄(t) and its standard errors.
+- **Too few survivors:** if a run has fewer than 100 distant survivors in more than half of the snapshots of a window,
   S(t) of that window is not computed and the decision uses the remaining times; with fewer than three times left,
   the result is "not decided".
 
@@ -68,9 +70,10 @@ When the V5 runs have finished their first segment and the M slices their fifth:
 
 - **V5 on the L40S:** the equivalence runs on the L40S (4,000 test particles, one at a time) took 5.3–7.9 h per
   200 Myr, about 50 µs per step; at 2,000 test particles a step costs about the same (the GPU is far from filled).
-  4 Gyr = 20 × 200 Myr: **about 4–5 days per seed, about 12–15 days for the three one after the other.** Three at
-  once on the L40S may be faster in total; that is measured on the first segment before deciding. The AI services
-  on the L40S can add some 10–30 %.
+  4 Gyr = 20 × 200 Myr: **about 4–5 days per seed, about 12–15 days for all three.** Three at once on one GPU are
+  not faster in total without NVIDIA MPS (the GPU alternates between the processes): on the laptop GPU (2,000 test
+  particles, 1 Myr) 247 s one after the other against 253 s at once, with the same result hashes. They run at once
+  (decision Q3). The AI services on the L40S can add some 10–30 %.
 - **M on CPU 1:** the equivalence slices on appmdp-05 (250 test particles, 14 at once) needed 1,665–2,476 s per
   20 Myr, about 245 ns per test-particle step at the start; 80 % of the bodies survived 200 Myr. With about 50 % of
   the test particles still present on average over 4 Gyr (40–65 %): **about 440–710 core hours per seed,
@@ -79,8 +82,19 @@ When the V5 runs have finished their first segment and the M slices their fifth:
 - The speed comparison of 2026-11-03/04 (`speed/` in medas-p9-search-bb2021) gives the measured rates of both
   machines; this section is updated from it before entry 3 (marked as an update).
 
-## 7. Open points for the project lead
+## 7. Decisions of the project lead (2026-11-03)
 
+The open points of the draft, as they were put:
 - Q1: the thresholds of section 3 (0.05 and 2 standard errors; sign at 1, 2 and 4 Gyr).
 - Q2: the 30 distant survivors per snapshot as the lower limit for S(t).
 - Q3: the three V5 runs one after the other or at once on the L40S (after the measurement on the first segment).
+
+Decided:
+- **Q1:** the thresholds as proposed: |d̄(4 Gyr)| ≥ 0.05 and more than 2 standard errors; the same sign at 1, 2 and
+  4 Gyr; at 4 Gyr larger than at 0.5 Gyr. The low power of three pairs is stated explicitly in the report
+  (section 3).
+- **Q2:** 100 instead of 30 distant survivors per snapshot. Expected: about 900 at 200 Myr (57–58 % of the survivors
+  were distant in the equivalence runs) and about 400 at 4 Gyr; the noise of R of an isotropic sample, about
+  0.89/√n, is 0.16 for 30 and 0.09 for 100.
+- **Q3:** the three V5 runs at once on the L40S. The first segment is measured; if running at once is slower in
+  total than one after the other, the runs continue one after the other.
