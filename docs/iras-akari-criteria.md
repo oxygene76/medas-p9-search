@@ -210,3 +210,23 @@ in the footprint, as in 2.5):
 - These are the values of 2.6. The ZTF paper quotes q as 300 +85/−80 au; 2.6 stays with the source.
 
 Nothing in sections 1–4 or in addendum A is changed by this addendum.
+
+## Addendum C (2026-11-03): written after the result (run3 of tools/iras_akari.py at b992cfe); the verdicts stand
+
+Two points of interpretation that the result showed. They change no verdict; they say what two verdicts mean.
+
+**C1. The 5 % threshold of "supported" (section 3) measures the prior, not the data.**
+- With r1 and r2 drawn independently in 500–1,000 au, a bound orbit needs |r2 − r1| of at most about 10 au over
+  23 years.
+- At most a few per cent of the trials can therefore be kept, whatever the positions are: Phan et al.: 0.27–0.71 %.
+- So "supported" was not reachable for the two-epoch case by construction.
+- No verdict here depends on it: the Phan pair is excluded by the survey criterion.
+- For later criteria: a share of the trials that are consistent with the positions within their errors, among the
+  bound ones, not among all.
+
+**C2. Q-P for a single-epoch family (A3) has no information.**
+- The family is the prior of A3: velocity uniform in direction and magnitude. Its a, q and i come from that prior,
+  not from data.
+- The verdict "excluded" for Q-P of the two Chen candidates follows the letter of section 3 (0 % of the family in the
+  Planet Nine space). It says nothing about the candidates.
+- It is reported as "excluded by the letter, not informative".
