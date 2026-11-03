@@ -336,6 +336,8 @@ def ranging_two(rng, n, ra1, de1, t1_jd, sig1, ra2, de2, t2_jd, sig2, ell1=None,
     for lw in (False, True):
         v2, ok = lambert_bound(p1, p2, dt, lw)
         ok &= np.isfinite(v2).all(1)
+        aa, ee, _ = elements(p2, np.where(np.isfinite(v2), v2, 0.0))
+        ok &= (aa > 0) & (ee < 1)          # bound (2.2): checked on the state, the Lambert edge z -> 0 is not exact
         kept.append((p2[ok], v2[ok], (t2_jd - rho2[ok] / C_AU_YR * YEAR_D), r1[ok], r2[ok], rho1[ok], rho2[ok]))
     cat = [np.concatenate([k[i] for k in kept]) for i in range(7)]
     return {"n_trials": n, "n_kept": int(len(cat[0])), "share": len(cat[0]) / n, "r": cat[0], "v": cat[1], "t_jd": cat[2],
@@ -359,6 +361,7 @@ def evaluate(name, fam, flux_fit, des, open_pix32, outdir, single):
     res = {"name": name, "n_trials": fam["n_trials"], "n_kept": fam["n_kept"], "kept_share": fam["share"]}
     if fam["n_kept"] == 0:
         res["note"] = "no bound orbit kept"
+        res["Q_O"] = "excluded (fewer than 0.1 % of the trials kept)"
         return res
     r, v = fam["r"], fam["v"]
     a, e, h = elements(r, v)
