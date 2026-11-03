@@ -333,3 +333,53 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
   - Every run first passes `check.sh` of the package on its GPU, as before.
 - Nothing else in this file changes.
 
+
+## 13. Addendum of 2026-11-03: encounter and collision radii of sets A and B, V1–V3 (decisions of the project lead, before any run)
+
+**Encounter radii** (p9gpu v5, method smooth; the rule radius r, r_out = 4 r the outer radius of the smooth transition):
+- **Jupiter to Neptune: as in the production package p9prod-9a084ed**, given explicitly (`p9job make --radius`), not
+  from the rule: r = 1.8575, 1.2427, 0.6643, 0.7759 au (r_out 7.4300, 4.9708, 2.6572, 3.1036 au). Without this,
+  `p9job` would scale them with (m_planet / m_P9)^(1/3) and change them with Planet Nine's mass (A −4 %, B +7 %).
+- **Planet Nine: r = 0.5 au × (m9 / 6.2 Earth masses)^(1/3)** at dt = 0.5 yr: **A 0.5206 au (r_out 2.0824 au),
+  B 0.4654 au (r_out 1.8616 au).**
+  - Reason: the radius keeps 164 steps per orbit around Planet Nine at r, as in the checked state (0.5 au for 6.2
+    Earth masses). That is what v5 resolves:
+    - the number of sub-steps inside r_out follows from the distance and speed relative to the planet and from
+      the planetocentric orbital time (`gpu/whdh.h`, `p9_step_tp_smooth_d`);
+    - the Sun's pull runs exactly as Kepler drift in the sub-steps;
+    - Planet Nine's Hill radius enters nowhere, and the rule takes no Hill radius for Planet Nine.
+  - Scaling with the Hill radius (with a9 and m9) was considered and rejected: set B would get 115 steps per orbit
+    instead of 164, below the checked resolution (set A 248).
+- **Collision radius of Planet Nine: 2.6 Earth radii × (m9 / 6.2 Earth masses)^(1/3)** (the same density): A
+  17,248.4 km, B 15,418.4 km (`tools/p9job.py` of medas-p9-search-bb2021, 4d8ec5c; at 6.2 Earth masses unchanged).
+  Jupiter to Neptune: the physical radii as in the production package.
+
+**Prerequisites:**
+- **V1 done:** `tools/make_ic.py --p9 … --p9-plane invariable` (medas-p9-search-bb2021, tag `make-ic-v1`).
+  - The output of the existing cases is bit for bit unchanged (`tests/test_make_ic.py`).
+  - Invariable plane of Jupiter to Neptune from DE440s: inclination 1.579°, node 107.63° on the ecliptic J2000.
+  - Longitudes of Planet Nine as dog-leg longitudes, from the equinox along the ecliptic to the node, then along the
+    plane.
+- **V2, accepted with a condition:** the equivalence test (v5 ≡ MERCURIUS, `docs/equivalence-result-20261102/`) counts
+  for sets A and B if, before the 4-Gyr run of a set, a short v5 run of that set shows an encounter regime like that
+  of the equivalence runs.
+  - The short run: 4,000 test particles, 50 Myr, with the flyby log (`flybys.tsv`).
+  - Compared, per planet, against the V5 runs of the equivalence test (9 × 4,000, 0–200 Myr, per particle and Myr):
+    - the share of test particles with a flyby shorter than 1.5 steps;
+    - the share with a flyby within 0.1 au.
+  - Within the limits if both hold:
+    - Neptune and Uranus are within ±30 % of the equivalence values;
+    - Planet Nine is at most twice its equivalence values.
+  - Outside the limits: a paired test V5 against MERCURIUS for that set before its 4-Gyr run, with criteria fixed
+    beforehand.
+  - Reference values of the equivalence runs (0–200 Myr, share of particles):
+    - Neptune 33.7 % fast, 11.8 % within 0.1 au;
+    - Uranus 15.6 % and 6.3 %;
+    - Planet Nine 3.0 % and 0.8 %.
+    - The short runs give these per 50 Myr. They are compared as rates per Myr.
+- **V3 done:** `tools/prod_eval.py` (tag `prod-eval-v1`). M1–M5 in Jupiter's plane and in the ecliptic, tested on
+  synthetic runs of known orientation (`tests/test_prod_eval.py`).
+  - Conventions: varpi = Omega + omega; Jupiter's plane from its heliocentric orbit at each snapshot; dog-leg
+    longitudes.
+  - The subset rule "not decided" of section 6 uses the definition of decision P1 in `docs/production-criteria.md`:
+    the largest angular distance between the M1 of a subset and the pooled M1, over 1–4 Gyr, more than 10°.
