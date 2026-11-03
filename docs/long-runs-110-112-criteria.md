@@ -98,3 +98,10 @@ Decided:
   0.89/√n, is 0.16 for 30 and 0.09 for 100.
 - **Q3:** the three V5 runs at once on the L40S. The first segment is measured; if running at once is slower in
   total than one after the other, the runs continue one after the other.
+
+## 8. Model assumptions
+
+The model of the production package, in both groups (V5 and MERCURIUS), with the assumptions and limits of
+`docs/production-criteria.md` section 7: gravity of the Sun and the planets only, the planets integrated together,
+massless test particles, no galactic tide and no passing stars. The pairs compare two integrators in the same model.
+The model itself is not tested by them.

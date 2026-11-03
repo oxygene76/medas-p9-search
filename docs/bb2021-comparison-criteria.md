@@ -384,3 +384,17 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
     longitudes.
   - The subset rule "not decided" of section 6 uses the definition of decision P1 in `docs/production-criteria.md`:
     the largest angular distance between the M1 of a subset and the pooled M1, over 1–4 Gyr, more than 10°.
+
+## 14. Addendum of 2026-11-03: model assumptions and observational bias (before any run)
+
+- The runs of sets A and B use the model of the production package. Its assumptions and limits are stated in
+  `docs/production-criteria.md` section 7:
+  - gravity of the Sun and the planets only, with the planets integrated together, not fixed;
+  - massless test particles;
+  - no galactic tide and no passing stars;
+  - removal beyond 10,000 au.
+- **Observational bias:** M1–M5 describe the simulated distributions and are compared with Brown & Batygin's
+  simulated distributions (Figs. 1–4). These are not biased by surveys either. The observed objects (section 8)
+  stay reported without a test, since their bias function is not available.
+- Before the result is written: check against the text of Brown & Batygin 2021 §4.1 whether their runs contained a
+  galactic tide. If they did, the comparison names this as a difference of the setup, as in section 6, outcome 2.

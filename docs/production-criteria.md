@@ -111,3 +111,32 @@ Decided:
   running on), the MERCURIUS part on appmdp-05's CPU, pinned and with nice.
 - **Sets A and B** follow as soon as the prerequisites V1–V3 are done and checked: if possible in parallel on the
   L40S (addendum to D3 in `docs/bb2021-comparison-criteria.md`), otherwise after the production run on the A100.
+
+## 7. Model assumptions and limits (stated before the start, 2026-11-03)
+
+What the model of p9prod-9a084ed contains, and what not (checked in its code):
+- **Gravity of the Sun and the planets only.** The Sun carries the masses of Mercury to Mars at their barycentre;
+  Jupiter, Saturn, Uranus, Neptune and Planet Nine are massive bodies.
+- **The planets' orbits are not fixed:** the six massive bodies are integrated together, with their mutual
+  attraction (on the CPU in double precision, 8 inner steps per step), from the DE440s states of JD 2458270.0.
+- **The test particles are massless:** they feel the Sun and the planets, but not each other, and do not act on
+  the planets. No self-gravity of the disk, no collisions among them.
+- **No galactic tide and no passing stars**, no birth cluster of the Sun. A test particle beyond 10,000 au is
+  removed (as Brown & Batygin 2021), and one closer than 4.5 au to the Sun or than a planet's physical radius.
+  - The galactic tide changes perihelia noticeably only for semi-major axes of more than about 1,000–2,000 au; the
+    selection S_BB ends at 1,000 au.
+  - Bodies that pass through larger semi-major axes and come back can still carry its effect. That is not modelled.
+- Our summary of Brown & Batygin 2021 §4.1 (`docs/bb2021-comparison-criteria.md` section 1) names only the giant
+  planets and Planet Nine. Whether their runs contained a galactic tide is to be checked against the paper text
+  before the result is written. Until then this stays an assumption.
+
+What the evaluation does not contain:
+- **No observational bias.** The measures M1–M5 describe the simulated distribution itself, not what surveys
+  would see of it (selection by sky direction, ecliptic latitude, brightness and distance).
+  - That is the right comparison with the distributions Brown & Batygin show for their simulations (Figs. 1–4):
+    those are simulated distributions as well.
+  - It is not a comparison with the observed objects. Their positions relative to the distribution are reported
+    only, without a test. Brown & Batygin's likelihood needs their bias function per object (§3), which we do not
+    have (`docs/bb2021-comparison-criteria.md` section 8).
+  - Any later use of a survey simulator or bias function needs criteria of its own, fixed before it is applied to
+    these runs.
