@@ -1,4 +1,4 @@
-Start of the production run on the A100 (p9prod-9a084ed unchanged; docs/production-criteria.md of medas-p9-search)
+Start of the production run on the A100 (start-a100.sh, status-a100.sh; not part of the package, tools/make_prod_package.sh copies only its named files) (p9prod-9a084ed unchanged; docs/production-criteria.md of medas-p9-search)
 
 Before (all must hold, production-criteria.md section 2): the A100 acceptance test passed (including the reboot test),
 the speed benchmark done, entry 3 on the chain, the project lead's explicit word, the maintenance window over.
