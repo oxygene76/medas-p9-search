@@ -1,0 +1,8 @@
+Expected time (from the equivalence slices on appmdp-05, 2026-10-23: 250 test particles, 14 at once, 1,665-2,476 s
+per 20 Myr, about 245 ns per test-particle step at the start; 80 % of the bodies survived 200 Myr):
+  check                   about 2 min (the 1-Myr case takes most of it)
+  one slice (250 test particles, 4 Gyr)    about 55-90 core hours (about 50 % of the test particles present on average)
+  all 24 slices                            about 1,300-2,100 core hours: with 14 cores about 5-7 days,
+                                           with 16 cores about 4-6 days (24 slices in rounds of THREADS)
+The first segments (20 Myr each, about 30-40 min per slice) give the real rate: sh status.sh shows it.
+Resources: THREADS CPU threads (nice 10), about 40 MB of memory per process, about 2 GB of disk.
