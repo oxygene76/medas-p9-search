@@ -321,3 +321,15 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
 - **D5:** these criteria go into entry 3, together with the result of the equivalence test and the package of the
   production run.
 - **Before the runs:** the prerequisites V1-V3 of section 7.
+
+## 12. Addendum of 2026-11-03 (decision of the project lead, before any run)
+
+- **D3, changed:** sets A and B may also be computed on the L40S of appmdp-05, while the AI services there keep
+  running.
+  - Reason: the results are bit-identical on every GPU that passes the check of p9prod-9a084ed (the L40S and the
+    A100 both gave ALL SAME on the 38 check cases); another GPU or a shared GPU changes only the run time.
+  - Order: the production run first on the A100. Sets A and B start as soon as V1–V3 are done and checked: on the
+    L40S if possible, otherwise on the A100 after the production run.
+  - Every run first passes `check.sh` of the package on its GPU, as before.
+- Nothing else in this file changes.
+

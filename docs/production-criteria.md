@@ -1,4 +1,4 @@
-# Production run: criteria, fixed before its start (draft 2026-11-02, for the project lead's review)
+# Production run: criteria, fixed before its start (draft 2026-11-02; decisions P1 and P2 of 2026-11-03 in section 6)
 
 Part of entry 3. **Nothing is started.** The run starts only:
 - after the acceptance test of the A100 and the speed benchmark there;
@@ -75,18 +75,35 @@ Part of entry 3. **Nothing is started.** The run starts only:
 - **Report:** the clustering of this run over 1–4 Gyr, with its scope:
   - the equivalence holds for 0–200 Myr;
   - the residual risk over 4 Gyr as in `docs/equivalence-criteria.md` "Scope and residual risk".
-- **Not decided:** if the subsets disagree among themselves (scatter of M1 over the 4 subsets > 10°), the result
-  counts as not decided.
+- **Not decided:** if the subsets disagree among themselves, the result counts as not decided (decision P1,
+  section 6):
+  - the scatter is the largest angular distance between the M1 of a subset and the pooled M1, each over the window
+    1–4 Gyr;
+  - more than 10°: not decided;
+  - a subset that deviates is reported and not excluded; the evaluation runs in full in any case.
 - **Reading it together with sets A and B:**
   - If A and B agree with Brown & Batygin (outcome 1 there), this run stands as the long-term behaviour of their
     posterior Planet Nine with our method.
   - Otherwise it is reported as not confirmed at long times, with the outcome of A and B.
-- **Later check of the long-time residual risk:** the 3 paired long runs (seeds 110–112) of
-  `docs/equivalence-criteria.md`. Their criteria come in an entry of their own before they start.
+- **Check of the long-time residual risk:** the 3 paired long runs (seeds 110–112) of
+  `docs/equivalence-criteria.md`. By decision of 2026-11-03 their criteria are part of entry 3
+  (`docs/long-runs-110-112-criteria.md`).
 
-## 6. Open points for the project lead
+## 6. Decisions of the project lead (2026-11-03)
 
+The open points of the draft, as they were put:
 - P1: the threshold "> 10°" for the subsets (section 5), and whether one not decided subset should stop the
   evaluation or only be reported.
 - P2: the order on the A100: production run first, or sets A and B first (both need the A100; sets A and B need the
   code prerequisites V1–V3 beforehand).
+
+Decided:
+- **P1:** 10°, measured as the largest angular distance between the M1 of a subset and the pooled M1, both over
+  1–4 Gyr. A subset that deviates is only reported, not excluded. More than 10° means "not decided". Written into
+  section 5.
+- **P2:** the production run first on the A100 (p9prod-9a084ed, v5, unchanged). It starts directly after entry 3 and
+  the maintenance window, under the conditions of section 2.
+- **Seeds 110–112:** their criteria go into entry 3. The V5 part runs on the L40S (with the AI services there
+  running on), the MERCURIUS part on appmdp-05's CPU, pinned and with nice.
+- **Sets A and B** follow as soon as the prerequisites V1–V3 are done and checked: if possible in parallel on the
+  L40S (addendum to D3 in `docs/bb2021-comparison-criteria.md`), otherwise after the production run on the A100.
