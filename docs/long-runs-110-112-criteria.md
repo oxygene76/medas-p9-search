@@ -115,3 +115,19 @@ The model itself is not tested by them.
 - **MERCURIUS:** the M part runs in parallel on CPU 1 (socket 0), independent of the A100, as in section 1.
 - Section 6 (run time) was estimated for the L40S. The estimate for the A100 is below, from the speed comparison of
   2026-11-03/04.
+
+**Run time on the A100 and on CPU 1** (from the speed comparison on appmdp-05, 2026-11-03/04, medas-p9-search-bb2021
+`docs/speed-comparison-appmdp-05.md` and `speed/estimate_a100.py`; the loss of test particles as in the night run
+G201, 32–56 % left at 4 Gyr):
+
+| A100, one after the other | days |
+|---|---|
+| 1. production run (64,000) | 1.9–2.2 |
+| 2. V5 of seeds 110–112 (3 × 2,000, at once) | 3.2 (latency-bound: 2,000 cost as much per Myr as 4,000, 23.1 s; three processes take three times as long) |
+| 3. set A (64,000) | 1.9–2.2 |
+| 4. set B (64,000) | 1.9–2.2 |
+| in all | 9.0–9.8 |
+
+- **MERCURIUS 110–112 on CPU 1:** 16 cores, 24 slices of 250 in two rounds, 253–306 ns per body step:
+  1,600–2,400 core hours, 5.5–8.3 days, in parallel to the A100.
+- These times replace the L40S estimates of section 6.
