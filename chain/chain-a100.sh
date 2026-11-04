@@ -63,8 +63,8 @@ gate() {          # gate STAGE: 0 if it may start now; else WHY
   ! any_run_alive || { WHY="ein Lauf der drei Pakete ist noch aktiv"; return 1; }
   gpu_apps
   [ -z "$A100_APPS" ] || { WHY="Rechenprozesse auf der A100: $A100_APPS"; return 1; }
-  p=$(ps -C p9gpu -o pid= 2>/dev/null | tr -s ' \n' ' ')
-  [ -z "${p# }" ] || { WHY="p9gpu läuft noch (pid $p)"; return 1; }
+  p=$(p9gpu_here)
+  [ -z "$p" ] || { WHY="p9gpu läuft noch (pid $p)"; return 1; }
   case $1 in
     setA|setB)
       j=BB-${1#set}

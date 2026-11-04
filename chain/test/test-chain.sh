@@ -80,6 +80,7 @@ PROD_DIR=$P
 V5_DIR=$T/v5
 SETS_DIR=$T/sets
 MERC_DIR=$T/merc
+V2_DIR=$T/v2
 GPU_NAME=A100
 GPU_UUID=
 E4_OK=$T/chain/e4-on-chain.ok
@@ -127,13 +128,27 @@ ok "dry-run: V5 not started" '[ ! -f "$T/v5/run.pid" ]'
 ok "dry-run: says what it would run" 'grep -q "Testmodus, würde ausführen: cd $T/v5 && CUDA_VISIBLE_DEVICES=$U sh start.sh" "$T/outbox.txt"'
 ok "dry-run: own state directory" '[ -d "$T/chain/state-dry" ]'
 
-# --- 5. the A100 free: V5 starts on the A100 (by UUID) ------------------------------------------------------------
+# --- 5. the A100 free: V5 starts on the A100 (by UUID); the V2 short runs on the L40S do not block it ------------
+# a process named p9gpu: perl sets the process name (a copy of sleep is not portable: multi-call coreutils)
+fakep9() { (cd "$1" && exec perl -e '$0 = "p9gpu"; sleep 600') & }
+mkdir -p "$T/v2" "$T/other"
+fakep9 "$T/v2"; V2PID=$!; pids="$pids $V2PID"
+echo "GPU-99999999-1111-2222-3333-444444444444, $V2PID, $T/v2/bin/p9gpu" > "$T/fake/apps.txt"
 $C tick
 ok "V5 started" '[ -f "$T/v5/run.pid" ] && kill -0 "$(cat "$T/v5/run.pid")"'
 ok "V5 on the A100 UUID" 'grep -q "start: GPU $U" "$T/v5/start.log"'
 ok "message: V5 gestartet" 'last | grep -q "V5 der Seeds 110–112 gestartet: started (pid"'
-$C tick
+echo "$U, 77777, $T/v5/bin/p9gpu" >> "$T/fake/apps.txt"     # V5 on the A100
+sleep 0.3; $C tick
 ok "no second start while V5 runs" '[ "$(wc -l < "$T/v5/start.log")" -eq 1 ]'
+ok "V2 run on the L40S: no wrong-card alarm" '! grep -q "anderen Karte" "$T/outbox.txt"'
+fakep9 "$T/other"; OPID=$!; pids="$pids $OPID"; sleep 0.3
+echo "GPU-99999999-1111-2222-3333-444444444444, $OPID, $T/other/bin/p9gpu" >> "$T/fake/apps.txt"
+$C tick
+ok "a p9gpu elsewhere outside the V2 package: alarm" 'last | grep -q "ALARM: p9gpu auf einer anderen Karte als der A100:  *p9gpu($OPID)"'
+kill $OPID; grep -v "$OPID" "$T/fake/apps.txt" > "$T/fake/apps2.txt"; mv "$T/fake/apps2.txt" "$T/fake/apps.txt"
+$C tick
+ok "foreign p9gpu gone: cleared" 'last | grep -q "erledigt: p9gpu nur noch auf der A100"'
 
 # --- 6. halt signal while V5 runs: alarm, hold latched ----------------------------------------------------------------
 echo "NVIDIA A100-PCIE-40GB, 66, 0x0000000000000040, 0, 1200, 250.0" > "$T/fake/gpu.txt"
@@ -146,6 +161,7 @@ ok "halt over: cleared, hold stays" 'last | grep -q "die Sperre bleibt" && [ -f 
 
 # --- 7. V5 complete while the hold stands: set A does not start ---------------------------------------------------
 for j in V5-s110 V5-s111 V5-s112; do finish_job "$T/v5" $j; done; end_pkg "$T/v5"
+grep -v 77777 "$T/fake/apps.txt" > "$T/fake/apps2.txt"; mv "$T/fake/apps2.txt" "$T/fake/apps.txt"
 echo "2026-11-10T00:00:00Z V5-s110 stopped (signal)" >> "$T/v5/run.log"   # the resume test
 $C tick
 ok "V5 complete, hold: set A not started" '[ ! -f "$T/sets/run.pid" ]'

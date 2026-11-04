@@ -56,7 +56,7 @@ Die V5- und Satz-Pakete werden nur ausgepackt, nicht gestartet: Das macht späte
 ```sh
 cd ~/runs/chain && cp chain.env.example chain.env && nano chain.env
 ```
-- Pfade prüfen: `PROD_DIR`, `V5_DIR`, `SETS_DIR`, `MERC_DIR`. Die Vorgaben passen zur Startanleitung vom 04.11.
+- Pfade prüfen: `PROD_DIR`, `V5_DIR`, `SETS_DIR`, `MERC_DIR` und `V2_DIR`. Die Vorgaben passen zu den Startanleitungen vom 04.11. Prozesse von p9gpu im V2-Paket sind auf der L40S erlaubt; jedes andere p9gpu außerhalb der A100 meldet die Kette und es blockiert einen Start.
 - `GPU_UUID=` mit der UUID der A100 füllen (`nvidia-smi -L`, die Zeile „NVIDIA A100-PCIE-40GB“). Mit UUID wählt die Kette die Karte
   eindeutig; ohne UUID nimmt sie die erste Karte mit „A100“ im Namen.
 - `E4_OK` bleibt `~/runs/chain/e4-on-chain.ok`.
@@ -106,7 +106,7 @@ cd ~/runs/chain && sh test/test-chain.sh
 Der Test nutzt ein gefälschtes `nvidia-smi`, `journalctl` und `curl` und eigene Mini-Pakete in einem temporären
 Verzeichnis. Er fasst weder die A100, noch die echten Läufe, noch Telegram an.
 
-Erwartet: 42 Zeilen `ok …`, am Ende `== 42 checks, 0 failed`.
+Erwartet: 45 Zeilen `ok …`, am Ende `== 45 checks, 0 failed`.
 
 ## 5. Trockenlauf mit den echten Läufen
 

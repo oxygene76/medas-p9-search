@@ -8,6 +8,10 @@ CONF=${CHAIN_CONF:-$CHAIN_DIR/chain.env}
 . "$CONF"
 : "${PROD_DIR:?}" "${V5_DIR:?}" "${SETS_DIR:?}"
 MERC_DIR=${MERC_DIR:-}
+V2_DIR=${V2_DIR:-}
+# p9gpu processes allowed on another card than the A100: those working in these directories (the V2 short runs on
+# the L40S); others are reported as on the wrong card and block a start
+ALLOWED_ELSEWHERE=${ALLOWED_ELSEWHERE:-$V2_DIR}
 GPU_NAME=${GPU_NAME:-A100}
 GPU_UUID=${GPU_UUID:-}
 E4_OK=${E4_OK:-$CHAIN_DIR/e4-on-chain.ok}
@@ -142,12 +146,28 @@ xid_check() {
   [ "${READONLY:-0}" = 1 ] || date -u +'%Y-%m-%d %H:%M:%S UTC' > "$STATE/xid-since"
   XID=$(printf '%s\n' "$out" | grep -i 'NVRM: Xid' | head -n 3 | tr '\n' ' ')
 }
-# compute processes: on the A100 (A100_APPS) and p9gpu on any other card (P9_ELSEWHERE)
+# allowed PID: 0 if the process works in one of ALLOWED_ELSEWHERE (its current directory, as run-job.sh sets it)
+allowed() {
+  c=$(readlink "/proc/$1/cwd" 2>/dev/null) || return 1
+  for d in $ALLOWED_ELSEWHERE; do
+    d=$(cd "$d" 2>/dev/null && pwd -P) || continue
+    case "$c/" in "$d"/*) return 0 ;; esac
+  done
+  return 1
+}
+# compute processes: on the A100 (A100_APPS) and p9gpu on any other card, unless allowed (P9_ELSEWHERE)
 gpu_apps() {
   U=$(gpu_uuid)
   apps=$(nvidia-smi --query-compute-apps=gpu_uuid,pid,process_name --format=csv,noheader 2>/dev/null)
   A100_APPS=$(printf '%s\n' "$apps" | awk -F', ' -v u="$U" '$1 == u { printf "%s(%s) ", $3, $2 }')
-  P9_ELSEWHERE=$(printf '%s\n' "$apps" | awk -F', ' -v u="$U" '$1 != u && $3 ~ /p9gpu/ { printf "%s(%s) on %s ", $3, $2, $1 }')
+  P9_ELSEWHERE=""
+  for line in $(printf '%s\n' "$apps" | awk -F', ' -v u="$U" '$1 != u && $3 ~ /p9gpu/ { print $2 "@" $1 }'); do
+    allowed "${line%@*}" || P9_ELSEWHERE="$P9_ELSEWHERE p9gpu(${line%@*}) auf ${line#*@}"
+  done
+}
+# p9gpu processes on this machine that are not allowed elsewhere (a check or a run of the A100 packages)
+p9gpu_here() {
+  for p in $(ps -C p9gpu -o pid= 2>/dev/null); do allowed "$p" || printf '%s ' "$p"; done
 }
 
 # --- the runs -----------------------------------------------------------------------------------------------------
