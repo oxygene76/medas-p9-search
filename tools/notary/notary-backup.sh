@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Backup of a notary manifest with everything it lists, encrypted, to OneDrive and a USB drive. No push.
 #   bash runs/notary/notary-backup.sh NAME FINGERPRINT USB_DIR
-#   NAME         a3, e2, e3, or e3-20261103 / e3-20261102 (the replaced drafts of entry 3)
+#   NAME         a3, e2, e3, e4, or e3-20261103 / e3-20261102 (the replaced drafts of entry 3)
 #   FINGERPRINT  the full fingerprint (40 hex digits) of the backup key; its public key must be in the keyring
 #   USB_DIR      a directory on the USB drive (must exist)
 # Steps: the manifest's sha256; the set (manifest.py archive of the manifest's own commit, a git bundle of the
