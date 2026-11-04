@@ -30,16 +30,20 @@ manifest_of() {
         MANIFEST_SHA=89ddbf2fb75c0c1e38f571a09a17658f4536592c50fe34c936a670a99f8a227e
         EXPECT="medas-p9-search=c45833a6e5ec11c26ee51b4e50ddd5b1adbab84a medas-p9-search-bb2021=69b84122c16f0b91fe14207ea32c742bbdd40942 medas-p9-search-equiv=47c7381774e2d1b7edd91ff4eaa9563bfb2fb8c7"
         WH=1 ;;
-    e3) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261103.json; SPEC=$NOTARY_DIR/spec-e3-production-20261103.json
+    e3) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261104.json; SPEC=$NOTARY_DIR/spec-e3-production-20261104.json
+        MANIFEST_SHA=fa4d84fb5619cf7746f26cbfd0d9102a1961db8f26c7fc88e0f0e69208b03c60
+        EXPECT="medas-p9-search=730260738c203f99de27f123220431e5eb7d186b medas-p9-search-bb2021=801fb20a295c69edbec34e0461883302e9eb1268 medas-p9-search-equiv=ac47329bb46308b0f05ff7d78cf23353529233dd"
+        WH=0 ;;
+    # the replaced, not entered drafts of entry 3 (for a backup made of them)
+    e3-20261103) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261103.json; SPEC=$NOTARY_DIR/spec-e3-production-20261103.json
         MANIFEST_SHA=9ade41f9bbd0dffbf89b1c693ec08459ef7d85a82e261a7fd1474436a20bb212
         EXPECT="medas-p9-search=080a54fae9c3f7526b98b19455e8cedf9c4f2107 medas-p9-search-bb2021=f82c10d4739b6cd4f4d0d36ab162b5b02d07d866 medas-p9-search-equiv=cf41eedaa7fc25aa13302159e61b448ff528958a"
         WH=0 ;;
-    # the draft of entry 3 of 2026-11-02, replaced on 2026-11-03 before it was entered (for a backup made of it)
     e3-20261102) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261102.json; SPEC=$NOTARY_DIR/spec-e3-production-20261102.json
         MANIFEST_SHA=7ecd6320435a1dd13fc592e900b803c3cb166ff4eb5e57fcdfed693b2576ca15
         EXPECT="medas-p9-search=8debfcf6c8e0e85f1f1e83e9b4d4b456d7bcbf67 medas-p9-search-bb2021=32defaf0e413ca14778391fd3baaec55967e8105"
         WH=0 ;;
-    *) die "unknown manifest name '$1' (a3, e2, e3 or e3-20261102)" ;;
+    *) die "unknown manifest name '$1' (a3, e2, e3, e3-20261103 or e3-20261102)" ;;
   esac
 }
 
