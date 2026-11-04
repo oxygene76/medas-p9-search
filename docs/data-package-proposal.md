@@ -1,6 +1,6 @@
-# Publication data package: proposal (2026-11-04)
+# Publication data package (proposal of 2026-11-04, decisions of the same day)
 
-A proposal, not yet decided. It covers the structure, the checksums, the link to the notary entries, the licences and
+The decisions of the project lead are in section 6; what is still open is marked there. It covers the structure, the checksums, the link to the notary entries, the licences and
 the deposit on Zenodo. It applies to the runs fixed in entry e3: the production run, the paired long runs of seeds
 110–112 (V5 and MERCURIUS) and, after entry e4, sets A and B of the comparison with Brown & Batygin (2021).
 
@@ -16,10 +16,32 @@ rule: `tools/export_timelapse.py` exports these runs only with a complete `resul
 | timestamps | the OpenTimestamps proofs (`.ots`) of the stamped criteria and lists, upgraded to their Bitcoin block | a second, independent anchor |
 | criteria | the criteria documents at the commits named in the manifests | what was fixed before the runs, readable without git |
 | code | source archive of medas-p9-search at the evaluation commit; the run packages (`p9prod-9a084ed`, `p9long-v5-ac47329`, `p9long-merc-ac47329`, `p9bbsets-5b05cc3`, `p9bbv2-5b05cc3`) unchanged, with their binaries and sha256 files; REBOUND 5.2.2 as the source tarball already in the packages | rerun any segment and get its result hash |
-| runs | per run: `job.json`, `params.env`, `input.sa`, `segments.tsv`, and per segment `output.sa`, `result.txt`, `removed.tsv`, `flybys.tsv`, `final.state`; the check output of the start (`check: ALL SAME`); the run log | the data themselves; every segment can be recomputed from its input |
+| runs | per run: `job.json`, `params.env`, `input.sa`, `segments.tsv`, and per segment `output.sa`, `result.txt`, `removed.tsv`, `final.state`, `flybys.tsv`; the check output of the start (`check: ALL SAME`); the run log | the data themselves; every segment can be recomputed from its input |
 | evaluation | per run: `result.json`, `timeseries.csv`, `report.txt` of `tools/prod_eval.py`, its version (tag), the outcome of sets A and B (`--outcome`) | the results, reproducible from the runs |
 | web | the exports of `tools/export_timelapse.py` (manifest, `data.bin`, `curves.json`, `SOURCES.sha256`) | the pictures and curves of the page, tied to the source data by hash |
-| hardware | the acceptance report of the A100 and the speed comparison, without serial numbers, host names and addresses | context; not needed for checking |
+| hardware | the speed comparison (report, scripts, results); the acceptance test of the A100 only as its report, without serial number, GPU UUID and process list | context; not needed for checking |
+
+**Flyby logs:** `flybys.tsv` goes in. The equivalence runs give 0.2 MB per segment of 4,000 bodies; the production run
+gives about 3 MB per segment and about 0.1 GB in all.
+- If a campaign gives more than 1 GB of flyby logs, only a summary goes in: per segment and planet the counts of the
+  flybys (near, fast, close) and of the sub-steps.
+- The sha256 of every original log is listed in `MANIFEST.sha256` and in entry e5, and the logs are kept.
+- The V2 check (`tools/v2_encounter_check.py`) needs only the per-particle flags of 0–60 Myr. Those go in either way.
+
+**No Gaia-derived data.** The package is CC BY 4.0; catalogues derived from Gaia do not go in.
+- Checked on 2026-11-04 with `tools/publish_scan.py --history`, which covers every line ever committed, on every
+  branch:
+  - the repository holds no Gaia data;
+  - Gaia appears only as a query in the plate and own-images tools (`tools/plates/fetch.py`, `tools/ownimg`, on their
+    branches);
+  - the results of those queries are under `runs/plates` and `runs/ownimg`, which git ignores and the package never
+    takes.
+- None of the parts of section 1 uses Gaia:
+  - the start values come from DE440s and `tools/make_ic.py`;
+  - the known objects of the page come from SBDB;
+  - the IRAS/AKARI track and the Phan/DES check are not part of this package.
+- `tools/publish_scan.py` runs over every file of the record before the upload and refuses Gaia columns, Gaia table
+  names and files of those directories.
 
 **Left out:** keys, receipts with salts of entries that are not yet revealed, `local.env`, logs with host names or
 addresses (a log goes in only after a check for host names, IP addresses and user names; anything found is replaced by
@@ -97,9 +119,7 @@ entry e5.
 
 ## 4. Licences
 
-- **Data** (runs, evaluation, web exports, notary files, documents): **CC BY 4.0**. It is the Zenodo default and
-  permits any reuse with attribution. CC0 would be the alternative if attribution should not be a condition; the
-  recommendation is CC BY 4.0.
+- **Data** (runs, evaluation, web exports, notary files, documents): **CC BY 4.0** (decided).
 - **Code and packages:** GPL-3.0-or-later, as the repository and as REBOUND, whose source ships unchanged in the
   packages.
 - **Third-party data:**
@@ -114,21 +134,82 @@ entry e5.
 |---|---|
 | Resource type | Dataset |
 | Title | MEDAS Planet Nine search: <campaign> (N-body runs, 0–4 Gyr), data and evaluation |
-| Creators | the project lead (with ORCID, if there is one); MEDAS as the affiliation |
-| Description | what was computed and why; the model and its limits (no galactic tide, no passing stars, massless test bodies, no observational bias); status "not peer-reviewed"; how to verify; the notary entries |
+| Creators | Eike Janßen (ORCID to follow), affiliation MEDAS Computers GmbH |
+| Description | what was computed and why; the model and its limits (no galactic tide, no passing stars, massless test bodies, no observational bias); status "not peer-reviewed"; how to verify; the notary entries; the methods, including the use of AI tools (see below) |
 | Version | 1.0.0; later corrections as new versions of the same concept, never by changing files |
-| Related identifiers | "is supplemented by": the software record of medas-p9-search (a separate Zenodo software record at the evaluation commit, if the repository is published); "references": Brown & Batygin 2021 (AJ 162, 219), REBOUND (Rein & Liu 2012), DE440 (Park et al. 2021) |
+| Related identifiers | "is supplemented by": the software record of medas-p9-search (a separate Zenodo software record at the evaluation commit; the repository becomes public, section 7); "references": Brown & Batygin 2021 (AJ 162, 219), REBOUND (Rein & Liu 2012), DE440 (Park et al. 2021) |
 | Keywords | Planet Nine; trans-Neptunian objects; N-body simulation; orbital clustering; reproducibility |
 | Access | open; no embargo (publication only after the evaluation anyway) |
 | Community | one community of the project for all records |
 
-## 6. Open points (decisions)
+**AI tools in the description of the methods.** The README and the Zenodo description say how AI tools were used, in
+a section "Methods and tools":
+- an AI coding assistant (Claude, Anthropic) wrote and revised code, tests, packages and documents under the
+  direction of the author;
+- the author made the scientific decisions: criteria, thresholds, the order of the runs, evaluations;
+- every result rests on the deterministic programs and their tests, not on the assistant;
+- the criteria were fixed and notarised before the runs.
 
-1. CC BY 4.0 or CC0 for the data.
-2. Whether the repository medas-p9-search becomes public with its own software record, or only the source archive goes
-   into the data record.
-3. One record per campaign (proposed) or one record for all.
-4. Whether the flyby logs (`flybys.tsv`, about 0.2 MB per segment of 4,000 bodies) go in. Proposed: yes, they are the
-   basis of the V2 check.
-5. Whether the A100 acceptance and the speed comparison go in at all (proposed: yes, without identifying details).
-6. The author list and the ORCID.
+The wording is to be agreed with the author before the upload.
+
+## 6. Decisions (2026-11-04)
+
+1. Licence of the data: **CC BY 4.0**.
+2. **medas-p9-search becomes public** for the publication, after a secret scan of the whole history and with private
+   paths removed (section 7).
+3. **One record per campaign.**
+4. Flyby logs: **yes**; if large, only a summary and checksums (section 1).
+5. Speed comparison: **yes**. The A100 acceptance test only as its report, without serial number and process list.
+6. Author **Eike Janßen** (ORCID to follow), affiliation **MEDAS Computers GmbH**; AI tools in the description of the
+   methods.
+7. No Gaia-derived data in the package (checked, section 1).
+
+Still open: the ORCID; the wording of the methods section; point 7.3 below.
+
+## 7. Making the repository public
+
+**Secret scan of the whole history (2026-11-04)**, `tools/publish_scan.py --history`: 262 commits, 15 branches,
+every line ever added or removed.
+- **Secrets: none.** No key blocks, service tokens, password or token assignments, mnemonics or salts.
+- No file was ever committed that is named like a key, an `.env` or a receipt; `runs/` (with `runs/notary/local.env`)
+  is ignored.
+- A second, independent scanner (gitleaks over the history) is still to be run before publication; it is not
+  installed here.
+
+**Private details found** (reported, not secret):
+
+| What | Where | Count |
+|---|---|---|
+| the internal host name `appmdp-05` | criteria, package and run documents, `a100/`, `speed/`, `long/*/EXPECTED-TIME.txt` | 51 lines in the history, 18 in `feat/pilot` |
+| the home path `/home/medas/dev/medas/...` | `docs/equivalence-result-20261102/environment.txt` | 3 |
+| the GPU UUID of the A100 | `docs/a100-acceptance-20261103.md` | 1 |
+| the author's e-mail address | commit metadata | every commit |
+| the words Proxmox / PBS, ollama | `docs/a100-acceptance-20261103.md` | 3 |
+
+**The catch: many of these files are notarised.**
+- Entry e3 lists by sha256 and git commit, among others:
+  - `production-criteria.md`, `bb2021-comparison-criteria.md`, `equivalence-criteria.md`,
+    `equivalence-evaluation-procedure.md`, `long-runs-110-112-criteria.md` and `production-package.md`;
+  - `docs/equivalence-result-20261102/environment.txt`;
+  - `docs/a100-acceptance-20261103.md`;
+  - the run packages, whose `EXPECTED-TIME` names the host.
+- Rewriting the history (git filter-repo) would change those files, so their sha256 would no longer match the entry.
+  It would also change every commit id, so the `git show <commit>:<path>` of the manifests would fail.
+- The entries would then be verifiable only from archived copies.
+
+Options:
+- **7.1 (recommended): keep the history unchanged.** Clean the files only from now on, in new commits: names replaced
+  by "the GPU server", paths made relative, the UUID removed.
+  - The notarised versions stay in the history as they are.
+  - What they show is a host name inside the company network, a local user name and a GPU UUID: no access data and
+    nothing reachable from outside.
+  - The publication says so: the notarised documents are published unchanged by design.
+- **7.2: rewrite the history.** This removes the details but breaks the notary chain from git, as above. Not
+  recommended.
+- **7.3 (open):** whether to publish all 15 branches or only `main` plus the branches that notarised commits lie on.
+  Every commit named in a manifest must stay reachable.
+  - Branches such as `feat/plate-pilot` and `feat/own-images` hold the Gaia query code (not data) and their own
+    criteria.
+  - Merging what belongs together into `main` and publishing `main` plus the notarised commits as tags would be
+    tidier.
+
