@@ -111,6 +111,10 @@ Decided:
   running on), the MERCURIUS part on appmdp-05's CPU, pinned and with nice.
 - **Sets A and B** follow as soon as the prerequisites V1–V3 are done and checked: if possible in parallel on the
   L40S (addendum to D3 in `docs/bb2021-comparison-criteria.md`), otherwise after the production run on the A100.
+- **Order on the A100, changed on 2026-11-04** (before any run): one after the other the production run, the V5 part
+  of seeds 110–112, set A, set B. The MERCURIUS part of seeds 110–112 runs in parallel on CPU 1. The L40S stays with
+  the AI services (`docs/bb2021-comparison-criteria.md` addendum 15, `docs/long-runs-110-112-criteria.md`
+  section 9).
 
 ## 7. Model assumptions and limits (stated before the start, 2026-11-03)
 

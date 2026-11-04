@@ -105,3 +105,13 @@ The model of the production package, in both groups (V5 and MERCURIUS), with the
 `docs/production-criteria.md` section 7: gravity of the Sun and the planets only, the planets integrated together,
 massless test particles, no galactic tide and no passing stars. The pairs compare two integrators in the same model.
 The model itself is not tested by them.
+
+## 9. Addendum of 2026-11-04: the V5 part on the A100 (decision of the project lead, before any run)
+
+- **Where:** the V5 part runs on the A100, not on the L40S, after the production run and before sets A and B
+  (`docs/bb2021-comparison-criteria.md` addendum 15). The L40S stays with the AI services.
+- **Q3 carries over:** the three V5 runs at once on the A100. The first segment is measured; if running at once is
+  slower in all than one after the other, they continue one after the other.
+- **MERCURIUS:** the M part runs in parallel on CPU 1 (socket 0), independent of the A100, as in section 1.
+- Section 6 (run time) was estimated for the L40S. The estimate for the A100 is below, from the speed comparison of
+  2026-11-03/04.

@@ -398,3 +398,18 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
   stay reported without a test, since their bias function is not available.
 - Before the result is written: check against the text of Brown & Batygin 2021 §4.1 whether their runs contained a
   galactic tide. If they did, the comparison names this as a difference of the setup, as in section 6, outcome 2.
+
+## 15. Addendum of 2026-11-04: order on the A100, D3 again (decision of the project lead, before any run)
+
+- **D3, changed again:** sets A and B are computed on the A100, not on the L40S. The L40S stays with the AI
+  services. The permission of addendum 12 for the L40S is withdrawn.
+- **The A100, one section after the other:**
+  1. the production run (p9prod-9a084ed);
+  2. the V5 part of the paired long runs, seeds 110–112 (`docs/long-runs-110-112-criteria.md`);
+  3. set A;
+  4. set B.
+- The MERCURIUS part of seeds 110–112 runs in parallel on CPU 1 (socket 0) of appmdp-05, independent of the A100.
+- Every section passes the package's check on the A100 before it computes, as before. The card is chosen by name
+  or UUID (`CUDA_VISIBLE_DEVICES`), never by CUDA's own order.
+- The expected run times of the four sections, from the speed comparison of 2026-11-03/04, are in
+  `docs/long-runs-110-112-criteria.md` section 9.
