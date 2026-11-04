@@ -25,15 +25,17 @@ Start (as a normal user, in the unpacked directory):
   sh start.sh       again: resumes with the first segments not done
   AT_ONCE=1 sh start.sh          one job after the other instead (if the first
                                  segment shows that three at once lose time)
-  GPU_NAME=L40S (default)        the card, by name: CUDA_VISIBLE_DEVICES is set
-                                 to its UUID (select-gpu.sh), so the A100 of the
-                                 production run is not used
+  GPU_NAME=A100 (default)        the card, by name: CUDA_VISIBLE_DEVICES is set
+                                 to its UUID (select-gpu.sh), so the L40S of the
+                                 AI services is not used; or CUDA_VISIBLE_DEVICES=<UUID>
   SOCKET=1 (default)             the p9gpu processes pinned to the cores of that
-                                 socket ("CPU 2"; CPU 1 = socket 0 is for group M)
+                                 socket ("CPU 2", as the production run; CPU 1 =
+                                 socket 0 is for group M)
 
-The p9gpu processes run with nice (5) and use one CPU core each besides the
-GPU. Other processes on the card (the AI services on the L40S) are allowed and
-recorded in start.log; they change only the run time, not the bits. Every
+Order on the A100 (decision of 2026-11-04): the production run first, then this
+package, then sets A and B. start.sh refuses while another compute process is on
+the card (FORCE=1 starts anyway). The p9gpu processes run with nice (5) and use one
+CPU core each besides the GPU. Every
 start first runs the check (check.sh): the 32 regression cases and 4 deep
 Neptune flybys of the production package, and every job's start values over
 10,000 years, alone and as two joined segments; only if all match (ALL SAME in
@@ -45,7 +47,7 @@ jobs/*/segments.tsv, run.log, the temperature and clock in status.sh, and a
 resume test (sh stop.sh during a segment, sh start.sh: the segment is computed
 again and its result hash must equal the one it would have had); then on.
 
-Expected time on the L40S: see EXPECTED-TIME.
+Expected time on the A100: see EXPECTED-TIME.
 
 Results to send back: run.log, start.log, check/report.txt,
 jobs/*/segments.tsv, and jobs/*/segments/seg*/output.sa (the snapshots).

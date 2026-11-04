@@ -5,6 +5,7 @@
 # same result hashes; if the first segment shows a loss, AT_ONCE=1);
 # each lane one job after the other, each job a separate p9gpu process with one CPU core).
 set -u
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 JOBS=${JOBS:-$(ls jobs)}
 AT_ONCE=${AT_ONCE:-3}

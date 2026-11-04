@@ -6,6 +6,7 @@
 # written (DONE). After an interruption the next start skips the done segments and computes the interrupted
 # one again from its input: the same bits with or without interruptions.
 set -u
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 JOB=$1
 J=jobs/$JOB

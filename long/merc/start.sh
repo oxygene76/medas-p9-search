@@ -4,6 +4,7 @@
 #   THREADS=... slices at the same time (default: one per core of CPUS), one CPU thread each, nice 10
 #   sh start.sh     then: sh status.sh   (stop: sh stop.sh; start.sh again resumes)
 set -eu
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 if [ -f run.pid ] && kill -0 "$(cat run.pid)" 2>/dev/null; then
   echo "already running (pid $(cat run.pid)); sh status.sh"; exit 1

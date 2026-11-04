@@ -8,6 +8,7 @@
 #   <job>-chain the same 10,000 years as two segments of 5,000 years joined by bin/p9sim last (the
 #               segment mechanism of the jobs)
 set -u
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 . check/regression.env
 export P9GPU_MODE=${P9EQUIV_MODE:-gpu} P9GPU_REAL=double  # P9EQUIV_MODE=cpu: for testing the package only

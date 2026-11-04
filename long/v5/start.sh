@@ -1,10 +1,14 @@
 #!/bin/sh
 # MEDAS p9-search, paired long runs (seeds 110-112), group V5: starts (or resumes) the check and the jobs in the background, as the current user.
 #   AT_ONCE=1 sh start.sh  jobs at the same time on the GPU (default 3: all three); JOBS="V5-s110" only these
-#   GPU_NAME=L40S (default): the card, chosen by name (CUDA_VISIBLE_DEVICES = its UUID; select-gpu.sh)
-#   SOCKET=1 (default): the p9gpu processes pinned to the cores of that CPU socket (CPUS=... a list instead)
+#   GPU_NAME=A100 (default): the card, chosen by name (CUDA_VISIBLE_DEVICES = its UUID; select-gpu.sh), or
+#   CUDA_VISIBLE_DEVICES=<UUID> set beforehand
+#   SOCKET=1 (default, "CPU 2", as the production run): the p9gpu processes pinned to the cores of that CPU socket
+#   (CPUS=... a list instead)
+#   Refuses while another compute process is on the card (the production run before it; FORCE=1 starts anyway)
 #   sh start.sh     then: sh status.sh   (stop: sh stop.sh; start.sh again resumes)
 set -eu
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 if [ -f run.pid ] && kill -0 "$(cat run.pid)" 2>/dev/null; then
   echo "already running (pid $(cat run.pid)); sh status.sh"; exit 1
@@ -22,6 +26,9 @@ CPUS=${CPUS:-$(lscpu -p=CPU,CORE,SOCKET | grep -v '^#' | awk -F, -v s="${SOCKET:
 [ -n "$CPUS" ] || { echo "no CPUs on socket ${SOCKET:-1} (lscpu -p=CPU,CORE,SOCKET; SOCKET=... or CPUS=...)"; exit 2; }
 echo "${CUDA_VISIBLE_DEVICES:-cpu mode}" > gpu-uuid
 others=$(nvidia-smi --query-compute-apps=gpu_uuid,pid,process_name --format=csv,noheader 2>/dev/null | awk -F', ' -v u="${CUDA_VISIBLE_DEVICES:-}" '$1 == u' | tr '\n' ';')
+if [ -n "$others" ] && [ "${FORCE:-0}" != 1 ]; then
+  echo "STOP: compute processes on the card ${CUDA_VISIBLE_DEVICES}: $others (the production run? FORCE=1 starts anyway)"; exit 1
+fi
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) start: GPU ${CUDA_VISIBLE_DEVICES:-cpu mode} ($(nvidia-smi -i "${CUDA_VISIBLE_DEVICES:-0}" --query-gpu=name --format=csv,noheader 2>/dev/null)), CPUs $CPUS, AT_ONCE ${AT_ONCE:-3}; other processes on the card: ${others:-none}" >> start.log
 command -v setsid > /dev/null 2>&1 && S=setsid || S=""
 nohup $S taskset -c "$CPUS" sh run-all.sh >> run.out 2>&1 < /dev/null &

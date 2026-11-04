@@ -1,6 +1,7 @@
 #!/bin/sh
 # MEDAS p9-search, paired long runs (seeds 110-112), group V5: state of the check and the jobs (read only).
 cd "$(dirname "$0")"
+export LC_ALL=C
 if [ -f run.pid ] && kill -0 "$(cat run.pid)" 2>/dev/null; then echo "running (pid $(cat run.pid))"; else echo "not running"; fi
 [ -f check/report.txt ] && echo "check: $(tail -n 1 check/report.txt)"
 for J in jobs/*/; do

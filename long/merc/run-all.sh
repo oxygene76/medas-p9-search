@@ -3,6 +3,7 @@
 # meant to be run directly). THREADS slices at the same time (start.sh: one per core of CPU 1), each one
 # single-threaded p9sim process with nice 10; the slices of seed 110 first, then 111, 112.
 set -u
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 THREADS=${THREADS:-14}
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> run.log; }

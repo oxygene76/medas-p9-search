@@ -6,6 +6,7 @@
 #   <job>-chain the same 10,000 years as two segments of 5,000 years joined by bin/p9sim last
 #   <job>-1myr  the first slice of seed 110 over 1 million years (close encounters in MERCURIUS' IAS15 zone)
 set -u
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 cd "$(dirname "$0")"
 SIM=bin/p9sim
 sha() { sha256sum "$1" | cut -d' ' -f1; }
