@@ -413,3 +413,34 @@ Throughput (`docs/gpu-performance.md`, `docs/production-proposal.md`):
   or UUID (`CUDA_VISIBLE_DEVICES`), never by CUDA's own order.
 - The expected run times of the four sections, from the speed comparison of 2026-11-03/04, are in
   `docs/long-runs-110-112-criteria.md` section 9.
+
+## 16. Addendum of 2026-11-04: the V2 short runs on the L40S, with 16,000 test particles (decision of the project lead, before any run)
+
+Written after entry 3 was on the chain (manifest `manifest-e3-production-20261104.json`, sha256 `fa4d84fb…3c60`).
+It goes into a note entry of its own that refers to entry 3, entered before set A starts.
+
+- **Where and when:** the short runs of the V2 condition (addendum 13) run now on the L40S, while the AI services
+  keep running there, so that sets A and B can start on the A100 without waiting (order of addendum 15).
+  - The bits do not depend on the card or on other processes. The package's check on the L40S comes first, as
+    always.
+- **Size: 16,000 test particles per set instead of 4,000** (the rest of addendum 13 unchanged: 0–60 Myr in three
+  segments of 20 Myr, the flyby log, the reference values and the limits).
+  - Reason, found before any short run: with 4,000 test particles the share of close Uranus flybys (0.84 %, about
+    34 particles) scatters by ±17 % from seed to seed, so a set with the same encounter regime would miss the ±30 %
+    limit in about 9 % of the cases by noise alone.
+  - The 9 equivalence runs, each taken as a short run (0–60 Myr), show these spreads of the ratio to the reference:
+    Neptune fast 0.03, close 0.09; Uranus fast 0.13, close 0.17; Planet Nine fast 0.10, close 0.14 (standard
+    deviations).
+  - With 16,000 the noise halves and false alarms fall to about 0.1 %. On the L40S it costs 1.5 h instead of
+    1.3 h per set, since the card is latency-bound at these sizes.
+- **Seeds 321 (set A) and 322 (set B)**, not used before, so that 311 and 312 stay for the 4-Gyr runs only.
+  - Start values with `tools/make_ic.py` (make-ic-v1), Planet Nine relative to the invariable plane.
+  - Radii of addendum 13: Jupiter–Neptune as in the production package, Planet Nine 2.0824 au (A) and 1.8616 au (B),
+    its collision radius 17,248.4 km (A) and 15,418.4 km (B).
+- **Evaluation:** `tools/v2_encounter_check.py`. It reports the shares per planet and the verdict per set, and writes
+  the verdict line to `v2/BB-<set>.ok` of the 4-Gyr package.
+  - The 4-Gyr package starts a set only with "within the limits".
+  - Outside the limits: a paired test V5 against MERCURIUS for that set first, with criteria of its own.
+- **Packages** (medas-p9-search-equiv, `tools/make_bb_packages.sh`):
+  - `p9bbv2` for the short runs on the L40S;
+  - `p9bbsets` for the 4-Gyr runs on the A100: set A, then set B, one at a time, the card free.
