@@ -1,0 +1,7 @@
+Expected time on the A100 (from the speed comparison on appmdp-05, 2026-11-03/04: p9gpu v5 at 64,000 test particles
+64.3 s per Myr; the loss of test particles as in the night run G201; medas-p9-search-bb2021 speed/estimate_a100.py):
+  check                   about 2-5 min (ALL SAME; the start values of each job over 10,000 years)
+  one set (64,000 test particles, 4 Gyr)   about 1.9-2.2 days (3.0 at constant number of particles)
+  both, one after the other                about 3.8-4.4 days
+Set B (Planet Nine closer) may lose particles faster: then less. The first segment (100 Myr) gives the real rate.
+Resources: the A100 (a few GB of its memory), one CPU core (nice 5), about 10 GB of disk for both.

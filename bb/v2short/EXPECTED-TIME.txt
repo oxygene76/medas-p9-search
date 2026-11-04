@@ -1,0 +1,6 @@
+Expected time on the L40S (from the speed comparison on appmdp-05, 2026-11-03/04: p9gpu v5 at 4,000 test particles
+820 s per 10 Myr on the L40S):
+  check                   about 3-5 min (ALL SAME)
+  one job (4,000 test particles, 60 Myr)   about 1.4 h alone
+  both jobs at once                         about 2.7 h in all (the card alternates between the processes)
+The AI services on the L40S can add some 10-30 %.
