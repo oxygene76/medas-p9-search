@@ -1,9 +1,10 @@
-Expected time (from the equivalence runs on the L40S, 2026-10-23: 4,000 test particles, one job at a time,
-200 Myr in 5.3-7.9 h, about 50 us per step; at 2,000 test particles a step costs about the same):
-  check                   about 5 min (ALL SAME)
-  one job (2,000 test particles, 4 Gyr)     about 4-5 days alone
-  all 3 jobs at once (AT_ONCE=3)            about 12-15 days in all (without NVIDIA MPS the card alternates
-                                            between the processes; on the laptop GPU three at once took as
-                                            long as one after the other, with the same result hashes)
-The AI services on the L40S can add some 10-30 %. The first segment (100 Myr) gives the real rate: sh status.sh.
-Resources: the GPU (about 200 MiB of its memory per job), one CPU core per job (nice 5), about 2-3 GB of disk.
+Expected time on the A100 (from the speed comparison on appmdp-05, 2026-11-03/04: p9gpu v5 at 4,000 test particles
+23.1 s per Myr, the GPU latency-bound; 2,000 cost about the same; medas-p9-search-bb2021 docs/speed-comparison-appmdp-05.md
+and speed/estimate_a100.py):
+  check                   about 1-2 min on the A100 (ALL SAME)
+  one job (2,000 test particles, 4 Gyr)     about 1.1 days alone
+  all 3 jobs at once (AT_ONCE=3)            about 3.2 days in all (without NVIDIA MPS the card alternates between the
+                                            processes; three at once took as long as one after the other, with the same
+                                            result hashes); the loss of test particles hardly shortens it (latency-bound)
+The first segment (100 Myr) gives the real rate: sh status.sh.
+Resources: the A100 (about 200 MiB of its memory per job), one CPU core per job (nice 5), about 2-3 GB of disk.
