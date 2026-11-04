@@ -97,3 +97,36 @@ build's time. The builds stay without `-march`.
 - 253–306 ns per body step (6 at once to all 32 cores busy);
 - mean share of bodies alive 0.47 (a) to 0.59 (b);
 - 1,600–2,400 core hours, **5.5–8.3 days**, in parallel to the A100.
+
+## Correction after the start of the production run (2026-11-04, provisional)
+
+**Observed:** segment 0 of the production run reached 60 Myr after 5,603 s with 61,790 test bodies left. That is
+93 s per Myr, 45 % more than the 64.3 s of the 1-Myr scaling job at 64,000.
+
+**Explanation (to be confirmed with `flybys.tsv` of segment 0):** the scaling job covers only 0–1 Myr after the start.
+p9gpu v5 follows every close flyby with sub-steps, and flybys become more frequent after the start.
+- The flybys within three encounter radii per test body and Myr in G201 (the same configuration, `flybys.tsv`) rise
+  from 0.54 (0–20 Myr) to 1.24 (40–60 Myr) and 1.9 (100–120 Myr), then fall to about 0.7 after 300 Myr.
+- In the 9 equivalence runs V5 the sub-steps per 20-Myr segment rise likewise, from 1.3 million (0–20 Myr) to 4.3
+  million (100–120 Myr).
+- The early phase therefore does not have more flybys than later; it has more than the first Myr. The busiest part
+  is 100–160 Myr.
+
+**Model** (`speed/estimate_encounters.py`): wall per Myr = w(N) (1 + k (r(t) − r0)).
+- r(t) is the flyby rate of G201.
+- r0, the rate of the scaling job, is not measured; the two cases r0 = 0 and r0 = 0.54 bracket it.
+- k is fitted to the observation at 60 Myr.
+
+| A100 section | before | with the flybys |
+|---|---|---|
+| production run | 1.9–2.2 days | **2.4–3.1 days** |
+| set A, set B (each, same flyby profile assumed) | 1.9–2.2 days | **2.4–3.1 days** |
+| seeds 110–112, V5 (latency-bound; k from the equivalence runs, +11 % per unit of r, correlation 0.58 only) | 3.2 days | **3.3–3.5 days** |
+| **A100 in all** | 9.0–9.8 days | **10.6–12.6 days** |
+
+What follows for the production run:
+- Segment 0 (0–100 Myr) takes about 2.7–2.9 h.
+- Segments 1 to about 3 (100–300 Myr) are slower per Myr, not faster.
+- From about 300 Myr the flybys and the number of bodies both fall.
+
+Set B (Planet Nine at 300 au) may have a different flyby profile than G201; its estimate is the least certain.
