@@ -75,7 +75,9 @@ for good.
 | (a2) (a) plus the status note on the open deviation | `runs/notary/spec-a2-validation-status.json` | never: superseded by (a3) |
 | (a3) (a2) plus the addendum on single runs and means | `runs/notary/spec-a3-validation-status.json` | entry #2, 2026-11-02 12:08:31 UTC, block 10694917, commitment `b00d53999d1ca2a8be260c2b84c3e941a4eab52e5843c295c280a1bb968ba2a4` |
 | (e2) equivalence test fixed before its evaluation (note, refers to the (a3) entry) | `runs/notary/spec-e2-equivalence-20261023.json` | entry #3 (refers to #2), 2026-11-02 12:14:09 UTC, block 10694977, commitment `795a8c58735ef5fa62a1ad5549b740f04178eaf64b4a1f4f64d3f47ea4fcc343` |
-| (b) production run, before its start | `runs/notary/spec-b-production-TEMPLATE.json` (criteria file to be written) | not yet |
+| (e3) result of the equivalence test, the production run, the paired long runs 110–112 and the order on the A100, before their start (job, refers to the (e2) entry) | `runs/notary/spec-e3-production-20261104.json` (manifest sha256 `fa4d84fb5619cf7746f26cbfd0d9102a1961db8f26c7fc88e0f0e69208b03c60`) | entered 2026-11-04 09:31:02 UTC, block 10723643, tx `C6BEC752F7528F79BBECF89A43899EDF8A7F80169C86455BDB2DAF793432FB98` (entry number and commitment as in the receipt) |
+| (e4) addendum 16 (V2 short runs on the L40S, 16,000 test particles) and the packages of sets A and B (note, refers to the (e3) entry) | `runs/notary/spec-e4-bb2021-v2-20261104.json` (manifest sha256 `5e5829b7461ff56a42518190b0fc2cdbfcdaa695f761b0663dad3c0bf61b22cc`) | not yet: before set A starts |
+| (b) production run, before its start | superseded by (e3) | – |
 | trial | `runs/notary/spec-trial.json` | not yet |
 
 Both entries were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
