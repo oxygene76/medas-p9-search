@@ -16,6 +16,7 @@
 # The A100 runs themselves are watched by chain-a100.sh (halt signals, progress, logs, transitions).
 set -u
 cmd=${1:-}
+case $cmd in ""|-h|--help|help) sed -n '2,17p' "$0"; exit 2 ;; esac
 PROG=watch
 CHAIN_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$CHAIN_DIR/lib.sh"

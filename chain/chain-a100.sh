@@ -29,6 +29,7 @@
 # another card. The chain never stops a run and never starts one twice: stopping is the operator's decision.
 set -u
 cmd=${1:-}
+case $cmd in ""|-h|--help|help) sed -n '2,30p' "$0"; exit 2 ;; esac
 [ "$cmd" = dry-run ] && DRY_RUN=1
 PROG=chain
 CHAIN_DIR=$(cd "$(dirname "$0")" && pwd)
