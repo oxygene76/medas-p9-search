@@ -14,11 +14,18 @@ from collections import defaultdict
 
 tsv, res = sys.argv[1], sys.argv[2]
 rows = list(csv.DictReader(open(tsv), delimiter="\t"))
+def num(x):
+    """A number as written by speed.sh: also with a decimal comma (a German LC_NUMERIC before LC_ALL=C was set, where
+    bash printf could not read the point and wrote whole seconds with ",000")."""
+    x = x.strip()
+    return float(x.replace(",", ".")) if "," in x and "." not in x else float(x)
+
+
 for r in rows:
     for k in ("n_tp", "steps", "rep"):
         r[k] = int(r[k])
     for k in ("wall_s", "wall_shell_s", "t_start", "t_end"):
-        r[k] = float(r[k])
+        r[k] = num(r[k])
 
 # a stage run again appends its runs: only the latest run of each (stage, device, job, build, repetition) counts
 latest = {}

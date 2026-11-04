@@ -18,6 +18,7 @@
 # CUDA program runs with CUDA_VISIBLE_DEVICES set to the A100's UUID. Results go to $ACC (default: ./acc-<host>),
 # one directory for all stages, so the stages can run on different days.
 set -uo pipefail
+export LC_ALL=C   # numbers with a decimal point in every file: bash printf (and mawk) follow LC_NUMERIC, e.g. de_DE writes 474,000
 cd "$(dirname "$0")"
 HERE=$PWD
 ACC=${ACC:-$HERE/acc-$(hostname -s)}

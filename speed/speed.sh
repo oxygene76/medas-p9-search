@@ -26,6 +26,7 @@
 # SMT=1 (cpuall also on the second hardware thread of each core), NODE (NUMA node for cpu1 and native, default 0),
 # CPUS (use only these logical CPUs; for tests), RES (result directory).
 set -uo pipefail
+export LC_ALL=C   # numbers with a decimal point in every file: bash printf (and mawk) follow LC_NUMERIC, e.g. de_DE writes 474,000
 cd "$(dirname "$0")"
 HERE=$PWD
 RES=${RES:-$HERE/results-$(hostname -s)}
