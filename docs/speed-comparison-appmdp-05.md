@@ -130,3 +130,30 @@ What follows for the production run:
 - From about 300 Myr the flybys and the number of bodies both fall.
 
 Set B (Planet Nine at 300 au) may have a different flyby profile than G201; its estimate is the least certain.
+
+## Calibration on segment 0 of the production run (2026-11-04)
+
+**Segment 0 (0–100 Myr):**
+- wall time 10,273.8 s: 93.4 s per Myr over 0–60 Myr and 116.8 s per Myr over 60–100 Myr;
+- 58,513 test bodies left (0.914; the equivalence runs V5, which also remove at the encounter radii: 0.917);
+- 237,867,825 sub-steps, that is 37.2 per test body and Myr. The equivalence runs gave 34.6 over 0–100 Myr. This
+  **confirms the explanation** above: the encounter load, not the hardware, made the segment slower. The A100 ran at
+  1395 MHz with reason 0x4 only.
+
+**Model** (`speed/estimate_segment0.py`): wall per Myr = w(N) (1 + k (s(t) − s0)), with s the sub-steps per test body
+and Myr.
+- The profile of s:
+  - 0–200 Myr from the equivalence runs, scaled by 1.073 to segment 0;
+  - after 200 Myr, 32.5 times the flyby rate of G201. That ratio of sub-steps to flybys holds within 29–41 over
+    0–200 Myr.
+- The survival: 0–200 Myr from the equivalence runs, then G201.
+- k = 0.0203 and s0 = 6.1 (the scaling job) follow from the two intervals of segment 0; the model reproduces both.
+
+| A100 section | after 60 Myr | with segment 0 |
+|---|---|---|
+| production run | 2.4–3.1 days | **2.75–3.13 days** (2.63–3.01 after segment 0) |
+| set A, set B (each; the profile of the production run assumed) | 2.4–3.1 days | **2.75–3.13 days** |
+| seeds 110–112, V5 | 3.3–3.5 days | 3.3–3.5 days (unchanged) |
+| **A100 in all** | 10.6–12.6 days | **11.6–12.9 days** |
+
+Segments 1 to 5 of the production run: about 3.3, 2.8, 2.2, 2.0 and 1.9 h. Segment 1 (100–200 Myr) is the slowest.
