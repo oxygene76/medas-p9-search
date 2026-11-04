@@ -164,7 +164,13 @@ The wording is to be agreed with the author before the upload.
    methods.
 7. No Gaia-derived data in the package (checked, section 1).
 
-Still open: the ORCID; the wording of the methods section; point 7.3 below.
+8. **History unchanged** (option 7.1): the notarised documents stay as they were entered, and the publication says so.
+   Before it, gitleaks also runs over the whole history (done 2026-11-04: no leaks).
+9. **Published:** `main` and every commit and tag the notary entries refer to; the other branches stay private. The
+   list: `docs/publication-commits.md`.
+
+Still open: the ORCID; the wording of the methods section; whether `main` shows the state of the campaign
+(`docs/publication-commits.md`).
 
 ## 7. Making the repository public
 
