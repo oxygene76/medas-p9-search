@@ -2,7 +2,7 @@
 # Builds the two packages of the comparison with Brown & Batygin 2021 (docs/bb2021-comparison-criteria.md in
 # medas-p9-search, addenda 13-16) from the jobs that medas-p9-search-bb2021 made (runs/bb2021, p9job make with
 # make-ic-v1: Planet Nine of the set relative to the invariable plane, the radii of addendum 13):
-#   build/p9bbv2-<commit>.tar.gz     the V2 short runs, for the L40S: V2-A (seed 321), V2-B (seed 322), 4,000 test
+#   build/p9bbv2-<commit>.tar.gz     the V2 short runs, for the L40S: V2-A (seed 321), V2-B (seed 322), 16,000 test
 #                                    particles, 0-60 Myr in 3 segments of 20 Myr, flyby logs
 #   build/p9bbsets-<commit>.tar.gz   the 4-Gyr runs, for the A100: BB-A (seed 311), BB-B (seed 312), 64,000 test
 #                                    particles, 40 segments of 100 Myr, a snapshot every 10 Myr; a job starts only with
@@ -46,7 +46,7 @@ import p9job
 out, cpu, src_root, kind = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3]), sys.argv[4]
 SETS = {"A": {"p9": "m_earth=7,a=500,e=0.33,inc=17,varpi=250,Omega=100,M=0", "r_p9": "2.0824", "col_p9": "17248.4"},
         "B": {"p9": "m_earth=5,a=300,e=0.15,inc=17,varpi=254,Omega=108,M=0", "r_p9": "1.8616", "col_p9": "15418.4"}}
-KIND = {"v2short": {"prefix": "V2", "seeds": {"A": 321, "B": 322}, "n_tp": 4000, "t_end": 6e7, "snapshots": 3,
+KIND = {"v2short": {"prefix": "V2", "seeds": {"A": 321, "B": 322}, "n_tp": 16000, "t_end": 6e7, "snapshots": 3,
                     "segments": "SEGMENT_YR=20000000\nSEGMENTS=3\nSNAPSHOTS_PER_SEGMENT=1\n"},
         "sets": {"prefix": "BB", "seeds": {"A": 311, "B": 312}, "n_tp": 64000, "t_end": 4e9, "snapshots": 400,
                  "segments": "SEGMENT_YR=100000000\nSEGMENTS=40\nSNAPSHOTS_PER_SEGMENT=10\n"}}[kind]

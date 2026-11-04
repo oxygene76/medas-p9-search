@@ -3,7 +3,7 @@ MEDAS p9-search: comparison with Brown & Batygin 2021, V2 short runs of sets A a
 
 What it is: the condition of prerequisite V2 (docs/bb2021-comparison-criteria.md of medas-p9-search, addenda 13 and
 16): before the 4-Gyr run of a set, a short run of that set shows whether its encounter regime is like that of the
-equivalence runs. Two jobs, each 4,000 test particles over 0-60 million years in 3 segments of 20 Myr, with the flyby
+equivalence runs. Two jobs, each 16,000 test particles over 0-60 million years in 3 segments of 20 Myr, with the flyby
 log (flybys.tsv per segment):
   V2-A  set A: Planet Nine 7 Earth masses, a 500 au, e 0.33, i 17 deg (invariable plane), seed 321
   V2-B  set B: Planet Nine 5 Earth masses, a 300 au, e 0.15, i 17 deg (invariable plane), seed 322
