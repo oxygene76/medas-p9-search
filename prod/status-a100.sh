@@ -4,6 +4,7 @@
 # by process; check.sh's header line names the first card whatever is used). After the check, the check times
 # against those of the L40S (runs/l40s/check-p9prod-9a084ed.txt) and of the A100 acceptance test (2026-11-03).
 #   sh status-a100.sh ../p9prod-9a084ed
+export LC_ALL=C
 PROD=$(cd "${1:?the unpacked package p9prod-9a084ed}" && pwd)
 sh "$PROD/status.sh"
 echo "== cards with p9gpu:"

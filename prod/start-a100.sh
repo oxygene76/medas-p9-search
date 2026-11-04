@@ -11,6 +11,7 @@
 # Refuses if any compute process is on the A100. Run as p9sim:
 #   sh start-a100.sh ../p9prod-9a084ed          then: sh status-a100.sh ../p9prod-9a084ed
 set -eu
+export LC_ALL=C   # numbers with a decimal point (bash printf and mawk follow LC_NUMERIC)
 PROD=$(cd "${1:?the unpacked package p9prod-9a084ed}" && pwd)
 NAME=${GPU_NAME:-A100}
 SOCKET=${SOCKET:-1}
