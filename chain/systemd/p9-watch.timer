@@ -1,0 +1,10 @@
+[Unit]
+Description=MEDAS p9-search: the run watcher every 5 minutes
+
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

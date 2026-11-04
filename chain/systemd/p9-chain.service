@@ -1,0 +1,7 @@
+[Unit]
+Description=MEDAS p9-search: one check of the A100 chain (chain-a100.sh tick)
+
+[Service]
+Type=oneshot
+Environment=LC_ALL=C
+ExecStart=/bin/sh %h/runs/chain/chain-a100.sh tick
