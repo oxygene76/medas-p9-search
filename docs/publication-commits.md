@@ -76,9 +76,15 @@ Existing tags in the closure: bb2021-criteria-draft-1, make-ic-v1, prod-eval-v1;
   - Reported, and published unchanged by decision: the host name `appmdp-05`, the home path in
     `environment.txt` and the GPU UUID in the acceptance report.
 
-## Still to decide before the publication
+## Order of the publication (decision of 2026-11-04)
 
-- Whether `main` should show the state of the campaign. A merge of the three tips into `main` is a new commit, not a
-  rewrite; it would publish nothing beyond the closure above. Without it, `main` stays at the first commit and
-  everything is reached through the tags.
-- Repeat both scans right before the push: gitleaks over the closure, `publish_scan.py` over the tag trees.
+1. Enter e4, then e5 (the data package).
+2. Regenerate this list with e4 and e5 (`tools/notary_refs.py`, without `--pending`).
+3. **Only right before the push:** `main` is brought to the state of the campaign by a merge commit of the tips. This
+   is a new commit, not a rewrite. Then the tags of the list are set.
+4. Both scans over exactly the state to be published, that is `main` after the merge plus the tags:
+   - gitleaks over their history;
+   - `tools/publish_scan.py --git` over each tree, and over the history of that state.
+5. Push `main` and the tags; nothing else.
+
+Until then: no merge into `main`, no tags, no push.
