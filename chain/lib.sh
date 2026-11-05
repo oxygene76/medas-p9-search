@@ -165,9 +165,11 @@ gpu_apps() {
     allowed "${line%@*}" || P9_ELSEWHERE="$P9_ELSEWHERE p9gpu(${line%@*}) auf ${line#*@}"
   done
 }
-# p9gpu processes on this machine that are not allowed elsewhere (a check or a run of the A100 packages)
+# p9gpu processes on this machine that are not allowed elsewhere (a check or a run of the A100 packages).
+# P9GPU_PIDS_CMD is for test/test-chain.sh only: it lists the processes of the test, so that the test does not see
+# the real runs of the machine it runs on.
 p9gpu_here() {
-  for p in $(ps -C p9gpu -o pid= 2>/dev/null); do allowed "$p" || printf '%s ' "$p"; done
+  for p in $(${P9GPU_PIDS_CMD:-ps -C p9gpu -o pid=} 2>/dev/null); do allowed "$p" || printf '%s ' "$p"; done
 }
 
 # --- the runs -----------------------------------------------------------------------------------------------------

@@ -90,7 +90,21 @@ p9sim darf das Kernel-Log normalerweise nicht lesen. Einmalig als root:
 ```sh
 usermod -aG systemd-journal p9sim
 ```
-Danach p9sim neu anmelden (tmux-Sitzungen von p9sim neu starten).
+Die neue Gruppe gilt erst für eine neue Anmeldung. **Laufende Prozesse und tmux-Sitzungen von p9sim nicht anfassen**:
+Hauptlauf und MERCURIUS laufen weiter und brauchen die Gruppe nicht. Ein tmux-Neustart würde sie beenden.
+
+Neu anmelden, als root:
+```sh
+sudo -iu p9sim
+```
+Dann als p9sim:
+```sh
+id
+```
+Erwartet: In der Liste `groups=…` steht `systemd-journal`.
+
+Ein schon laufender tmux-Server von p9sim behält die alten Gruppen. Die Kette läuft deshalb in einer eigenen
+tmux-Instanz (`tmux -L p9chain`, Schritt 6), die aus dieser neuen Anmeldung startet.
 
 ```sh
 journalctl -k -n 3
@@ -106,7 +120,8 @@ cd ~/runs/chain && sh test/test-chain.sh
 Der Test nutzt ein gefälschtes `nvidia-smi`, `journalctl` und `curl` und eigene Mini-Pakete in einem temporären
 Verzeichnis. Er fasst weder die A100, noch die echten Läufe, noch Telegram an.
 
-Erwartet: 45 Zeilen `ok …`, am Ende `== 45 checks, 0 failed`.
+Erwartet: 47 Zeilen `ok …`, am Ende `== 47 checks, 0 failed`. Das gilt auch neben den laufenden Läufen: Die
+Prozesssuche des Tests sieht nur p9gpu-Prozesse in seinem eigenen temporären Verzeichnis, nicht den echten Hauptlauf.
 
 ## 5. Trockenlauf mit den echten Läufen
 
@@ -127,11 +142,20 @@ Der Testmodus startet nichts und sendet nichts; Meldungen gehen nach `outbox.txt
 
 ## 6. Einschalten: eine der beiden Arten
 
-**A) tmux** (einfach; endet bei einem Neustart des Servers):
+**A) tmux** (einfach; endet bei einem Neustart des Servers). Eine eigene tmux-Instanz mit dem Socket `p9chain`,
+gestartet aus der neuen Anmeldung von Schritt 3. Die bestehenden tmux-Sitzungen bleiben unberührt.
 ```sh
-tmux new -d -s p9chain 'sh ~/runs/chain/chain-a100.sh loop'
-tmux new -d -s p9watch 'sh ~/runs/chain/run-watch.sh loop'
+id | grep -q systemd-journal && echo "Gruppe ok"
+tmux -L p9chain new -d -s chain 'sh ~/runs/chain/chain-a100.sh loop'
+tmux -L p9chain new -d -s watch 'sh ~/runs/chain/run-watch.sh loop'
+tmux -L p9chain ls
 ```
+Erwartet:
+- `Gruppe ok`;
+- zwei Sitzungen, `chain:` und `watch:`.
+
+Hineinschauen mit `tmux -L p9chain attach -t chain`; verlassen mit Strg-b d. Nur `-L p9chain` gehört der Kette;
+Befehle wie `tmux kill-server` ohne `-L p9chain` würden die anderen Sitzungen treffen und sind hier nie nötig.
 
 **B) systemd --user** (läuft auch nach einem Neustart weiter):
 1. Einmalig als root:
@@ -147,6 +171,9 @@ tmux new -d -s p9watch 'sh ~/runs/chain/run-watch.sh loop'
    Erwartet: `p9-chain.timer` und `p9-watch.timer` mit dem nächsten Lauf in höchstens 5 min.
 3. Wer mit `sudo -iu p9sim` arbeitet, braucht für `systemctl --user` vorher
    `export XDG_RUNTIME_DIR=/run/user/$(id -u)`.
+4. Der systemd-Benutzerdienst von p9sim behält die Gruppen, mit denen er gestartet wurde. Lief er schon vor Schritt 3,
+   bleibt die Xid-Prüfung aus, bis er neu startet, etwa beim nächsten Neustart des Servers; die Kette meldet das
+   einmal. Ihn nicht von Hand neu starten, solange Läufe laufen. Wer die Xid-Prüfung sofort will, nimmt Variante A.
 
 Nicht beides zugleich. Eine Sperre verhindert doppelte Prüfungen, aber zwei Taktgeber sind unnötig.
 

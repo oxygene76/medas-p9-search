@@ -36,6 +36,13 @@ printf '%s\n' "\$*" >> "$T/fake/curl-argv.txt"
 cat >> "$T/fake/curl-stdin.txt"
 printf 200
 EOF
+# only the p9gpu processes of this test (working under $T): the real runs of the machine stay invisible to it
+cat > "$T/bin/p9gpu-pids" <<EOF
+#!/bin/sh
+for p in \$(ps -C p9gpu -o pid=); do
+  case "\$(readlink /proc/\$p/cwd 2>/dev/null)/" in "$T"/*) echo \$p ;; esac
+done
+EOF
 chmod +x "$T/bin/"*
 echo "NVIDIA A100-PCIE-40GB, 45, 0x0000000000000000, 0, 1410, 198.5" > "$T/fake/gpu.txt"
 : > "$T/fake/apps.txt"; : > "$T/fake/kern.txt"
@@ -93,9 +100,10 @@ TEMP_MAX=85
 REPORT_HOURS="99"
 XID_CMD=journalctl
 EOF
-export PATH="$T/bin:$PATH" TG_OUTBOX="$T/outbox.txt"
+export PATH="$T/bin:$PATH" TG_OUTBOX="$T/outbox.txt" P9GPU_PIDS_CMD="$T/bin/p9gpu-pids"
 C="sh $T/chain/chain-a100.sh"; W="sh $T/chain/run-watch.sh"
 out() { cat "$T/outbox.txt" 2>/dev/null; }
+here() { (CHAIN_DIR=$T/chain PROG=test; . "$T/chain/lib.sh"; p9gpu_here); }   # the gate's process search, as the chain sees it
 last() { tail -n 1 "$T/outbox.txt" 2>/dev/null; }
 msgs() { if [ -f "$T/outbox.txt" ]; then wc -l < "$T/outbox.txt"; else echo 0; fi; }
 
@@ -146,7 +154,10 @@ fakep9 "$T/other"; OPID=$!; pids="$pids $OPID"; sleep 0.3
 echo "GPU-99999999-1111-2222-3333-444444444444, $OPID, $T/other/bin/p9gpu" >> "$T/fake/apps.txt"
 $C tick
 ok "a p9gpu elsewhere outside the V2 package: alarm" 'last | grep -q "ALARM: p9gpu auf einer anderen Karte als der A100:  *p9gpu($OPID)"'
+ok "process search of the test: sees the foreign p9gpu, which blocks a start" '"$T/bin/p9gpu-pids" | grep -qx "$OPID" && here | grep -qw "$OPID"'
 kill $OPID; grep -v "$OPID" "$T/fake/apps.txt" > "$T/fake/apps2.txt"; mv "$T/fake/apps2.txt" "$T/fake/apps.txt"
+sleep 0.3
+ok "process search of the test: sees the V2 p9gpu, which is allowed" '"$T/bin/p9gpu-pids" | grep -qx "$V2PID" && [ -z "$(here)" ]'
 $C tick
 ok "foreign p9gpu gone: cleared" 'last | grep -q "erledigt: p9gpu nur noch auf der A100"'
 
