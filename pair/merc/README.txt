@@ -10,11 +10,15 @@ MERCURIUS as the M group of the equivalence test (r_crit 3 Hill radii, no encoun
 dt 0.5 yr), the p9sim binary of p9prod-9a084ed (sha256 checked). The slices of a seed hold the same start values as
 the job of that seed in p9pair-v5.
 
-Where: CPU 1 (socket 0). THREADS slices at the same time, nice 10, one core each; the slices of set A first.
+Where: CPU 1, the physical cores of socket 0 (on the GPU server CPUs 0-15), never socket 1 where the A100 runs are
+pinned, unless the CPU-2 measurement allows cores there and they are given with CPUS=... . THREADS slices at the same
+time, one core each, the slices of set A first. Everything runs at nice 19 and with the idle I/O class (decision of
+2026-11-06): the AI services on CPU 1 and the MERCURIUS part of seeds 110-112 (nice 10) come first; when they need the
+cores, these slices wait and the half takes longer. status.sh shows the CPUs it is pinned to, its nice value and I/O
+class, and counts only the p9sim processes of this package.
 Decision of 2026-11-06: start with THREADS=8 once the criteria are on chain (CPU 1 is shared with the second round
 of the MERCURIUS part of seeds 110-112), then, when that has ended: sh stop.sh, THREADS=16 sh start.sh (done
-segments are kept; a running segment is computed again; the bits do not depend on the number of threads). Cores of
-CPU 2 only after the CPU-2 measurement allows them (CPUS=... with the allowed cores of socket 1, nice 19).
+segments are kept; a running segment is computed again; the bits do not depend on the number of threads).
 
 Start (as a normal user, in the unpacked directory): THREADS=8 sh start.sh, sh status.sh, sh stop.sh; start.sh
 again resumes. Every start first runs the check (start values of the first slice of each seed over 10,000 years,

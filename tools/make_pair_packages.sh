@@ -4,7 +4,8 @@
 #   build/p9pair-v5-<commit>.tar.gz    group V5 for the A100: PV5-s331 ... s339 (set A), PV5-s341 ... s349 (set B);
 #                                      4,000 test particles, 0-200 Myr, 10 segments of 20 Myr, a snapshot every 1 Myr,
 #                                      flyby logs; one job at a time
-#   build/p9pair-merc-<commit>.tar.gz  group M for CPU 1: PM-s331-part00 ... PM-s349-part15 (MERCURIUS, slices of 250)
+#   build/p9pair-merc-<commit>.tar.gz  group M for CPU 1: PM-s331-part00 ... PM-s349-part15 (MERCURIUS, slices of 250;
+#                                      scripts of pair/merc: nice 19, idle I/O, socket 0)
 # The binaries are those of the production package p9prod-9a084ed (PROD, checked by sha256). Expected hashes of the
 # checks: V5 jobs with p9gpu's CPU twin of this commit (the GPU's bits), regression and deep cases from the production
 # package's check; M with the package's own p9sim on this machine (glibc-independent).
@@ -103,7 +104,7 @@ pack "p9pair-v5-$REV"
 
 # group M (CPU)
 M=build/p9pair-merc-$REV
-common "$M" long/merc pair/merc
+common "$M" pair/merc pair/merc
 rmdir "$M/check/jobs"
 $PY -I - "$M" "$PAIRJOBS" "$SEEDS" <<'PY'
 import json, os, subprocess, sys
