@@ -258,7 +258,7 @@ Nach V5 110–112 kommen zwei neue Stufen, beide auf der A100 und beide von der 
 | Stufe | Paket (Verzeichnis in `chain.env`) | startet nur, wenn |
 |---|---|---|
 | CPU-2-Messung, etwa 20 min | `p9cpu2-c0ce0d9` (`CPU2_DIR`) | V5 110–112 fertig, A100 frei; keine Freigabedatei nötig (nur Leistungsmessung) |
-| V5-Hälfte der Paartests, etwa 29 h | `p9pair-v5-8862e1b` (`PAIR_V5_DIR`) | die Messung fertig und `~/runs/chain/pair-on-chain.ok` vorhanden |
+| V5-Hälfte der Paartests, etwa 29 h | `p9pair-v5-fed221a` (`PAIR_V5_DIR`) | die Messung fertig und `~/runs/chain/pair-on-chain.ok` vorhanden |
 
 Danach wie bisher Satz A und Satz B, jeweils nur mit ihrer Freigabe in `v2/BB-<Satz>.ok` und mit `e4-on-chain.ok`.
 
@@ -270,13 +270,22 @@ Danach wie bisher Satz A und Satz B, jeweils nur mit ihrer Freigabe in `v2/BB-<S
 
 **Die MERCURIUS-Hälfte startet nicht die Kette**, sondern du, auf CPU 1:
 ```sh
-THREADS=8 sh ~/runs/pair/p9pair-merc-8862e1b/start.sh
+THREADS=8 sh ~/runs/pair/p9pair-merc-fed221a/start.sh
 ```
 Das geht, sobald e5 auf der Chain ist. Wenn MERCURIUS 110–112 fertig ist:
 ```sh
-sh ~/runs/pair/p9pair-merc-8862e1b/stop.sh && THREADS=16 sh ~/runs/pair/p9pair-merc-8862e1b/start.sh
+sh ~/runs/pair/p9pair-merc-fed221a/stop.sh && THREADS=16 sh ~/runs/pair/p9pair-merc-fed221a/start.sh
 ```
-Kerne von CPU 2 nur, wenn `RESULT/VERDICT.txt` der Messung sie erlaubt.
+Die MERCURIUS-Hälfte läuft auf den Kernen von CPU 1 (Sockel 0, CPUs 0–15), mit `nice 19` und I/O-Klasse `idle`. Der
+KI-Stack und MERCURIUS 110–112 (`nice 10`) gehen vor; brauchen sie die Kerne, wartet die Paarhälfte. Kontrolle:
+```sh
+sh ~/runs/pair/p9pair-merc-fed221a/status.sh
+```
+Erwartet, unter anderem:
+- `running p9sim processes of this package: 8 (nice:19)`;
+- `pinned to CPUs: 0-15, nice 19, I/O class idle`.
+
+Kerne von CPU 2 (Sockel 1) nur, wenn `RESULT/VERDICT.txt` der Messung sie erlaubt, und dann ausdrücklich mit `CPUS=…`.
 
 **Ergebnis der Messung:** Die Kette nennt die Zeile `VERDICT: …` in ihrer Übergangsmeldung. Die Einzelwerte stehen in
 `~/runs/cpu2/p9cpu2-c0ce0d9/RESULT/`.
@@ -314,15 +323,15 @@ Darin bleiben `chain.env`, `state/`, `e4-on-chain.ok` und `chain.log` erhalten.
 
 **4. Pakete prüfen und auspacken:**
 ```sh
-cd ~/runs && sha256sum p9chain-*.tar.gz p9cpu2-c0ce0d9.tar.gz p9pair-v5-8862e1b.tar.gz p9pair-merc-8862e1b.tar.gz
+cd ~/runs && sha256sum p9chain-*.tar.gz p9cpu2-c0ce0d9.tar.gz p9pair-v5-fed221a.tar.gz p9pair-merc-fed221a.tar.gz
 ```
 Erwartet: die Hashes aus der Nachricht bzw. den `.sha256`-Dateien.
 ```sh
 tar -xzf ~/runs/p9chain-<commit>.tar.gz -C ~/runs/chain --strip-components=1
 mkdir -p ~/runs/cpu2 ~/runs/pair
 tar -xzf ~/runs/p9cpu2-c0ce0d9.tar.gz -C ~/runs/cpu2
-tar -xzf ~/runs/p9pair-v5-8862e1b.tar.gz -C ~/runs/pair
-tar -xzf ~/runs/p9pair-merc-8862e1b.tar.gz -C ~/runs/pair
+tar -xzf ~/runs/p9pair-v5-fed221a.tar.gz -C ~/runs/pair
+tar -xzf ~/runs/p9pair-merc-fed221a.tar.gz -C ~/runs/pair
 ```
 Das Kettenpaket überschreibt nur Skripte, Anleitung, Test, systemd-Units und `chain.env.example`. `chain.env` und der
 Zustand bleiben.
