@@ -1,0 +1,17 @@
+# The observed objects of Brown & Batygin (2021), Table 1 (p. 4; 150 < a < 1000 au, q > 42 au, as of 2021-08-20), for
+# the information of docs/production-criteria.md section 4 and docs/bb2021-comparison-criteria.md section 8 (reported, not
+# judged). Columns as tools/prod_eval.py reads them: name, a_au, q_au = a (1 - e), dvarpi_deg = varpi - 254 deg (their
+# Planet Nine, Fig. 1; section 8), modulo 360. As section 8 fixes it, 2013 FT28 (dvarpi 4.3 deg) is left out (commented),
+# the other 10 are used. Values transcribed from Table 1 (a in au, e, varpi in deg as printed there), 2026-11-06.
+# name	a_au	q_au	dvarpi_deg
+2000CR105	218	43.6	191.0
+2003VB12	479	76.64	201.8
+2004VN112	319	47.85	138.8
+2010GB174	351	49.14	224.2
+2012VP113	258	79.98	130.2
+# 2013FT28	312	43.68	4.3
+2013RA109	458	45.8	113.5
+2013SY99	694	48.58	167.6
+2013UT15	197	43.34	190.1
+2014SR349	302	48.32	121.7
+2015RX245	412	45.32	179.7
