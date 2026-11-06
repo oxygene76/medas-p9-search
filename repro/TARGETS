@@ -1,0 +1,8 @@
+# segments to compute again (decision of 2026-11-06, A100 window point 3); one per line:
+#   name  run directory (relative to RUNS, default $HOME/runs)  job (- for the production run, else jobs/<job>)  segment
+prod-seg000     prod/p9prod-9a084ed       -        0
+prod-seg019     prod/p9prod-9a084ed       -        19
+prod-seg039     prod/p9prod-9a084ed       -        39
+v5-s110-seg019  v5/p9long-v5-ac47329      V5-s110  19
+v5-s111-seg019  v5/p9long-v5-ac47329      V5-s111  19
+v5-s112-seg019  v5/p9long-v5-ac47329      V5-s112  19

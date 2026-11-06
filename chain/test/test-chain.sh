@@ -80,6 +80,18 @@ sleep 600 > /dev/null 2>&1 & echo $! > "$P/production.pid"
 mkpkg "$T/v5" 2 V5-s110 V5-s111 V5-s112
 mkpkg "$T/sets" 2 BB-A BB-B
 mkpkg "$T/merc" 2 M-s110-part00 M-s110-part01
+mkpkg "$T/pair" 2 PV5-s331 PV5-s341
+# the CPU-2 measurement: a start.sh like the real one (run.pid, run.log), the result written by the test
+mkdir -p "$T/cpu2"
+cat > "$T/cpu2/start.sh" <<'EOS'
+#!/bin/sh
+cd "$(dirname "$0")"
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) start: GPU $CUDA_VISIBLE_DEVICES (NVIDIA A100-PCIE-40GB), load on the upper cores of socket 1" >> start.log
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) start, package fake" >> run.log
+sleep 600 > /dev/null 2>&1 &
+echo $! > run.pid
+echo "started (pid $(cat run.pid)); about 20 min. Status: sh status.sh"
+EOS
 
 cp "$HERE/lib.sh" "$HERE/chain-a100.sh" "$HERE/run-watch.sh" "$T/chain/"
 cat > "$T/chain/chain.env" <<EOF
@@ -88,6 +100,9 @@ V5_DIR=$T/v5
 SETS_DIR=$T/sets
 MERC_DIR=$T/merc
 V2_DIR=$T/v2
+CPU2_DIR=$T/cpu2
+PAIR_V5_DIR=$T/pair
+PAIR_OK=$T/chain/pair-on-chain.ok
 GPU_NAME=A100
 GPU_UUID=
 E4_OK=$T/chain/e4-on-chain.ok
@@ -170,24 +185,46 @@ echo "NVIDIA A100-PCIE-40GB, 45, 0x0000000000000004, 0, 1395, 200.0" > "$T/fake/
 $C tick
 ok "halt over: cleared, hold stays" 'last | grep -q "die Sperre bleibt" && [ -f "$T/chain/state/hold.gpu" ]'
 
-# --- 7. V5 complete while the hold stands: set A does not start ---------------------------------------------------
+# --- 7. V5 complete while the hold stands: the CPU-2 measurement does not start --------------------------------------
 for j in V5-s110 V5-s111 V5-s112; do finish_job "$T/v5" $j; done; end_pkg "$T/v5"
 grep -v 77777 "$T/fake/apps.txt" > "$T/fake/apps2.txt"; mv "$T/fake/apps2.txt" "$T/fake/apps.txt"
 echo "2026-11-10T00:00:00Z V5-s110 stopped (signal)" >> "$T/v5/run.log"   # the resume test
 $C tick
-ok "V5 complete, hold: set A not started" '[ ! -f "$T/sets/run.pid" ]'
+ok "V5 complete, hold: the CPU-2 measurement not started" '[ ! -f "$T/cpu2/run.pid" ]'
 ok "message: V5 fertig with the hashes of all three jobs" 'last | grep -q "V5 der Seeds 110–112 fertig: .*V5-s110: seg001.*V5-s111: seg001.*V5-s112: seg001"'
 ok "message: the log line of the resume test blocks first" 'last | grep -q "Protokoll von V5 der Seeds 110–112 enthält: .*stopped (signal)"'
 $C ack v5 > /dev/null; $C tick
-ok "after ack v5: the hold blocks" '[ ! -f "$T/sets/run.pid" ] && last | grep -q "Halt-Sperre"'
+ok "after ack v5: the hold blocks" '[ ! -f "$T/cpu2/run.pid" ] && last | grep -q "Halt-Sperre"'
 $C ack hold > /dev/null
 ok "ack hold: reported" 'last | grep -q "Halt-Sperre aufgehoben"'
 
+# --- 7b. the CPU-2 measurement: started without a release file, on the A100 ------------------------------------------
+$C tick
+ok "CPU-2 measurement started on the A100" '[ -f "$T/cpu2/run.pid" ] && grep -q "start: GPU $U" "$T/cpu2/start.log" && last | grep -q "CPU-2-Messung gestartet"'
+$C tick
+ok "the paired V5 half not started while the measurement runs" '[ ! -f "$T/pair/run.pid" ]'
+mkdir -p "$T/cpu2/RESULT"; printf 'round\tlevel\n' > "$T/cpu2/RESULT/RESULTS.tsv"
+echo "VERDICT: cores of CPU 2 allowed for MERCURIUS: 8 (limit 3.0 % at gpu-v5-4k-1m)" > "$T/cpu2/RESULT/VERDICT.txt"
+kill "$(cat "$T/cpu2/run.pid")"; rm -f "$T/cpu2/run.pid"; echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) measurement complete" >> "$T/cpu2/run.log"
+
+# --- 7c. the V5 half of the paired tests: only with pair-on-chain.ok -------------------------------------------------
+$C tick
+ok "no pair-on-chain.ok: the paired V5 half waits" '[ ! -f "$T/pair/run.pid" ] && last | grep -q "CPU-2-Messung fertig: .*VERDICT: cores of CPU 2 allowed for MERCURIUS: 8.*V5-Hälfte der Paartests wird nicht gestartet: .*pair-on-chain.ok fehlt"'
+: > "$T/chain/pair-on-chain.ok"; $C tick
+ok "pair-on-chain.ok: the paired V5 half started on the A100" '[ -f "$T/pair/run.pid" ] && grep -q "start: GPU $U" "$T/pair/start.log" && last | grep -q "V5-Hälfte der Paartests gestartet"'
+$C tick
+ok "set A not started while the paired V5 half runs" '[ ! -f "$T/sets/run.pid" ]'
+for j in PV5-s331 PV5-s341; do finish_job "$T/pair" $j; done; end_pkg "$T/pair"
+
 # --- 8. set A: verdict and entry 4 ----------------------------------------------------------------------------------
 $C tick
-ok "no BB-A.ok, no e4: set A waits, the new reason reported" '[ ! -f "$T/sets/run.pid" ] && last | grep -q "Satz A wartet: v2/BB-A.ok enthält nicht.*e4-on-chain.ok fehlt"'
+ok "paired V5 half complete, no BB-A.ok, no e4: set A waits, with the hashes of the paired runs" '[ ! -f "$T/sets/run.pid" ] && last | grep -q "V5-Hälfte der Paartests fertig: .*PV5-s331: seg001.*PV5-s341: seg001.*Satz A wird nicht gestartet: v2/BB-A.ok enthält nicht.*e4-on-chain.ok fehlt"'
 k=$(msgs); $C tick
 ok "the same reason: not repeated" '[ "$(msgs)" -eq "$k" ]'
+: > "$T/chain/skip-setA"; $C tick
+ok "skip-setA: set A skipped, reported, set B waits for its release" '[ ! -f "$T/sets/run.pid" ] && grep -q "Satz A: übersprungen (skip-setA)" "$T/outbox.txt" && last | grep -q "Satz B wartet: v2/BB-B.ok enthält nicht"'
+rm -f "$T/chain/skip-setA"; $C tick
+ok "skip-setA removed: set A is the next start again (same reason as before: no new message)" '$C status | grep -q "nächster Start: Satz A wartet: v2/BB-A.ok enthält nicht"'
 echo "outside the limits" > "$T/sets/v2/BB-A.ok"; : > "$T/chain/e4-on-chain.ok"
 $C tick
 ok "BB-A outside the limits: set A waits" '[ ! -f "$T/sets/run.pid" ] && last | grep -q "v2/BB-A.ok enthält nicht"'
@@ -214,13 +251,15 @@ ok "error line in the sets log: set B not started" '[ ! -f "$T/sets/run.pid" ] &
 $C ack sets > /dev/null; $C tick
 ok "set B started with JOBS=BB-B" '[ -f "$T/sets/run.pid" ] && tail -n 1 "$T/sets/start.log" | grep -q "jobs BB-B$"'
 finish_job "$T/sets" BB-B; end_pkg "$T/sets"; $C tick
-ok "all done: final message" 'last | grep -q "Alle vier A100-Läufe sind fertig"'
+ok "all done: final message with the hash of set B" 'last | grep -q "Satz B fertig: .*Hash .*Alle A100-Läufe der Kette sind abgeschlossen"'
 k=$(msgs); $C tick
 ok "all done: no further message" '[ "$(msgs)" -eq "$k" ]'
 
 # --- 11. status is read only ------------------------------------------------------------------------------------------
 k=$(msgs); $C status > "$T/status.txt"
-ok "status: shows the four runs, sends nothing" 'grep -q "^Satz B: complete" "$T/status.txt" && [ "$(msgs)" -eq "$k" ]'
+ok "status: shows all stages, sends nothing" 'grep -q "^Satz B: complete" "$T/status.txt" && grep -q "^CPU-2-Messung: complete" "$T/status.txt" && grep -q "^V5-Hälfte der Paartests: complete" "$T/status.txt" && [ "$(msgs)" -eq "$k" ]'
+sed "s|^CPU2_DIR=.*|CPU2_DIR=|" "$T/chain/chain.env" > "$T/chain/chain-nocpu2.env"
+ok "without CPU2_DIR the measurement is skipped" 'CHAIN_CONF=$T/chain/chain-nocpu2.env $C status | grep -q "^CPU-2-Messung: skipped"'
 
 # --- 12. run-watch: chain heartbeat, MERCURIUS --------------------------------------------------------------------------
 echo $(( $(date -u +%s) - 3600 )) > "$T/chain/state/last-tick"

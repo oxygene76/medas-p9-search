@@ -9,6 +9,11 @@ CONF=${CHAIN_CONF:-$CHAIN_DIR/chain.env}
 : "${PROD_DIR:?}" "${V5_DIR:?}" "${SETS_DIR:?}"
 MERC_DIR=${MERC_DIR:-}
 V2_DIR=${V2_DIR:-}
+# after V5 110-112 (decision of 2026-11-06): the CPU-2 measurement (optional: empty = no such stage), then the V5 half
+# of the paired tests, released by PAIR_OK (created by the operator once the criteria entry e5 is on chain)
+CPU2_DIR=${CPU2_DIR:-}
+PAIR_V5_DIR=${PAIR_V5_DIR:-}
+PAIR_OK=${PAIR_OK:-$CHAIN_DIR/pair-on-chain.ok}
 # p9gpu processes allowed on another card than the A100: those working in these directories (the V2 short runs on
 # the L40S); others are reported as on the wrong card and block a start
 ALLOWED_ELSEWHERE=${ALLOWED_ELSEWHERE:-$V2_DIR}
@@ -186,7 +191,22 @@ log_errors() {
 # newest file change (epoch) under the segments of a run directory
 newest() { find "$@" -path '*/segments/*' -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -n 1 | cut -d. -f1; }
 
-# stage_status STAGE: ST (notstarted | running | complete | stopped), DIR, LOG, ERRKEY, PIDF, INFO (summary), LAST (hashes)
+# stage_status STAGE: ST (notstarted | running | complete | stopped | skipped), DIR, LOG, ERRKEY, PIDF, INFO (summary),
+# LAST (hashes). skipped: a stage without its package (CPU2_DIR or PAIR_V5_DIR empty), or a set marked by the operator
+# with the file skip-set<set> in the chain directory.
+jobs_status() {   # label (DIR, LOG, PIDF set): the jobs of a package (V5 110-112, the V5 half of the paired tests)
+  all=1; INFO="$1:"; LAST=""
+  for J in "$DIR"/jobs/*/; do
+    j=$(basename "$J"); tot=$(segs_total "$J/params.env"); d=$(segs_done "$J")
+    INFO="$INFO $j $d/$tot;"
+    [ "$d" -eq "$tot" ] || all=0
+    [ -s "$J/segments.tsv" ] && LAST="$LAST $j: $(tail -n 1 "$J/segments.tsv" | awk -F'\t' '{ printf "seg%03d, %d übrig, Hash %s;", $1, $3 - 6, $5 }')"
+  done
+  if alive "$PIDF"; then ST=running
+  elif [ $all = 1 ] && grep -q "all jobs ended" "$LOG" 2>/dev/null; then ST=complete
+  elif [ ! -f "$LOG" ]; then ST=notstarted
+  else ST=stopped; fi
+}
 stage_status() {
   case $1 in
     prod)
@@ -201,20 +221,24 @@ stage_status() {
       else ST=stopped; fi ;;
     v5)
       DIR=$V5_DIR; LOG=$DIR/run.log; ERRKEY=v5; PIDF=$DIR/run.pid
-      all=1; INFO="V5 110–112:"; LAST=""
-      for J in "$DIR"/jobs/*/; do
-        j=$(basename "$J"); tot=$(segs_total "$J/params.env"); d=$(segs_done "$J")
-        INFO="$INFO $j $d/$tot;"
-        [ "$d" -eq "$tot" ] || all=0
-        [ -s "$J/segments.tsv" ] && LAST="$LAST $j: $(tail -n 1 "$J/segments.tsv" | awk -F'\t' '{ printf "seg%03d, %d übrig, Hash %s;", $1, $3 - 6, $5 }')"
-      done
+      jobs_status "V5 110–112" ;;
+    cpu2)
+      DIR=$CPU2_DIR; LOG=$DIR/run.log; ERRKEY=cpu2; PIDF=$DIR/run.pid; LAST=""
+      if [ -z "$DIR" ]; then ST=skipped; INFO="CPU-2-Messung: nicht eingerichtet"; return; fi
+      INFO="CPU-2-Messung: $( [ -f "$DIR/RESULT/RESULTS.tsv" ] && echo $(($(wc -l < "$DIR/RESULT/RESULTS.tsv") - 1)) || echo 0) Messläufe"
+      [ -f "$DIR/RESULT/VERDICT.txt" ] && LAST=$(grep '^VERDICT' "$DIR/RESULT/VERDICT.txt")
       if alive "$PIDF"; then ST=running
-      elif [ $all = 1 ] && grep -q "all jobs ended" "$LOG" 2>/dev/null; then ST=complete
+      elif [ -f "$DIR/RESULT/VERDICT.txt" ] && grep -q "measurement complete" "$LOG" 2>/dev/null; then ST=complete
       elif [ ! -f "$LOG" ]; then ST=notstarted
       else ST=stopped; fi ;;
+    pairV5)
+      DIR=$PAIR_V5_DIR; LOG=$DIR/run.log; ERRKEY=pair; PIDF=$DIR/run.pid
+      if [ -z "$DIR" ]; then ST=skipped; INFO="V5-Hälfte der Paartests: nicht eingerichtet"; LAST=""; return; fi
+      jobs_status "V5 Paartests" ;;
     setA|setB)
       DIR=$SETS_DIR; LOG=$DIR/run.log; ERRKEY=sets; PIDF=$DIR/run.pid
       j=BB-${1#set}; J=$DIR/jobs/$j
+      if [ -f "$CHAIN_DIR/skip-$1" ] && [ ! -d "$J/segments" ]; then ST=skipped; INFO="Satz ${1#set}: übersprungen (skip-$1)"; LAST=""; return; fi
       tot=$(segs_total "$J/params.env"); d=$(segs_done "$J")
       INFO="Satz ${1#set} ($j): $d von $tot Segmenten"
       LAST=""
@@ -226,6 +250,9 @@ stage_status() {
       else ST=stopped; fi ;;
   esac
 }
-STAGES="prod v5 setA setB"
-stage_name() { case $1 in prod) echo "Hauptlauf";; v5) echo "V5 der Seeds 110–112";; setA) echo "Satz A";; setB) echo "Satz B";; esac; }
-any_run_alive() { alive "$PROD_DIR/production.pid" || alive "$V5_DIR/run.pid" || alive "$SETS_DIR/run.pid"; }
+STAGES="prod v5 cpu2 pairV5 setA setB"
+stage_name() { case $1 in prod) echo "Hauptlauf";; v5) echo "V5 der Seeds 110–112";; cpu2) echo "CPU-2-Messung";; pairV5) echo "V5-Hälfte der Paartests";; setA) echo "Satz A";; setB) echo "Satz B";; esac; }
+any_run_alive() {
+  alive "$PROD_DIR/production.pid" || alive "$V5_DIR/run.pid" || alive "$SETS_DIR/run.pid" ||
+    { [ -n "$CPU2_DIR" ] && alive "$CPU2_DIR/run.pid"; } || { [ -n "$PAIR_V5_DIR" ] && alive "$PAIR_V5_DIR/run.pid"; }
+}
