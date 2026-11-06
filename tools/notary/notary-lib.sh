@@ -38,6 +38,10 @@ manifest_of() {
         MANIFEST_SHA=5e5829b7461ff56a42518190b0fc2cdbfcdaa695f761b0663dad3c0bf61b22cc
         EXPECT="medas-p9-search=1c5f2ba23d5758a28de47e4384448e4936413482 medas-p9-search-bb2021=801fb20a295c69edbec34e0461883302e9eb1268 medas-p9-search-equiv=5b05cc3c72b0576d3c40581310822964567b0258"
         WH=0 ;;
+    e5) MANIFEST=$NOTARY_DIR/manifest-e5-paired-tests-20261106.json; SPEC=$NOTARY_DIR/spec-e5-paired-tests-20261106.json
+        MANIFEST_SHA=a3dc42d8fc6b91c98f76effd49cca637a54788e7732b367d1a5f3b5e0aa6b037
+        EXPECT="medas-p9-search=e83d9609780b8259afb5e2923141a894c74c5fd9 medas-p9-search-bb2021=d4dadd9263fcdef639b2b3828787f8f2c31aa80f medas-p9-search-equiv=fed221ad835c82b1ca255e268fb51d76d3cbebb4"
+        WH=0 ;;
     # the replaced, not entered drafts of entry 3 (for a backup made of them)
     e3-20261103) MANIFEST=$NOTARY_DIR/manifest-e3-production-20261103.json; SPEC=$NOTARY_DIR/spec-e3-production-20261103.json
         MANIFEST_SHA=9ade41f9bbd0dffbf89b1c693ec08459ef7d85a82e261a7fd1474436a20bb212
@@ -47,7 +51,7 @@ manifest_of() {
         MANIFEST_SHA=7ecd6320435a1dd13fc592e900b803c3cb166ff4eb5e57fcdfed693b2576ca15
         EXPECT="medas-p9-search=8debfcf6c8e0e85f1f1e83e9b4d4b456d7bcbf67 medas-p9-search-bb2021=32defaf0e413ca14778391fd3baaec55967e8105"
         WH=0 ;;
-    *) die "unknown manifest name '$1' (a3, e2, e3, e4, e3-20261103 or e3-20261102)" ;;
+    *) die "unknown manifest name '$1' (a3, e2, e3, e4, e5, e3-20261103 or e3-20261102)" ;;
   esac
 }
 
