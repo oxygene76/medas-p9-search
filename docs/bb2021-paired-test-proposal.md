@@ -1,9 +1,10 @@
-# Paired tests V5 against MERCURIUS for sets A and B: proposal of criteria (2026-11-06)
+# Paired tests V5 against MERCURIUS for sets A and B: criteria (2026-11-06)
 
-**Status: proposal, not accepted.**
-- The project lead checks it. Once accepted, it is fixed in a commit and entered on chain as its own entry before any
-  run of it starts.
-- Until then no run, no package start, and no look at anything that could inform it.
+**Status:**
+- Accepted in principle by the project lead on 2026-11-06, with the changes of the same day worked in.
+- The open points of section 8 carry recommendations and wait for the decision.
+- The version entered on chain (entry e5, manifest with this file at its commit) is the one that counts.
+- Until the entry no run, no package start, and no look at anything that could inform it.
 
 **Why:** the V2 short runs of both sets are outside the limits of addenda 13 and 16
 (`docs/bb2021-v2-result-20261106.md`). In set A, Uranus fast flybys are × 2.02 and close flybys × 1.66; in set B,
@@ -70,10 +71,22 @@ For information only, deciding nothing:
 - S with the cut of the observed sample (150 < a < 1,000 au, q > 42 au);
 - the number of survivors at 200 Myr per group.
 
+**The six encounter shares, as in V2: reported, not deciding.**
+- Per planet (Neptune, Uranus, Planet Nine): the share of the test particles with at least one flyby shorter than
+  1.5 steps ("fast"), and with at least one within 0.1 au ("close").
+- Over 0–60 Myr, comparable with the V2 reference of addendum 13, and over 0–200 Myr; pooled over the 9 seeds of a
+  set.
+- No value of them changes a verdict, and no limit is attached to them.
+- **V5 half:** from the flyby logs of the runs (`flybys.tsv`, `tools/v2_encounter_check.py`, as for V2).
+- **M half:** p9sim (MERCURIUS) keeps no flyby log per particle, and with no encounter radii it counts no flybys at
+  all. With the unchanged program the shares can be reported for V5 only. See open point 6 of section 8.
+
 ## 4. Test and margin
 
 - **Per set, per seed:** d_s = S(V5, s) − S(M, s).
 - **Interval:** the mean of the 9 differences and its two-sided 95 % interval (t distribution, 8 degrees of freedom).
+  It is formed from the **measured** spread of the 9 differences of that set (their sample standard deviation), not
+  from an assumed one.
 - **Equivalent:** the interval lies inside (−0.035, +0.035).
 - **Different:** the interval lies entirely outside it.
 - **Not shown:** otherwise.
@@ -89,8 +102,10 @@ pair of one-sided tests at α = 0.025.
 - The equivalence test measured an sd of the pair differences of **0.0115**, as its noise model expected (0.012).
 - With 9 × 4,000 the power is that of its table: equivalence found with probability 1.00 for a true difference of 0
   or 0.01, and 0.91 (0.75 at an sd of 0.015) for 0.02.
-- **Proviso:** the sets may scatter differently, for example set B with Planet Nine at 300 au. Without an interim look
-  there is no adjustment.
+- **Proviso:** the sets may scatter differently. If the differences of a set scatter more than in the equivalence
+  test (set A, with its doubled Uranus flybys, is the likelier case), the interval is wider and "not shown" becomes
+  more likely. That is accepted.
+- **Fixed:** more seeds or runs are not allowed after any look. Without an interim look there is no adjustment.
 
 ## 5. What follows from each outcome
 
@@ -126,7 +141,7 @@ nothing is decided after the result):
   tolerances of section 5 of the comparison criteria would need a power analysis of their own.
 - **(c)** The cause analysis of (different), first.
 
-**Release mechanism** (to be decided with this proposal):
+**Release mechanism** (open point 3):
 - `start.sh` of `p9bbsets` and the A100 chain start a set only if `v2/BB-<set>.ok` contains the line
   "within the limits". Today the files hold the V2 verdict "outside the limits".
 - Proposal: the evaluation tool of the paired test writes, only for "equivalent", the file `v2/BB-<set>.paired`
@@ -136,6 +151,12 @@ nothing is decided after the result):
 - The V2 verdict stays in `docs/bb2021-v2-result-20261106.md` and its stamped copy, and the replaced file is kept
   as `v2/BB-<set>.v2`.
 - `p9bbsets` itself stays unchanged; its check is `grep -qx "within the limits"`, which matches the first line.
+- **The A100 chain** checks the same files:
+  - It starts the V5 half of the paired tests (`p9pair-v5`) after V5 110–112 only once the file `pair-on-chain.ok`
+    exists. You create it after this entry is on chain.
+  - It starts a set only with its `v2/BB-<set>.ok` releasing it, and with `e4-on-chain.ok`.
+  - A set that is definitely not run is marked by the operator with the file `skip-set<set>` in the chain directory;
+    the chain then goes on to the next set.
 
 ## 6. Scope and residual risk
 
@@ -169,13 +190,13 @@ nothing is decided after the result):
 | 24 (CPU 1 + 8 of CPU 2) | 3.2–4.2 (the cores 10 % slower when more are busy) |
 | 28 (CPU 1 + 12 of CPU 2) | 2.8–3.6 |
 
-**Earlier start on CPU 1:**
+**Start on CPU 1 (decision of 2026-11-06):**
 - From about 2026-11-07 the MERCURIUS part of seeds 110–112 runs its second round with 8 slices only, so 8 cores of
   CPU 1 are free until about 2026-11-10.
-- If the chain entry of these criteria is made by then, the M half can start there with `THREADS=8`.
-- From Tuesday it continues with 16 threads or more (`stop.sh`, then `start.sh` with the new number; done segments
-  are kept, the bits do not depend on it).
-- 576 core hours of the M half are then done before Tuesday.
+- The M half starts there with `THREADS=8` as soon as this entry is on chain.
+- When the MERCURIUS part of 110–112 has ended (about Tuesday, 2026-11-10), it goes to 16 threads: `stop.sh`, then
+  `THREADS=16 sh start.sh`. Done segments are kept, and the bits do not depend on the number of threads.
+- With an entry by 2026-11-07, about 576 core hours of the M half are done before Tuesday.
 
 **Cores of CPU 2 (socket 1, where the A100 runs are pinned):**
 - **Fact:** an A100 run uses one host thread per p9gpu process (the production run and a set: 1; V5 110–112: 3;
@@ -195,10 +216,9 @@ nothing is decided after the result):
     busy;
   - the M processes then run pinned to the upper k cores of socket 1 with `nice 19`;
   - the p9gpu processes keep the lower ones free; the running processes are not touched.
-- **When:**
-  - preferably at the transition from the production run to V5 110–112 (`chain-a100.sh pause` shortly before the end
-    of the production run, measure, `resume`), so that the answer is there by Tuesday;
-  - otherwise at the start of the A100 window after V5 110–112.
+- **When (decision of 2026-11-06):** as the first point of the A100 window after V5 110–112, before the V5 half of the
+  paired tests. Not at the transition from the production run: the chain starts V5 110–112 there without a pause.
+- Until the measurement allows more, the M half uses CPU 1 only.
 
 **Schedule** (estimates):
 
@@ -208,16 +228,39 @@ nothing is decided after the result):
 | V5 110–112 (A100) | about 2026-11-07 | about 2026-11-10/11 |
 | M 110–112 round 2 (8 cores of CPU 1) | about 2026-11-07 | about 2026-11-10 |
 | chain entry of these criteria | after the project lead's check | – |
-| paired M half (CPU 1, 8 → 16 + k cores) | entry, at the earliest 2026-11-07 | about 2026-11-13/14 |
-| paired V5 half (A100) | after V5 110–112, about 2026-11-11 | about 2026-11-12 |
+| paired M half (CPU 1: 8 threads, from Tuesday 16; CPU 2 only after the measurement) | entry, at the earliest 2026-11-07 | about 2026-11-14/15 (16 threads) |
+| CPU-2 measurement (A100, started by the chain) | after V5 110–112, about 2026-11-11 | about 1 h later |
+| paired V5 half (A100, started by the chain with `pair-on-chain.ok`) | right after the measurement | about 2026-11-12 |
 | evaluation, release | about 2026-11-14 | – |
 | sets A / B (A100, if released) | about 2026-11-14 | about 2026-11-17 / 2026-11-20 |
 
 ## 8. Open points for the project lead
 
-1. The seeds 331–339 (A) and 341–349 (B).
-2. One evaluation per set without a multiplicity correction (section 4).
-3. The release mechanism (section 5).
-4. The CPU-2 measurement and its 3 % rule; the measurement at the transition from the production run.
-5. Whether the long-run residual risk of section 6 should be narrowed for a released set with one or two long pairs
-   (V5 and M, 2,000 particles, 0–4 Gyr, as 110–112). That costs about 300–600 core hours per pair.
+Each with a recommendation; the decisions are written in here before the entry.
+
+1. **Seeds 331–339 (A) and 341–349 (B).** Recommended: as proposed. They are new, not used before, and the jobs are
+   made with them.
+2. **One evaluation per set, without a multiplicity correction.** Recommended: as proposed. Each set decides only its
+   own run, and the 95 % interval already is the pair of one-sided tests at 2.5 %.
+3. **The release mechanism** (section 5). Recommended: as proposed, with `skip-set<set>` for a set that is
+   definitely not run.
+4. **The CPU-2 rule.** Recommended: the measurement first in the A100 window, cores of CPU 2 only at a slowdown of at
+   most 3 % at 4,000 test particles, the upper cores of socket 1, `nice 19`.
+5. **Long pairs for a released set** (V5 and M, 2,000 particles, 0–4 Gyr, as 110–112). Recommended: not now. If
+   wanted, decide it with its own criteria after the paired tests, so that it is not part of this entry.
+6. **The encounter shares of the M half** (section 3). Recommended: report them for V5 only, and say in the report
+   that p9sim keeps no flyby log. The alternative is a p9sim with a passive flyby log. That is a new binary and needs
+   a bit-for-bit check against b14f7956… on all check cases before use. It would also change the program of the M
+   half against the equivalence test, which costs more than it gives for numbers that decide nothing.
+
+## 9. Tools and packages of this entry
+
+- **Evaluation:** `tools/pair_eval.py`, with tests `tests/test_pair_eval.py`. On the equivalence runs it gives the
+  published equivalence result exactly (S per seed, mean +0.0033, 95 % [−0.0055, +0.0121]), and its V5 shares over
+  0–60 Myr are the V2 reference.
+- **Jobs:** `tools/make_pair_jobs.sh` of medas-p9-search-bb2021, `runs/pair`. Checked:
+  - for seed 101 the same params and start values as the equivalence jobs;
+  - V5 radii as the jobs of sets A and B;
+  - the 16 M slices of each seed hold exactly the start values of its V5 job.
+- **Packages:** `tools/make_pair_packages.sh` of medas-p9-search-equiv, `p9pair-v5-<commit>` and
+  `p9pair-merc-<commit>`, by sha256 in the manifest of the entry.

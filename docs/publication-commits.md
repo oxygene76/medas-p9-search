@@ -10,7 +10,7 @@ the four entries on chain:
 - e3 (entry #4, block 10723643);
 - e4 (entry #5, block 10728476).
 
-It is to be regenerated after e5 (the data package):
+It is to be regenerated after e5 (the criteria of the paired tests) and after e6 (the data package):
 
 ```sh
 build/venv/bin/python -I tools/notary_refs.py "a3 (#2)=runs/notary/manifest-a3-validation-status-20261021.json" \
@@ -81,8 +81,8 @@ Existing tags in the closure: bb2021-criteria-draft-1, make-ic-v1, prod-eval-v1;
 
 ## Order of the publication (decision of 2026-11-04)
 
-1. Enter e4, then e5 (the data package).
-2. Regenerate this list with e5 (`tools/notary_refs.py`; e4 is in it since 2026-11-04).
+1. Enter e4, e5 (the criteria of the paired tests), then e6 (the data package).
+2. Regenerate this list with e5 and e6 (`tools/notary_refs.py`; e4 is in it since 2026-11-04).
 3. **Only right before the push:** `main` is brought to the state of the campaign by a merge commit of the tips. This
    is a new commit, not a rewrite. Then the tags of the list are set.
 4. Both scans over exactly the state to be published, that is `main` after the merge plus the tags:

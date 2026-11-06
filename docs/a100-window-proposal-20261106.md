@@ -18,8 +18,8 @@ tests (about 2026-11-14), so 3–4 days. About 1.2 days of it are the V5 half of
 
 | # | what | A100 time | why it touches nothing |
 |---|---|---|---|
-| 1 | **CPU-2 measurement**, unless already done at the transition from the production run: `gpu-v5-4k-1m` and `gpu-v5-64k-1m` of the speed package, 3 times each, with 0, 8 and 12 cores of socket 1 busy with MERCURIUS slices | about 1 h | performance only; the result hashes are known, so it is also a bit check |
-| 2 | **The V5 half of the paired tests**, 18 runs of 200 Myr, one after the other, after their chain entry | about 29 h | it is the registered paired test itself, under its own entry |
+| 1 | **CPU-2 measurement** (decision of 2026-11-06: the first point of the window, started by the chain): `gpu-v5-4k-1m` and `gpu-v5-64k-1m` of the speed package, 3 times each, with 0, 8 and 12 cores of socket 1 busy with MERCURIUS slices | about 1 h | performance only; the result hashes are known, so it is also a bit check |
+| 2 | **The V5 half of the paired tests**, 18 runs of 200 Myr, one after the other, started by the chain once `pair-on-chain.ok` exists (entry e5 on chain) | about 29 h | it is the registered paired test itself, under its own entry |
 | 3 | **Reproduction of stored segments** for the data package: segments 0, 19 and 39 of the production run and one segment each of V5-s110–112, computed again from their stored inputs with the package binary; only the result hashes are compared | about 12 h | only hashes are compared; it shows "rerun a segment, get its hash" on real data, as the README of the data package promises |
 | 4 | **C3, bundling** (engineering): several jobs in one p9gpu process. Developed and checked on the laptop first (CPU twin: every job of a bundle bit for bit equal to its run alone), then on the A100: the same bit check and the speed against single processes | about 0.5 day | a program test on test jobs; only for future runs, and only with its own check and entry, never for a run already registered |
 | 5 | otherwise **idle** | – | an idle card costs nothing against the preregistration |

@@ -12,7 +12,7 @@ rule: `tools/export_timelapse.py` exports these runs only with a complete `resul
 
 | Part | Content | Why |
 |---|---|---|
-| notary | per entry (a3, e2, e3, e4, and the new e5 of §3): the manifest file, the files without `git` it lists (under the same path), the transaction, height, entry number, commitment, the reveal | anyone can check that the criteria and packages existed, unchanged, before the runs |
+| notary | per entry (a3, e2, e3, e4, e5 with the paired-test criteria, and the new e6 of §3): the manifest file, the files without `git` it lists (under the same path), the transaction, height, entry number, commitment, the reveal | anyone can check that the criteria and packages existed, unchanged, before the runs |
 | timestamps | the OpenTimestamps proofs (`.ots`) of the stamped criteria and lists, upgraded to their Bitcoin block | a second, independent anchor |
 | criteria | the criteria documents at the commits named in the manifests | what was fixed before the runs, readable without git |
 | code | source archive of medas-p9-search at the evaluation commit; the run packages (`p9prod-9a084ed`, `p9long-v5-ac47329`, `p9long-merc-ac47329`, `p9bbsets-5b05cc3`, `p9bbv2-5b05cc3`) unchanged, with their binaries and sha256 files; REBOUND 5.2.2 as the source tarball already in the packages | rerun any segment and get its result hash |
@@ -25,7 +25,7 @@ rule: `tools/export_timelapse.py` exports these runs only with a complete `resul
 gives about 3 MB per segment and about 0.1 GB in all.
 - If a campaign gives more than 1 GB of flyby logs, only a summary goes in: per segment and planet the counts of the
   flybys (near, fast, close) and of the sub-steps.
-- The sha256 of every original log is listed in `MANIFEST.sha256` and in entry e5, and the logs are kept.
+- The sha256 of every original log is listed in `MANIFEST.sha256` and in entry e6, and the logs are kept.
 - The V2 check (`tools/v2_encounter_check.py`) needs only the per-particle flags of 0–60 Myr. Those go in either way.
 
 **No Gaia-derived data.** The package is CC BY 4.0; catalogues derived from Gaia do not go in.
@@ -97,13 +97,13 @@ The chain, from the criteria to the published data:
    for one segment.
 3. **The evaluation:** `result.json` with the version of `tools/prod_eval.py`. Its tag `prod-eval-v1` exists since entry
    e3, which lists `tools/prod_eval.py` by sha256.
-4. **A new entry e5 (type job, refers to e3 and e4), before the upload:**
+4. **A new entry e6 (type job, refers to e3, e4 and e5), before the upload:**
    - Its manifest lists `MANIFEST.sha256` of each record and the `result.json` files.
    - It also lists the sha256 of every `segments.tsv`, so the result hashes of all segments are fixed.
    - From this point the published data cannot be changed without notice.
-   - The manifest of e5 is stamped with OpenTimestamps as well.
+   - The manifest of e6 is stamped with OpenTimestamps as well.
 5. **On Zenodo:**
-   - The description of the record gives the sha256 of `MANIFEST.sha256`, the entry e5 (transaction, height) and the
+   - The description of the record gives the sha256 of `MANIFEST.sha256`, the entry e6 (transaction, height) and the
      entries e3 and e4.
    - The README explains the check in three commands: sha256 of the manifest equals the content of the entry; the
      files equal the manifest; one segment rerun gives its result hash.
@@ -111,11 +111,11 @@ The chain, from the criteria to the published data:
 Order:
 1. Reserve the DOI on Zenodo (draft, not published) and write it into README and CITATION.cff.
 2. Build `MANIFEST.sha256`.
-3. Enter e5.
+3. Enter e6.
 4. Upload the files unchanged and publish.
 
 Since the DOI is reserved first, the README with the DOI is already in the manifest, and nothing changes after
-entry e5.
+entry e6.
 
 ## 4. Licences
 
