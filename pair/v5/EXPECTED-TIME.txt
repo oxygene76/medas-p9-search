@@ -1,0 +1,5 @@
+Expected time on the A100 (equivalence runs V5: 5.3-7.9 h per run on the L40S; the A100 is 3.45 times faster at 4,000
+test particles, speed comparison of 2026-11-03/04):
+  check                                    about 3-5 min (ALL SAME)
+  one job (4,000 test particles, 200 Myr)  about 1.5-2.3 h
+  all 18, one after the other              about 29 h (set A first: s331-s339, then set B)
