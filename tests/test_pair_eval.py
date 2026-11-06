@@ -84,11 +84,22 @@ class Logic(unittest.TestCase):
         self.assertAlmostEqual(enc["V5 0-60 Myr"]["Uranus"]["fast"], 1.0)     # 40 of 4,000
         self.assertIn("not available", enc["M"])
 
-    def test_release_text(self):
-        res = {"S": {"mean": 0.001, "ci95": [-0.004, 0.006]}}
-        t = pe.release_text("A", list(range(331, 340)), res, "abc1234")
-        self.assertTrue(t.startswith("paired test V5 against MERCURIUS: equivalent\nset A, seeds 331-339"))
-        self.assertIn("[-0.0040, +0.0060]", t)
+    def test_release_file(self):
+        """Only for "equivalent": BB-<set>.ok with line 1 exactly "within the limits" (what start.sh greps with -x)."""
+        import hashlib, subprocess
+        res = {"verdict": "equivalent", "seeds": list(range(331, 340)), "S": {"mean": 0.001, "ci95": [-0.004, 0.006]}}
+        rf = pe.write_release(self.root / "rel", "A", res, "abc1234")
+        f = self.root / "rel" / "BB-A.ok"
+        lines = f.read_text().splitlines()
+        self.assertEqual(rf, {"file": "BB-A.ok", "sha256": hashlib.sha256(f.read_bytes()).hexdigest()})
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(lines[0], "within the limits")
+        self.assertTrue(lines[1].startswith("released by the paired test V5 against MERCURIUS: equivalent; set A, seeds 331-339"))
+        self.assertIn("95 % [-0.0040, +0.0060]", lines[1])
+        self.assertEqual(subprocess.run(["grep", "-qx", "within the limits", str(f)]).returncode, 0)
+        for v in ("not shown", "different"):
+            self.assertIsNone(pe.write_release(self.root / "rel2", "B", dict(res, verdict=v), "abc1234"))
+        self.assertFalse((self.root / "rel2").exists())
 
 
 @unittest.skipUnless((EQUIV / "p9equiv-v5-47c7381").exists() and P9SIM.exists(), "equivalence runs or p9sim not here")

@@ -28,11 +28,15 @@ Reported, not deciding:
   over 0-60 Myr (comparable with the V2 reference) and over 0-200 Myr, pooled over the 9 seeds;
 - for the V5 half only: p9sim (MERCURIUS) keeps no flyby log per particle.
 
-With --release-dir and only for "equivalent": writes DIR/BB-<set>.paired (the release record of the criteria,
-section 5).
+With --release-dir and only for "equivalent": writes DIR/BB-<set>.ok, the finished replacement of the V2 verdict
+file of the 4-Gyr package (criteria section 5, decision of 2026-11-06): line 1 "within the limits" (what start.sh of
+p9bbsets and the A100 chain check), line 2 the release by the paired test. Its sha256 is printed and written to the
+JSON. The operator copies the file unchanged into v2/ of p9bbsets (the V2 file kept as BB-<set>.v2) and never writes
+the release line by hand.
 """
 
 import argparse
+import hashlib
 import json
 import math
 import subprocess
@@ -84,11 +88,22 @@ def encounter_shares(v5_jobs, n_segments):
 
 
 def release_text(set_name, seeds, res, version):
+    """The replacement BB-<set>.ok: line 1 as start.sh and the chain check it (grep -qx), line 2 the release."""
     lo, hi = res["S"]["ci95"]
-    return ("paired test V5 against MERCURIUS: equivalent\n"
-            f"set {set_name}, seeds {seeds[0]}-{seeds[-1]}, 9 pairs\n"
-            f"S(V5) - S(M): mean {res['S']['mean']:+.4f}, 95 % interval [{lo:+.4f}, {hi:+.4f}], margin +-{ee.MARGIN}\n"
-            f"tools/pair_eval.py {version}; criteria docs/bb2021-paired-test-proposal.md (as entered on chain)\n")
+    return ("within the limits\n"
+            f"released by the paired test V5 against MERCURIUS: equivalent; set {set_name}, seeds {seeds[0]}-{seeds[-1]}, "
+            f"S(V5) - S(M) mean {res['S']['mean']:+.4f}, 95 % [{lo:+.4f}, {hi:+.4f}], margin +-{ee.MARGIN}; "
+            f"tools/pair_eval.py {version}; criteria docs/bb2021-paired-test-proposal.md, entry e5\n")
+
+
+def write_release(release_dir, set_name, out, version):
+    """Only for "equivalent": DIR/BB-<set>.ok with the two lines; returns its name and sha256 (else None)."""
+    if out["verdict"] != "equivalent":
+        return None
+    Path(release_dir).mkdir(parents=True, exist_ok=True)
+    f = Path(release_dir) / f"BB-{set_name}.ok"
+    f.write_text(release_text(set_name, out["seeds"], out, version))
+    return {"file": f.name, "sha256": hashlib.sha256(f.read_bytes()).hexdigest()}
 
 
 def code_version():
@@ -158,16 +173,15 @@ def main():
     out = evaluate(a.set, a.v5, a.m, a.p9sim, seeds, a.v5_prefix, a.m_prefix)
     out["tool"] = f"tools/pair_eval.py {code_version()}"
     report(out)
+    if a.release_dir:
+        out["release_file"] = write_release(a.release_dir, a.set, out, code_version())
+        if out["release_file"]:
+            print(f"release file (copy it unchanged to v2/ of p9bbsets): {Path(a.release_dir) / out['release_file']['file']}, "
+                  f"sha256 {out['release_file']['sha256']}")
+        else:
+            print(f"no release file: the verdict is '{out['verdict']}'")
     if a.json:
         Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
-    if a.release_dir:
-        if out["verdict"] == "equivalent":
-            Path(a.release_dir).mkdir(parents=True, exist_ok=True)
-            f = Path(a.release_dir) / f"BB-{a.set}.paired"
-            f.write_text(release_text(a.set, out["seeds"], out, code_version()))
-            print(f"release record: {f}")
-        else:
-            print(f"no release record: the verdict is '{out['verdict']}'")
 
 
 if __name__ == "__main__":

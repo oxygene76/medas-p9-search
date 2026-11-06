@@ -1,8 +1,8 @@
 # Paired tests V5 against MERCURIUS for sets A and B: criteria (2026-11-06)
 
 **Status:**
-- Accepted in principle by the project lead on 2026-11-06, with the changes of the same day worked in.
-- The open points of section 8 carry recommendations and wait for the decision.
+- Accepted by the project lead on 2026-11-06, with the changes of the same day worked in and the decisions of
+  section 8.
 - The version entered on chain (entry e5, manifest with this file at its commit) is the one that counts.
 - Until the entry no run, no package start, and no look at anything that could inform it.
 
@@ -43,7 +43,7 @@ clustering of the distant bodies as MERCURIUS, within the margin of the equivale
 | group | method | program |
 |---|---|---|
 | V5 | p9gpu v5 as in `p9bbsets` (smooth transition, planets with 8 inner steps, collisions at the planets' radii, FP64) | the p9gpu binary of p9prod-9a084ed (sha256 `7666c5ba…`), on the A100 |
-| M | MERCURIUS, settings unchanged from the M group of the equivalence test (package `p9equiv-merc-47c7381`), Planet Nine of the set | the p9sim binary of p9prod-9a084ed (sha256 `b14f7956…`), CPU, 16 slices of 250 particles per seed |
+| M | MERCURIUS, settings unchanged from the M group of the equivalence test (package `p9equiv-merc-47c7381`), Planet Nine of the set | the p9sim binary of p9prod-9a084ed (sha256 `b14f7956…`), CPU 1, 16 slices of 250 particles per seed, at `nice 19` (section 7) |
 
 **Rules:**
 - **Check before the runs:** each package first checks its programs bit for bit against the reference machine on a
@@ -79,7 +79,8 @@ For information only, deciding nothing:
 - No value of them changes a verdict, and no limit is attached to them.
 - **V5 half:** from the flyby logs of the runs (`flybys.tsv`, `tools/v2_encounter_check.py`, as for V2).
 - **M half:** p9sim (MERCURIUS) keeps no flyby log per particle, and with no encounter radii it counts no flybys at
-  all. With the unchanged program the shares can be reported for V5 only. See open point 6 of section 8.
+  all. Decision of 2026-11-06 (section 8, point 6): the shares are reported for V5 only, the M package stays
+  unchanged, and the report says why.
 
 ## 4. Test and margin
 
@@ -141,16 +142,20 @@ nothing is decided after the result):
   tolerances of section 5 of the comparison criteria would need a power analysis of their own.
 - **(c)** The cause analysis of (different), first.
 
-**Release mechanism** (open point 3):
+**Release mechanism** (decision of 2026-11-06, section 8, point 3):
 - `start.sh` of `p9bbsets` and the A100 chain start a set only if `v2/BB-<set>.ok` contains the line
   "within the limits". Today the files hold the V2 verdict "outside the limits".
-- Proposal: the evaluation tool of the paired test writes, only for "equivalent", the file `v2/BB-<set>.paired`
-  (outcome, interval, report commit).
-- The operator then replaces `v2/BB-<set>.ok` by two lines: "within the limits" and "released by the paired test,
-  `v2/BB-<set>.paired`".
-- The V2 verdict stays in `docs/bb2021-v2-result-20261106.md` and its stamped copy, and the replaced file is kept
-  as `v2/BB-<set>.v2`.
-- `p9bbsets` itself stays unchanged; its check is `grep -qx "within the limits"`, which matches the first line.
+- Only for "equivalent", `tools/pair_eval.py --release-dir DIR` writes the finished replacement file
+  `DIR/BB-<set>.ok` with two lines:
+  - line 1: "within the limits", what `start.sh` and the chain check with `grep -qx`;
+  - line 2: "released by the paired test V5 against MERCURIUS: equivalent", with the set, the seeds, the mean
+    difference and its interval, the tool's commit and this entry.
+- The tool prints the sha256 of that file. It goes into the report of the paired test.
+- The operator copies the file unchanged into `v2/` of `p9bbsets` and keeps the V2 file as `v2/BB-<set>.v2`. The
+  release line is never written by hand.
+- For "not shown" or "different" no file is written.
+- The V2 verdict stays in `docs/bb2021-v2-result-20261106.md` and its stamped copy.
+- `p9bbsets` itself stays unchanged.
 - **The A100 chain** checks the same files:
   - It starts the V5 half of the paired tests (`p9pair-v5`) after V5 110–112 only once the file `pair-on-chain.ok`
     exists. You create it after this entry is on chain.
@@ -190,7 +195,14 @@ nothing is decided after the result):
 | 24 (CPU 1 + 8 of CPU 2) | 3.2–4.2 (the cores 10 % slower when more are busy) |
 | 28 (CPU 1 + 12 of CPU 2) | 2.8–3.6 |
 
-**Start on CPU 1 (decision of 2026-11-06):**
+**Start on CPU 1 (decisions of 2026-11-06):**
+- **Priority:** the M half runs at `nice 19` and with idle I/O priority (`ionice -c 3`). It must not push aside the
+  AI services on CPU 1, nor the MERCURIUS part of 110–112, which runs at `nice 10`. If they need the cores, the M half
+  waits and takes longer.
+- **Cores:** pinned (taskset) to the physical cores of socket 0, CPU 1 (on the GPU server: CPUs 0–15). With
+  `THREADS=8` at most 8 slices run at once, each single-threaded, on any of these 16 cores. Never on socket 1, where the
+  A100 runs are pinned (16–31), unless the CPU-2 measurement allows cores there and they are given explicitly
+  (`CPUS=...`).
 - From about 2026-11-07 the MERCURIUS part of seeds 110–112 runs its second round with 8 slices only, so 8 cores of
   CPU 1 are free until about 2026-11-10.
 - The M half starts there with `THREADS=8` as soon as this entry is on chain.
@@ -236,22 +248,21 @@ nothing is decided after the result):
 
 ## 8. Open points for the project lead
 
-Each with a recommendation; the decisions are written in here before the entry.
+Decided by the project lead on 2026-11-06:
 
-1. **Seeds 331–339 (A) and 341–349 (B).** Recommended: as proposed. They are new, not used before, and the jobs are
-   made with them.
-2. **One evaluation per set, without a multiplicity correction.** Recommended: as proposed. Each set decides only its
-   own run, and the 95 % interval already is the pair of one-sided tests at 2.5 %.
-3. **The release mechanism** (section 5). Recommended: as proposed, with `skip-set<set>` for a set that is
-   definitely not run.
-4. **The CPU-2 rule.** Recommended: the measurement first in the A100 window, cores of CPU 2 only at a slowdown of at
-   most 3 % at 4,000 test particles, the upper cores of socket 1, `nice 19`.
-5. **Long pairs for a released set** (V5 and M, 2,000 particles, 0–4 Gyr, as 110–112). Recommended: not now. If
-   wanted, decide it with its own criteria after the paired tests, so that it is not part of this entry.
-6. **The encounter shares of the M half** (section 3). Recommended: report them for V5 only, and say in the report
-   that p9sim keeps no flyby log. The alternative is a p9sim with a passive flyby log. That is a new binary and needs
-   a bit-for-bit check against b14f7956… on all check cases before use. It would also change the program of the M
-   half against the equivalence test, which costs more than it gives for numbers that decide nothing.
+1. **Seeds:** 331–339 (A) and 341–349 (B), as proposed.
+2. **One evaluation per set**, without a multiplicity correction.
+3. **Release:** as proposed, with the change that `tools/pair_eval.py` writes the finished replacement file
+   `BB-<set>.ok` with both lines, and its sha256 goes into the report (section 5). The operator only copies it and
+   never writes the release line by hand. A set that is definitely not run: `skip-set<set>`, as proposed.
+4. **CPU-2 rule** as proposed: the measurement first in the A100 window, cores of CPU 2 only at a slowdown of at most
+   3 % at 4,000 test particles, the upper cores of socket 1, `nice 19`.
+5. **No long pairs now.**
+6. **Encounter shares for V5 only.** The M package stays unchanged, and the report says why: p9sim keeps no flyby log
+   per particle.
+
+In addition: the M half runs at `nice 19` (with idle I/O priority) and must not push aside the AI services on CPU 1;
+it uses the cores of socket 0 only (section 7).
 
 ## 9. Tools and packages of this entry
 
