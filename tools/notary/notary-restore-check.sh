@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Checks that an encrypted backup of notary-backup.sh can be restored, with the private key from the USB drive.
 #   bash runs/notary/notary-restore-check.sh ENCRYPTED_FILE SECRET_KEY_FILE
-#   ENCRYPTED_FILE   p9-NAME-<date>.tar.gpg (e.g. the copy on the USB drive), or a receipt p9-NAME-receipt-<date>.json.gpg
+#   ENCRYPTED_FILE   p9-NAME-<date>.tar.gpg (e.g. the copy on the USB drive), a receipt p9-NAME-receipt-<date>.json.gpg,
+#                    or a result archive p9-NAME-<date>.tar.gz.gpg of notary-archive-backup.sh (its .plain-sha256 next
+#                    to it: the decrypted archive must have that sha256)
 #   SECRET_KEY_FILE  the exported private key on the USB drive (gpg --export-secret-keys)
 # The key is imported into a temporary GNUPGHOME, which is deleted at the end (also on errors); the normal keyring
 # is not touched. The passphrase of the key is read by this script from the terminal (without echo; empty if the
@@ -85,6 +87,18 @@ if [[ $ENC == *.json.gpg ]]; then
   python3 -I -c 'import json, sys; d = json.load(open(sys.argv[1])); assert isinstance(d, dict) and d' "$TMP/receipt.json" \
     || die "decrypted file is not a JSON receipt"
   say "receipt $(basename "$ENC"): decrypts with the key, a JSON object with $(python3 -I -c 'import json, sys; print(len(json.load(open(sys.argv[1]))))' "$TMP/receipt.json") fields; deleted again"
+  exit 0
+fi
+# a result archive (p9-NAME-<date>.tar.gz.gpg): decrypt into the temporary directory, compare its sha256 with the
+# .plain-sha256 written by notary-archive-backup.sh, delete it
+if [[ $ENC == *.tar.gz.gpg ]]; then
+  [ -f "$ENC.plain-sha256" ] || die "$ENC.plain-sha256 not found (written by notary-archive-backup.sh next to the archive)"
+  want=$(cut -d' ' -f1 "$ENC.plain-sha256")
+  decrypt_to "$TMP/archive.tar.gz"
+  have=$(sha256sum "$TMP/archive.tar.gz" | cut -d' ' -f1)
+  [ "$have" = "$want" ] || die "decrypted archive has sha256 $have, not $want"
+  tar tzf "$TMP/archive.tar.gz" > /dev/null || die "decrypted file is not a readable .tar.gz"
+  say "archive $(basename "$ENC"): decrypts with the key to $(cut -d' ' -f2- "$ENC.plain-sha256" | sed 's/^ *//'), sha256 $have as recorded, a readable tar.gz; deleted again"
   exit 0
 fi
 # decrypted into the temporary directory first (so a wrong passphrase can be retried), then unpacked there
