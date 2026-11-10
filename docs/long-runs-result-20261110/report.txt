@@ -1,0 +1,26 @@
+Paired long runs, seeds 110-112, V5 against MERCURIUS (docs/long-runs-110-112-criteria.md (entry 3, commit 7302607), sections 2 and 3)
+
+start values paired: seed 110 2000 test particles, seed 111 2000 test particles, seed 112 2000 test particles
+S(t) per run (- = too few distant survivors in the window):
+  seed 110 V5: S(0.5) 0.2624  S(1) 0.1091  S(2) 0.0447  S(4) 0.0339  S(1-4) 0.0809
+  seed 110 M : S(0.5) 0.2513  S(1) 0.0833  S(2) 0.0784  S(4) 0.1218  S(1-4) 0.1014
+  seed 111 V5: S(0.5) 0.3040  S(1) 0.1162  S(2) 0.1338  S(4) 0.0469  S(1-4) 0.1050
+  seed 111 M : S(0.5) 0.3014  S(1) 0.1497  S(2) 0.1456  S(4) 0.1097  S(1-4) 0.1089
+  seed 112 V5: S(0.5) 0.3313  S(1) 0.1072  S(2) 0.1523  S(4) 0.1434  S(1-4) 0.1179
+  seed 112 M : S(0.5) 0.3232  S(1) 0.1248  S(2) 0.1086  S(4) 0.1275  S(1-4) 0.1332
+d(t) = mean over the seeds of S(V5) - S(M), with its standard error:
+  0.5 Gyr: +0.0073 +- 0.0025 (d_s +0.0111, +0.0027, +0.0082)
+    1 Gyr: -0.0084 +- 0.0177 (d_s +0.0258, -0.0336, -0.0176)
+    2 Gyr: -0.0006 +- 0.0230 (d_s -0.0338, -0.0118, +0.0437)
+    4 Gyr: -0.0450 +- 0.0313 (d_s -0.0880, -0.0629, +0.0159)
+  1-4 Gyr: -0.0132 +- 0.0049 (d_s -0.0205, -0.0038, -0.0153) (reported, not deciding)
+
+decision: no growing bias found
+  |d(4)| = 0.0450 < 0.05 and <= 2 SE = 0.0626: no
+  same sign at 1, 2, 4 Gyr: yes
+  |d(4)| > |d(0.5)| = 0.0073: yes
+
+information:
+  test particles left at 4 Gyr: seed 110 V5 541, M 553; seed 111 V5 570, M 544; seed 112 V5 561, M 572
+  snapshots with fewer than 100 distant survivors: 110 V5 0, 110 M 0, 111 V5 0, 111 M 0, 112 V5 0, 112 M 0
+  power: three pairs can find only large biases; 'no growing bias found' is not evidence that there is none (about 0.05, docs/equivalence-criteria.md)

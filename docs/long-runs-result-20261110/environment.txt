@@ -1,0 +1,30 @@
+Evaluation of the paired long runs, seeds 110-112 (docs/long-runs-evaluation-procedure.md, fixed at af2e058 with the
+decisions L1 and L2 of 2026-11-10)
+
+date (UTC)            2026-11-10, started 2026-11-10T09:17:11Z, wall time 14 s
+checkout              medas-p9-search af2e058e966dcbdf1333b9e6f64f7b9dc137ff10, detached, git status empty
+tool                  tools/long_eval.py sha256 6c881acf6296b9211cf533d956b47572e23c8f93e0433beb7120aad9e8aaa30b
+                      (= the stamped copy long_eval-6a69854.py); imports tools/equiv_eval.py and tools/analyze.py,
+                      unchanged since 7302607 (git diff --stat 7302607 HEAD: empty)
+procedure             docs/long-runs-evaluation-procedure.md of af2e058, sha256
+                      0ea9f6441cf6cb74b6ccb62e5aba9df009243e8b55767c24cd349bd6a3bd5e03 (OpenTimestamps 2026-11-10)
+python                3.14.4, numpy 2.5.4 (build/venv of the laptop)
+p9sim                 bin/p9sim of the V5 run, sha256 b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65
+                      (equal to bin/SHA256-p9sim; the p9sim of p9prod-9a084ed)
+archives              v5-full-ac47329.tar.gz sha256 9c196d33a83c41f7d9efc1666d6267ad1f7a990c3562492c871c714055722d0b
+                      merc-full-ac47329.tar.gz sha256 bd9ceac88e2ecd777bb62ec79a524dc0a0c619624e16c6a8a11c1ba7d00fe144
+                      (both backed up encrypted at three places and restore-checked by the project lead,
+                      2026-11-10 09:12)
+lists                 v5long-results-sha256-20261110.txt, 1,188 lines,
+                      sha256 8162ad3b100a85f31f6bb8b631b21423ee57f9ae76fca27ac31f3ee20c0a23cc
+                      merclong-results-sha256-20261110.txt, 28,987 lines,
+                      sha256 e1f939a3c78b87c06dec4bf34bc065748db98324d844242bb9694f1212e85ec5
+                      (OpenTimestamps 2026-11-10, .ots next to them, upgrade pending)
+command               ../medas-p9-search/build/venv/bin/python -I tools/long_eval.py --v5 V5 --m M --p9sim V5/bin/p9sim
+                        --out OUT --jobs 4
+                      V5 = ../medas-p9-search-equiv/build/v5-check-20261110/p9long-v5-ac47329
+                      M  = ../medas-p9-search-equiv/build/merc-check-20261109/full/p9long-merc-ac47329
+outputs               result.json c5093ffd47af8af4dea84f320bc6a9c1a32ec683e28cfdb2c1f7934ef9677e87
+                      timeseries.csv abfa9821634cae4e76578b7db25359ae354345399bfa48dbdbe86f57958cd324
+                      report.txt 7b06560b12052fc82457f442a38d2ab1cbc8fe6d6a14cac1ac79a77dc56a82c2
+                      one run; committed unchanged
