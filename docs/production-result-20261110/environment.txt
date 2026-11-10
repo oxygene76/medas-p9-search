@@ -1,0 +1,28 @@
+Evaluation of the production run p9prod-9a084ed (docs/production-evaluation-procedure.md, fixed at 0ca9595)
+
+date (UTC)            2026-11-10, first run started 09:12:38Z, second run directly after
+checkout              medas-p9-search 0ca95953e3430ec3b28d8a0aa9049edde2927154, detached, git status empty
+tool                  tools/prod_eval.py sha256 1ebb2d45c47ea0bb465b67f95d1d9b3a766678b4230fc89cad7d01c4b2c65cbb
+                      (git diff --stat prod-eval-v1 HEAD -- tools/prod_eval.py: empty; code_version prod-eval-v1-33-g0ca9595)
+observed objects      docs/bb2021-observed-table1.tsv of 0ca9595 (checked 2026-11-10 against Table 1, p. 4, of
+                      Brown & Batygin 2021: all 11 rows equal, 2013 FT28 left out as fixed)
+python                3.14.4, numpy 2.5.4 (build/venv of the laptop)
+p9sim                 bin/p9sim of the run, sha256 b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65
+                      (equal to bin/SHA256-p9sim)
+archive               prod-results-p9prod-9a084ed.tar.gz, 751,939,574 bytes,
+                      sha256 940d95b88cbedfd617d4db1070fc9952f501e7424d8cae0cf645c5c7f247c44f
+                      (backed up encrypted at three places and restore-checked by the project lead, 2026-11-10 09:12)
+list                  prod-results-sha256-20261109T1507Z.txt, 517 lines,
+                      sha256 48d6fa3b3d93fe3c66b1b0a6675bfb062c94974a30f328143e3b300d494157e6;
+                      sha256sum -c of the unpacked run: 517 of 517 OK (again on 2026-11-10 before the evaluation);
+                      OpenTimestamps 2026-11-09 (.ots next to it, upgrade pending)
+command               ../medas-p9-search/build/venv/bin/python -I tools/prod_eval.py RUN --out OUT --p9sim RUN/bin/p9sim
+                        --criteria production --window 1e9 4e9 --t-end 4e9 --n-tp 64000 --subsets 4
+                        --observed docs/bb2021-observed-table1.tsv
+two runs              1. RUN as an absolute path (wall time 52 s): result.json f31b7f6d..., report.txt 81d9b26d...,
+                         timeseries.csv e505ab23...
+                      2. RUN = ../medas-p9-search-bb2021/build/prod-eval-data/p9prod-9a084ed, relative, so that the
+                         committed files hold no home path: result.json 6e9eb0cc..., report.txt 87f1e11f...,
+                         timeseries.csv e505ab23...
+                      The two differ only in the path of the run (in result.json "run" and the first line of
+                      report.txt); timeseries.csv is byte-identical. Committed: the files of run 2, unchanged.
