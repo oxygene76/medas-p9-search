@@ -1,0 +1,25 @@
+{
+ "_comment": "Draft of the Zenodo deposit metadata (legacy deposit API format) for the record of the production run. Placeholders in <...>. Not uploaded. To be checked against the Zenodo API at the time of the upload.",
+ "metadata": {
+  "upload_type": "dataset",
+  "title": "MEDAS Planet Nine search: production run p9prod-9a084ed (N-body, 64,000 test bodies, 0-4 Gyr), data and evaluation",
+  "creators": [
+   {"name": "Janßen, Eike", "affiliation": "MEDAS Computers GmbH", "orcid": "<ORCID>"}
+  ],
+  "description": "<p>N-body run of the Planet Nine of the posterior of Brown &amp; Batygin (2021) with 64,000 massless test bodies over 0-4 Gyr (p9gpu v5, Wisdom-Holman with smooth close-encounter sub-steps, FP64), with its evaluation (clustering measures M1-M5 over 1-4 Gyr). Criteria, tools and packages were fixed before the run and notarised on the chain medasdigital-2 (entries a3, e2, e3, e4, e5; this record is fixed by entry e6, transaction <TX>, block <HEIGHT>). sha256 of MANIFEST.sha256: <SHA256>.</p><p>Model and limits: gravity of the Sun and the giant planets and Planet Nine only; massless test bodies; no galactic tide, no passing stars; no observational bias. Not peer-reviewed.</p><p>Verification: (1) sha256 of MANIFEST.sha256 equals the content of entry e6; (2) every file equals MANIFEST.sha256; (3) one segment rerun with the package gives its result hash (README).</p><p>Methods and tools: <WORDING TO BE AGREED: an AI coding assistant (Claude, Anthropic) wrote and revised code, tests, packages and documents under the direction of the author; the author made the scientific decisions; every result rests on deterministic programs and their tests; the criteria were notarised before the runs.></p>",
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "version": "1.0.0",
+  "language": "eng",
+  "keywords": ["Planet Nine", "trans-Neptunian objects", "N-body simulation", "orbital clustering", "reproducibility", "pre-registration"],
+  "related_identifiers": [
+   {"identifier": "<DOI of the software record of medas-p9-search>", "relation": "isSupplementedBy", "resource_type": "software", "scheme": "doi"},
+   {"identifier": "<concept DOI of the long-run record>", "relation": "isSupplementedBy", "resource_type": "dataset", "scheme": "doi"},
+   {"identifier": "10.3847/1538-3881/ac2056", "relation": "references", "resource_type": "publication-article", "scheme": "doi"},
+   {"identifier": "10.1051/0004-6361/201118085", "relation": "references", "resource_type": "publication-article", "scheme": "doi"},
+   {"identifier": "10.3847/1538-3881/abd414", "relation": "references", "resource_type": "publication-article", "scheme": "doi"}
+  ],
+  "communities": [{"identifier": "<community of the project>"}],
+  "notes": "The code and run packages in code.tar are GPL-3.0-or-later (LICENSE-CODE.txt); everything else CC BY 4.0. Planet start states from JPL DE440s (not included)."
+ }
+}

@@ -1,0 +1,33 @@
+# Draft for the records of the data package (placeholders in <...>); one per record, title and DOI adapted.
+cff-version: 1.2.0
+message: "If you use these data, please cite them as below."
+type: dataset
+title: "MEDAS Planet Nine search: <campaign> (N-body runs, 0-4 Gyr), data and evaluation"
+version: "1.0.0"
+date-released: "<YYYY-MM-DD>"
+doi: "<DOI reserved on Zenodo>"
+license: CC-BY-4.0
+authors:
+  - family-names: "Janßen"
+    given-names: "Eike"
+    affiliation: "MEDAS Computers GmbH"
+    orcid: "https://orcid.org/<ORCID>"
+keywords:
+  - "Planet Nine"
+  - "trans-Neptunian objects"
+  - "N-body simulation"
+  - "orbital clustering"
+  - "reproducibility"
+references:
+  - type: article
+    authors:
+      - family-names: "Brown"
+        given-names: "Michael E."
+      - family-names: "Batygin"
+        given-names: "Konstantin"
+    title: "The Orbit of Planet Nine"
+    journal: "The Astronomical Journal"
+    volume: 162
+    start: 219
+    year: 2021
+    doi: "10.3847/1538-3881/ac2056"
