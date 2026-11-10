@@ -5,6 +5,13 @@
 steps, and the decisions L1 and L2 of 2026-11-10, are in `docs/long-runs-evaluation-procedure.md` (af2e058,
 timestamped). The files as the tool wrote them are in `docs/long-runs-result-20261110/` (commit afad411).
 
+**Version 2 (2026-11-10, after the independent review):**
+- The review confirmed the verdicts and numbers; it recomputed S(t), d̄, the standard errors and M2 from
+  `timeseries.csv`.
+- Added: the significance of S(1–4) and d(0.5 Gyr) with t at 2 degrees of freedom, and the noise floor at late times.
+  Both are under "Power".
+- Version 1 is commit ea38f05, stamped as `runs/notary/long-runs-result-ea38f05.md`, and stays unchanged.
+
 ## Verdict
 
 **No growing bias found** (criteria section 3, with the low power stated below).
@@ -67,11 +74,27 @@ Assessment, not part of the criteria:
   survivors per run at 4 Gyr, R of one snapshot has a noise of about 0.89/√n ≈ 0.045 (Q2 of the criteria). That is
   the size of the differences themselves. The 11 snapshots of a window share most particles, so the window mean
   reduces that noise only partly.
-- **S(1–4)**, reported and not deciding, gives −0.013 ± 0.005: negative in all three seeds and 2.7 standard errors
-  from zero. It is smaller than the margin of the equivalence test (±0.035). The criteria do not judge it.
-- **Taken together:** the data are compatible with no difference and with a difference of a few hundredths in R at
-  late times. Three pairs cannot tell these apart. The production report states this as the limit of the long-time
-  check.
+- **S(1–4) and d(0.5 Gyr) are not significant.** With three pairs the mean divided by its standard error follows a t
+  distribution with 2 degrees of freedom (as in the equivalence test).
+  - S(1–4), reported and not deciding: −0.0132 ± 0.0049, t = −2.68, two-sided p ≈ 0.12. It is negative in all three
+    seeds and smaller than the margin of the equivalence test (±0.035). The criteria do not judge it.
+  - d(0.5 Gyr): +0.0073 ± 0.0025, t = 2.97, p ≈ 0.10.
+  - d(4 Gyr): t = −1.44, p ≈ 0.29.
+  - The first version of this report called −0.0132 "2.7 standard errors from zero". The ratio is right, but it is
+    not a significance with only 2 degrees of freedom.
+- **The noise floor at late times.** An isotropic sample of n bodies gives an expected R of about 0.89/√n (Q2 of the
+  criteria).
+  - At 4 Gyr the long runs have about 417 distant survivors per run on average (window 3.9–4 Gyr; 412 at 4 Gyr
+    itself), so the noise floor is about 0.044.
+  - That is as large as R of the production run at 4 Gyr (0.052).
+  - So the long runs cannot test the late-time strength, whatever the methods do. They are informative up to about
+    1–2 Gyr: at 1 Gyr about 705 distant survivors (floor 0.034), at 2 Gyr about 576 (floor 0.037), against S of
+    0.08–0.15.
+  - The production run, with 14,196 bodies in S_BB at 4 Gyr, has a floor of 0.0075. Its R(4 Gyr) = 0.052 lies about
+    7 times above it (`docs/production-result-20261110.md`).
+- **Taken together:** the data are compatible with no difference, and with a difference of a few hundredths in R at
+  late times. Three pairs cannot tell these apart, and after about 2 Gyr their own noise floor reaches the size of
+  the signal. The production report states this as the limit of the long-time check.
 
 ## The runs and the checks before the evaluation
 
