@@ -5,6 +5,13 @@
 `docs/production-evaluation-procedure.md` (0ca9595). The files as the tool wrote them are in
 `docs/production-result-20261110/` (commit 14d2c43).
 
+**Version 2 (2026-11-10, after the independent review):**
+- The review confirmed the verdict and the numbers; it recomputed M2 from `timeseries.csv`.
+- Added under "Scope": the significance of the long-run differences (t at 2 degrees of freedom) and the noise floors.
+- Added as a new section: the check of the model assumption against the text of Brown & Batygin 2021 (galactic tide,
+  passing stars).
+- Version 1 is commit cce5b92, stamped as `runs/notary/production-result-cce5b92.md`, and stays unchanged.
+
 ## Verdict
 
 **Decided** (criteria section 5, decision P1):
@@ -107,9 +114,20 @@ What the series shows, as a description:
 - **Long-time residual risk:** the paired long runs of seeds 110–112 found no growing bias
   (`docs/long-runs-result-20261110.md`). Three pairs can find only large biases, about 0.05 in R.
 - **Assessment, not part of the criteria:**
-  - The difference at 4 Gyr in the long runs, −0.045 ± 0.031, is of the same order as R of this run at late times
-    (0.05–0.06 at 3–4 Gyr).
-  - So the check does not exclude a method difference at the level of the late-time strength M2.
+  - **Differences:** in the long runs the difference at 4 Gyr is −0.045 ± 0.031, of the same order as R of this run
+    at late times (0.05–0.06 at 3–4 Gyr).
+  - **Not significant:** none of the differences of the long runs is, with t at 2 degrees of freedom (three pairs):
+    - S(1–4), reported there: −0.0132 ± 0.0049, p ≈ 0.12;
+    - d(0.5 Gyr): +0.0073 ± 0.0025, p ≈ 0.10;
+    - d(4 Gyr): p ≈ 0.29.
+  - **Noise floor:** an isotropic sample of n bodies gives R ≈ 0.89/√n.
+    - The long runs have about 417 distant survivors per run at 4 Gyr. Their floor, about 0.044, is as large as R of
+      this run at 4 Gyr (0.052).
+    - So they cannot test the late-time strength M2 at all. They are informative up to about 1–2 Gyr, with floors of
+      0.034 and 0.037 against S of 0.08–0.15.
+  - **This run's own floor:** 14,196 bodies in S_BB at 4 Gyr give a floor of 0.0075. R(4 Gyr) = 0.052 lies about
+    7 times above it, so the late-time strength of this run is well above its own noise. Whether it is the same
+    with MERCURIUS is not tested beyond about 2 Gyr.
   - The long runs test R, not the direction M1.
 - **Reading with sets A and B:** still open. Both V2 short runs were outside the limits (entry e4, report of
   2026-11-06). The paired tests of both sets are running (entry e5). As fixed in section 5:
@@ -119,6 +137,35 @@ What the series shows, as a description:
 - **Model** (criteria section 7): gravity of the Sun and the planets only, massless test bodies, no galactic tide and
   no passing stars. No observational bias: the measures describe the simulated distribution, not what surveys would
   see.
+
+## Model check against Brown & Batygin (2021): galactic tide and passing stars
+
+Section 7 of the criteria left open whether their simulations contained a galactic tide. It was checked on
+2026-11-10 against the text of arXiv:2108.09868v2 (26 Aug 2021): section 4.1 read in full, and the whole text
+searched for "galactic", "tide", "tidal", "passing" and "stellar".
+
+- **What they integrate** (section 4.1 "Simulations", p. 8):
+  - "The orbits of the 5 giant planets and test particles are integrated using the mercury6 gravitational dynamics
+    software package (Chambers 1999)", hybrid symplectic/Bulirsch–Stoer, time step 300 days;
+  - "Objects that collide with planets or reach r < 4.5 or r > 10000 AU are removed from the simulation".
+  - No galactic tide, no passing stars and no other external force is named there.
+- **Galactic tide:** not mentioned anywhere in the paper. "Tide" and "tidal" do not occur. "Galactic" occurs only in
+  the caption of the sky map (the galactic plane), p. 18.
+- **Passing stars:** only in the introduction (section 1, p. 2), as the explanation once favoured for the orbit of
+  Sedna: "perturbation by passing stars within the solar birth cluster". It is not part of their simulations.
+- **The inner Oort cloud:** bodies scattered inward from it are discussed as a possible contaminant of the observed
+  sample (section 2, p. 4; section 6 "Caveats", p. 19). They are handled by excluding the one object with
+  a > 1,000 au, not by modelling.
+
+**Result:** as far as the text says, the simulations of Brown & Batygin contain the four giant planets, Planet Nine and
+massless test particles, with no galactic tide and no passing stars. Our model makes the same assumption, so the
+assumption of criteria section 7 is confirmed for this comparison.
+- Two differences remain:
+  - their integrator (mercury6, hybrid, 300 days) against ours (v5, dt 0.5 yr);
+  - our Sun carries the masses of the inner planets.
+- This is a reading of what the text states. The paper does not say explicitly that a tide is absent; it names what
+  is integrated, and the tide is not in it.
+- Checked against the arXiv version. The journal version (AJ 162, 219) was not compared.
 
 ## Not stated here
 
