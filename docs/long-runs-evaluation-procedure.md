@@ -3,7 +3,8 @@
 New file. The criteria are `docs/long-runs-110-112-criteria.md` as entered with entry 3 (chain entry #4, block
 10723643, commit 7302607, sha256 `2934f040…602c`, unchanged since); nothing of them is changed here. This file fixes
 the steps, in this order: the checks of the results, the backup of the archives, the checksum lists and their
-timestamps, then the evaluation. It also fixes how the tool reads two cases the criteria leave open (section 3).
+timestamps, then the evaluation. It also fixes how the tool reads two cases the criteria leave open (section 3,
+decided on 2026-11-10).
 
 **The evaluation tool was written after the runs**, on 2026-11-10, and before anyone looked at R. It is
 `tools/long_eval.py` at commit 6a69854 (sha256 `6c881acf6296b9211cf533d956b47572e23c8f93e0433beb7120aad9e8aaa30b`).
@@ -78,7 +79,7 @@ evaluation, and the report says so.
 
    Only their hashes leave the laptop.
 
-## 3. Two cases the criteria leave open (to be confirmed by the project lead before the evaluation)
+## 3. Two cases the criteria leave open (decided by the project lead on 2026-11-10, before the evaluation)
 
 Section 3 says that a window with too few distant survivors gets no S, that "the decision uses the remaining times",
 and that with fewer than three times left the result is "not decided". It does not say:
@@ -92,6 +93,9 @@ and that with fewer than three times left the result is "not decided". It does n
 
 Expected: at 4 Gyr about 540–570 test particles per run are left; with 57 % distant, about 310 distant survivors,
 well above 100. The cases L1 and L2 are therefore not likely to arise. The counts of snapshots below 100 are reported.
+
+**Decision of the project lead, 2026-11-10:** L1 and L2 as written above, before anyone looked at R. `tools/long_eval.py`
+of 6a69854 implements them unchanged.
 
 ## 4. The evaluation
 
