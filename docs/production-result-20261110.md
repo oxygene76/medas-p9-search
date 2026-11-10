@@ -12,6 +12,10 @@
   passing stars).
 - Version 1 is commit cce5b92, stamped as `runs/notary/production-result-cce5b92.md`, and stays unchanged.
 
+**Version 3 (2026-11-10, after the second review):** corrects only the span over which the long runs are
+informative (under "Scope": clearly at 1 Gyr, at 2 Gyr only with limits, at 4 Gyr not); nothing else is changed.
+Version 2 is commit 85d4061, stamped as `runs/notary/production-result-85d4061.md`, and stays unchanged.
+
 ## Verdict
 
 **Decided** (criteria section 5, decision P1):
@@ -123,8 +127,10 @@ What the series shows, as a description:
   - **Noise floor:** an isotropic sample of n bodies gives R ≈ 0.89/√n.
     - The long runs have about 417 distant survivors per run at 4 Gyr. Their floor, about 0.044, is as large as R of
       this run at 4 Gyr (0.052).
-    - So they cannot test the late-time strength M2 at all. They are informative up to about 1–2 Gyr, with floors of
-      0.034 and 0.037 against S of 0.08–0.15.
+    - So they cannot test the late-time strength M2 at all.
+      Clearly informative at 1 Gyr (about 705 distant survivors, floor 0.034, S 0.08–0.15); at 2 Gyr only
+      with limits (about 576, floor 0.037, S 0.045–0.15, one of six runs near the floor: seed 110 V5, S(2) = 0.045);
+      at 4 Gyr not.
   - **This run's own floor:** 14,196 bodies in S_BB at 4 Gyr give a floor of 0.0075. R(4 Gyr) = 0.052 lies about
     7 times above it, so the late-time strength of this run is well above its own noise. Whether it is the same
     with MERCURIUS is not tested beyond about 2 Gyr.

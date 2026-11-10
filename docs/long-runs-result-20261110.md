@@ -12,6 +12,10 @@ timestamped). The files as the tool wrote them are in `docs/long-runs-result-202
   Both are under "Power".
 - Version 1 is commit ea38f05, stamped as `runs/notary/long-runs-result-ea38f05.md`, and stays unchanged.
 
+**Version 3 (2026-11-10, after the second review):** corrects only the span over which the long runs are
+informative (under "Power": clearly at 1 Gyr, at 2 Gyr only with limits, at 4 Gyr not); nothing else is changed.
+Version 2 is commit 2e21864, stamped as `runs/notary/long-runs-result-2e21864.md`, and stays unchanged.
+
 ## Verdict
 
 **No growing bias found** (criteria section 3, with the low power stated below).
@@ -87,9 +91,10 @@ Assessment, not part of the criteria:
   - At 4 Gyr the long runs have about 417 distant survivors per run on average (window 3.9–4 Gyr; 412 at 4 Gyr
     itself), so the noise floor is about 0.044.
   - That is as large as R of the production run at 4 Gyr (0.052).
-  - So the long runs cannot test the late-time strength, whatever the methods do. They are informative up to about
-    1–2 Gyr: at 1 Gyr about 705 distant survivors (floor 0.034), at 2 Gyr about 576 (floor 0.037), against S of
-    0.08–0.15.
+  - So the long runs cannot test the late-time strength, whatever the methods do.
+    Clearly informative at 1 Gyr (about 705 distant survivors, floor 0.034, S 0.08–0.15); at 2 Gyr only
+    with limits (about 576, floor 0.037, S 0.045–0.15, one of six runs near the floor: seed 110 V5, S(2) = 0.045);
+    at 4 Gyr not.
   - The production run, with 14,196 bodies in S_BB at 4 Gyr, has a floor of 0.0075. Its R(4 Gyr) = 0.052 lies about
     7 times above it (`docs/production-result-20261110.md`).
 - **Taken together:** the data are compatible with no difference, and with a difference of a few hundredths in R at
