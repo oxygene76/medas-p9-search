@@ -1,8 +1,11 @@
-# Research note (draft skeleton, 2026-11-10): the long-term clustering of distant trans-Neptunian bodies under the Planet Nine of Brown & Batygin (2021), with a pre-registered, notarised protocol
+# Research note (draft, 2026-11-11): the long-term clustering of distant trans-Neptunian bodies under the Planet Nine of Brown & Batygin (2021), with a pre-registered, notarised protocol
 
-**Status:** skeleton without results. Sections marked **[RESULT]** stay empty until the evaluation of the run they
-belong to, as fixed in its criteria ("no result before its evaluation"). Nothing here is to be read as a finding.
-Not peer-reviewed.
+**Status:** draft, not peer-reviewed.
+- **Results in it:** the production run and the paired long runs 110–112, taken unchanged from their result reports,
+  version 3 (`docs/production-result-20261110.md`, `docs/long-runs-result-20261110.md`, commit ea21771). Both
+  reports were reviewed independently twice and entered as entry r1 (chain entry #7).
+- **Still marked [RESULT]:** the sections whose runs are not yet evaluated. They stay empty until then, as fixed in
+  their criteria ("no result before its evaluation"): the paired tests and sets A and B, and the reproduction check.
 
 **Author:** Eike Janßen, MEDAS Computers GmbH (ORCID to follow).
 
@@ -84,7 +87,13 @@ runs:
 - **Gravity of the Sun and the planets only.** No galactic tide, no passing stars, no birth cluster.
   - The galactic tide matters for a > 1,000–2,000 au; S_BB ends at 1,000 au.
   - Bodies that pass through larger a and come back can still carry its effect, which is not modelled.
-  - Whether Brown & Batygin included the tide is to be checked against their text before this note is final.
+  - **Brown & Batygin 2021 likewise:** their section 4.1 (p. 8) integrates "the 5 giant planets and test particles"
+    with mercury6 and removes bodies at r > 10,000 au. Their paper mentions no galactic tide, and passing stars only
+    in the introduction (p. 2) as an earlier explanation of Sedna. The check is in the production report.
+  - **Limit of that check:** the paper names what is integrated and does not state the absence of a tide
+    explicitly. The arXiv version (v2) was checked, not the journal version.
+  - **Two differences remain:** their integrator (mercury6, hybrid, 300 days) against ours, and our Sun carrying the
+    inner planets.
 - **Massless test bodies:** no self-gravity of the disk, no collisions among them.
 - **No observational bias.** M1–M5 describe the simulated distribution, not what surveys would see. The 10 observed
   objects of their Table 1 are shown for information only and are not judged (`docs/bb2021-observed-table1.tsv`,
@@ -107,6 +116,7 @@ a manifest that lists every file by sha256 and git commit.
 | e3 | #4 (refers to #3) | 2026-11-04 09:31:02 | 10723643 | equivalence result; criteria of the production run, of the long runs 110–112 and of the order on the A100; the packages |
 | e4 | #5 (refers to #4) | 2026-11-04 17:06:01 | 10728476 | addendum 16 (V2 short runs) and the packages of sets A and B |
 | e5 | #6 (refers to #5) | 2026-11-10 07:18:02 | 10814015 | criteria of the paired tests V5 against MERCURIUS for sets A and B |
+| r1 | #7 (refers to #4, result) | 2026-11-11 07:30:03 | 10829443 | results of the production run and of the long runs 110–112: the two reports (version 3, versions 1 and 2 as stamped copies), the result files, the checksum lists, procedures and tools |
 | e6 | planned | – | – | the data package (`MANIFEST.sha256` of each record, every `segments.tsv`, the `result.json` files) |
 
 The transactions and commitments are in `docs/notary.md`. The manifests and the files without git are published with
@@ -119,7 +129,7 @@ the data package, and the reveal follows the publication.
 | manifests a3 and e2 | 973126 (2026-10-25 21:00:34 UTC), 973129, 973151 |
 | checksum list of the equivalence runs | 974272 (2026-11-02 15:49:32 UTC) |
 | comparison criteria with Brown & Batygin at 224b7a1 | 974281 (2026-11-02 17:58:45 UTC) |
-| IRAS/AKARI criteria, comparison criteria at 1c5f2ba, V2 result, checksum list of the production run, checksum lists and evaluation tool and procedure of the long runs | pending upgrade; to be filled in |
+| IRAS/AKARI criteria, comparison criteria at 1c5f2ba, V2 result, checksum list of the production run, checksum lists and evaluation tool and procedure of the long runs, the result reports in versions 1–3 | pending upgrade; to be filled in |
 
 **Deviations from the registered protocol** (all reported, none changes a criterion):
 - The evaluation tool of the long runs (`tools/long_eval.py`) was written after the runs and before any look at R. It
@@ -128,6 +138,8 @@ the data package, and the reveal follows the publication.
 - The resume test of a V5 long run (interim check, criteria section 5) did not take place, because the runs went
   through without interruption.
 - The V5 part of seeds 110–112 ran on the A100 instead of the L40S (addendum of 2026-11-04, before any run).
+- The production evaluation was run twice with the same tool and data, the second time with a relative path, so that
+  the committed outputs hold no local path. The outputs differ only in that path (`environment.txt` of the result).
 
 ## 5. Equivalence test (0–200 Myr)
 
@@ -166,15 +178,69 @@ the data package, and the reveal follows the publication.
 - Run p9prod-9a084ed, complete: 40 of 40 segments, 17,798 of 64,000 test bodies left at 4 Gyr. Result hash of the
   last segment: `d41152221b3dfc9ff490a21eb0120896b9bfce95a6a2bb0378c8005b0527f1c3`.
 - The checksum list of all 517 result files was timestamped before the evaluation.
-- **[RESULT]** M1–M5 pooled and per subset; the verdict (decided / not decided).
-- **[RESULT]** Information: time series of M1–M3, selections S1–S3, survivors, position of the observed objects.
+- The archive was backed up encrypted and restore-checked before the evaluation. `tools/prod_eval.py` is
+  byte-identical with `prod-eval-v1` of entry 3, run from a clean checkout of the procedure commit 0ca9595.
+
+**Verdict: decided.** The largest distance of the M1 of the four subsets of 16,000 bodies from the pooled M1 is 1.41°
+(limit 10°). No subset deviates.
+
+| measure, 1–4 Gyr (301 snapshots, S_BB) | pooled | subsets |
+|---|---|---|
+| M1, direction of the Δϖ cluster | 154.1° | 152.8°–155.5° |
+| M2, strength (mean R per snapshot) | 0.076 | R pooled 0.076–0.080 |
+| M3, mean pole relative to Planet Nine's, ψ | 1.5° | – |
+| M4, wall | 155 au | – |
+| M5, width at 850–950 au | 135° (106.5°–240.5°) | – |
+
+- **Variants**, reported, not judged: ecliptic frame M1 154.2°, ψ 3.9°; heliocentric elements M1 154.1°, ψ 1.6°.
+- **Not judged against values of Brown & Batygin:** the paper has no distribution for this set (decision D1).
+
+**Information** (reported, not judged):
+- **Strength:** R in S_BB falls from 0.57 at 0.1 Gyr to 0.10 at 1 Gyr and 0.05 at 4 Gyr.
+- **Direction:** after an early phase (270° at 0.1 Gyr, 135° at 0.5 Gyr), M1 stays between 141° and 173° from 1 to
+  4 Gyr.
+- **Pole:** ψ stays within 7° of Planet Nine's pole from 0.5 Gyr on.
+- **Planet Nine:** its ϖ precesses from 248.5° to 354.6° over 4 Gyr. Δϖ is always taken against its value at the same
+  snapshot.
+- **Survivors:** 63,911 test bodies at 10 Myr, 25,864 at 2.01 Gyr, 17,798 at 4 Gyr.
+- **Observed objects:** for the 10 objects of Table 1, the share of simulated bodies near their a that lie within
+  ±15° of their Δϖ is 0.072–0.119, against 0.083 for an even distribution. The table is in the production report.
 
 ## 9. Long-time check: paired long runs, seeds 110–112
 
 - V5 on the A100 and MERCURIUS on the CPU, 0–4 Gyr, 3 × 2,000 test bodies. All 120 V5 and 4,800 MERCURIUS segments
   were checked as consistent, and the start values are paired.
-- **[RESULT]** S(t) per run; d(t) with standard errors at 0.5, 1, 2 and 4 Gyr; the decision (growing bias found / no
-  growing bias found / not decided), stated with the low power of three pairs.
+- The archives were backed up and restore-checked, and the checksum lists timestamped, before the evaluation.
+- The evaluation tool `tools/long_eval.py` was written after the runs and before any look at R; it was committed and
+  timestamped first (section 4, deviations).
+
+**Verdict: no growing bias found** (criteria section 3).
+- "Growing bias found" needs all four conditions. The two size conditions fail: |d(4 Gyr)| = 0.045 < 0.05, and
+  ≤ 2 standard errors (0.063).
+- The two others hold: the same sign at 1, 2 and 4 Gyr, and |d(4)| > |d(0.5)|.
+- At least 382 distant survivors in every snapshot (limit 100), so all four times are used.
+
+| t | d̄ = S(V5) − S(M), mean over 3 seeds | standard error | t (2 degrees of freedom) | p (two-sided) |
+|---|---|---|---|---|
+| 0.5 Gyr | +0.0073 | 0.0025 | 2.97 | ≈ 0.10 |
+| 1 Gyr | −0.0084 | 0.0177 | −0.48 | ≈ 0.68 |
+| 2 Gyr | −0.0006 | 0.0230 | −0.03 | ≈ 0.98 |
+| 4 Gyr | −0.0450 | 0.0313 | −1.44 | ≈ 0.29 |
+| 1–4 Gyr (reported, not deciding) | −0.0132 | 0.0049 | −2.68 | ≈ 0.12 |
+
+S(t) per run and the single differences are in the long-run report.
+
+**Power and noise floor** (assessment, not part of the criteria):
+- **Low power:** three pairs can find only large biases, about 0.05 in R. "No growing bias found" is not evidence that
+  there is none.
+- **No difference is significant**, with t at 2 degrees of freedom.
+- **Noise floor:** an isotropic sample of n bodies gives an expected R of about 0.89/√n.
+  - **1 Gyr: clearly informative.** About 705 distant survivors per run, floor 0.034, S 0.08–0.15.
+  - **2 Gyr: informative only with limits.** About 576, floor 0.037, S 0.045–0.15. One of six runs (seed 110 V5,
+    S(2) = 0.045) lies near the floor.
+  - **4 Gyr: not testable.** About 417 per run, floor 0.044, as large as R of the production run at 4 Gyr (0.052).
+- **Taken together:** the data are compatible with no difference, and with a difference of a few hundredths in R at
+  late times.
 
 ## 10. Sets A and B: comparison with Brown & Batygin (2021)
 
@@ -188,9 +254,31 @@ the data package, and the reveal follows the publication.
 
 ## 12. Discussion
 
-**[RESULT]** What the results say about questions 1–3, within the limits of section 3. The decision table of
-`docs/production-criteria.md` section 5 says how the production run reads together with sets A and B and the long
-runs.
+What the results so far say, within the limits of section 3. Question 3 (sets A and B) is open, and with it the
+reading that `docs/production-criteria.md` section 5 fixes for the production run together with sets A and B.
+
+**Question 1 (production run), as classified in the result reports:**
+- **Direction (M1) and pole (M3): robust in the sense of the evaluation.**
+  - The four subsets agree within 1.41° (limit 10°). In the frame and element variants M1 changes by at most 0.1°, and
+    ψ lies between 1.5° and 3.9°.
+  - From 1 to 4 Gyr M1 stays between 141° and 173°, and ψ stays within 7° of Planet Nine's pole from 0.5 Gyr on.
+  - The check against MERCURIUS covers the direction only over 0–200 Myr (equivalence test). The long runs test R, not
+    M1.
+- **Strength (M2): limited by the long-time check.**
+  - R falls to 0.05 at 4 Gyr. That lies about 7 times above this run's own noise floor (0.0075 at n = 14,196), so it is
+    not noise.
+  - Whether MERCURIUS gives the same strength is checked by the long runs clearly at 1 Gyr, only with limits at 2 Gyr,
+    and not at 4 Gyr, where their noise floor reaches the signal.
+- **No significant difference between the methods:** none of the long-run differences is significant (t, 2 degrees of
+  freedom: p ≈ 0.10–0.98).
+- **Model of Brown & Batygin:** like ours, it contains no galactic tide and no passing stars, as far as their text
+  says (section 3, with the limits of that check).
+
+**Question 2 (method):** equivalent over 0–200 Myr (section 5). Over 4 Gyr: no growing bias found, with the power and
+noise floor of section 9.
+
+**[RESULT]** Question 3 and the combined reading: after the paired tests (section 7) and, if released, sets A and B
+(section 10).
 
 ## 13. Data and code availability
 
