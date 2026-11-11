@@ -95,3 +95,38 @@ pointing at each other.
 3. The ORCID, and the wording of the methods section (AI tools).
 4. A Zenodo community for the project (name).
 5. The reveal of entries a3–e6: right after the publication, or with the research note.
+
+## 6. Trial packing (2026-11-11)
+
+The record `production` was packed as a trial with `tools/pack_record.py` (25efd3e) into `build/record-dryrun/`, which
+git ignores. Nothing was uploaded, and the result is not kept.
+
+| part | files | bytes |
+|---|---|---|
+| `notary.tar` | 22 (six manifests, the files without git of r1, their `.ots`) | 256,000 |
+| `code.tar` | 3 (source at ea21771, `p9prod-9a084ed.tar.gz` and its sha256) | 13,680,640 |
+| `evaluation.tar` | 4 | 133,120 |
+| `runs-production.tar` | 517 (= the stamped checksum list) | 1,627,504,640 |
+| `checks.tar` | 2 | 61,440 |
+| top | `README.md` (draft `docs/data-package/README-production.md`), `CITATION.cff`, `LICENSE-DATA.txt` (placeholder), `LICENSE-CODE.txt` | – |
+
+- **MANIFEST.sha256:** 557 lines. `pack_record.py verify` gave 557 of 557.
+- **Reproducible:** a second packing gave the same bytes, both for the tar files and for the manifest.
+- **`publish_scan.py` over the record:**
+  - **Found and fixed first:** `publish_scan.py` did not open tar files inside a directory and so did not check them
+    for private details (fixed in the commit after 25efd3e, with a test).
+  - **After the fix, 0 blocking findings.** The two planted strings of the scanner's own tests now count as "fixture".
+  - **Reported:**
+    - the GPU UUID in `runs/production/a100-start.log`;
+    - the host name and home paths in the notarised documents inside the source archive (published unchanged by
+      decision 7.1);
+    - the e-mail addresses of the REBOUND authors in its source.
+
+**Decisions before the real packing:**
+1. **The GPU UUID in `a100-start.log`:**
+   - Leave it as is: it is not secret, and the file then still equals the stamped checksum list and r1.
+   - Or replace it by a placeholder: the file then differs from the list in exactly that line, which the README must
+     explain.
+   - Proposed: leave it unchanged, as for the notarised documents (7.1).
+2. **`LICENSE-DATA.txt`:** the full legal code of CC BY 4.0 instead of the placeholder.
+3. **The `long-110-112` record** is packed in the same way. Its MERCURIUS part has 28,987 files in one tar.
