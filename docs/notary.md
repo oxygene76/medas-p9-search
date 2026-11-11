@@ -78,15 +78,16 @@ for good.
 | (e3) result of the equivalence test, the production run, the paired long runs 110–112 and the order on the A100, before their start (job, refers to the (e2) entry) | `runs/notary/spec-e3-production-20261104.json` (manifest sha256 `fa4d84fb5619cf7746f26cbfd0d9102a1961db8f26c7fc88e0f0e69208b03c60`) | entry #4 (refers to #3), 2026-11-04 09:31:02 UTC, block 10723643, tx `C6BEC752F7528F79BBECF89A43899EDF8A7F80169C86455BDB2DAF793432FB98`, commitment `cafc7ebbbdc7d3b0015ae56f1adf4eaab4eb882dc16473f35bf295c3073bdbff` |
 | (e4) addendum 16 (V2 short runs on the L40S, 16,000 test particles) and the packages of sets A and B (note, refers to the (e3) entry) | `runs/notary/spec-e4-bb2021-v2-20261104.json` (manifest sha256 `5e5829b7461ff56a42518190b0fc2cdbfcdaa695f761b0663dad3c0bf61b22cc`) | entry #5 (refers to #4), 2026-11-04 17:06:01 UTC, block 10728476, tx `D63E2D39E0B4325743484FA63E852F9D1E6A3FE363FAAB309C2E7037906E92DB`, commitment `5219949b8f6cf5b8e7c08ec065ff316b3a9a6f18fd3252c7f20ce863ba1bff1f` |
 | (e5) criteria of the paired tests V5 against MERCURIUS for sets A and B, before any of their runs (job, refers to the (e4) entry #5) | `runs/notary/spec-e5-paired-tests-20261106.json` (spec sha256 `e424cd1ec67f43c7eee50feae4ba12e8e7d49a0d9611b6df11c742ed9693b99f`; manifest sha256 `a3dc42d8fc6b91c98f76effd49cca637a54788e7732b367d1a5f3b5e0aa6b037`) | entry #6 (refers to #5), 2026-11-10 07:18:02 UTC, block 10814015, tx `91273FA27ED2AE101C1C1E3230703F993E809734819784780B6003FD84CC32EB`, commitment `61232c7217024299c5dbee92bbf99bf024b93714fcf920d7711f7adda8108d75` |
-| (r1) results of the production run and of the paired long runs 110–112, evaluated by the criteria of entry #4, after two independent reviews of the reports, version 3 (result, refers to the (e3) entry #4) | `runs/notary/spec-r1-results-20261110-v3.json` (spec sha256 `d9bddafaeb02a8e9a563dc74f749ed528822ca4fd66250afddcd52f282e6d06e`; manifest sha256 `eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d`; supersedes the manifest `6f5de6de…` with version 2) | not yet: prepared 2026-11-10 |
+| (r1) results of the production run and of the paired long runs 110–112, evaluated by the criteria of entry #4, after two independent reviews of the reports, version 3 (result, refers to the (e3) entry #4) | `runs/notary/spec-r1-results-20261110-v3.json` (spec sha256 `d9bddafaeb02a8e9a563dc74f749ed528822ca4fd66250afddcd52f282e6d06e`; manifest sha256 `eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d`; supersedes the manifest `6f5de6de…` with version 2) | entry #7 (refers to #4), 2026-11-11 07:30:03 UTC, block 10829443, tx `43CBB3CAEF23009C17FD70AC5DC356DEA88CC85CF94125C3733D7789EAA2FA67`, commitment `6b211b7c9de3a72fa34d3a9f45c774d6040d9698ab22be0313c7793fd5a39ead` |
 | (b) production run, before its start | superseded by (e3) | – |
 | trial | `runs/notary/spec-trial.json` | not yet |
 
-The entries #2 to #6 were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
+The entries #2 to #7 were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
 contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`; their receipts are backed up encrypted
 and checked with `notary-restore-check.sh` (the receipts of #4 and #5: backed up, as reported by the project lead on
 2026-11-04; the backup of e5, checked with 37 of 37 files, on three places, and the receipt of #6 backed up encrypted, as
-reported on 2026-11-10).
+reported on 2026-11-10; the backup of r1 (version 3) and the receipt of #7 on three places, as reported on
+2026-11-11).
 
 ## Backup scripts
 
