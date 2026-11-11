@@ -15,6 +15,38 @@ def scan(name, data):
     return [(c, w) for c, w, *_ in out]
 
 
+class Archives(unittest.TestCase):
+    def test_tars_inside_a_directory_and_nested(self):
+        """A record directory with tar files, and a .tar.gz inside a tar: their text files are scanned."""
+        import io as _io, tarfile as _tar, tempfile as _tmp
+        def tar_bytes(files, gz=False):
+            buf = _io.BytesIO()
+            with _tar.open(fileobj=buf, mode="w:gz" if gz else "w") as t:
+                for n, d in files.items():
+                    ti = _tar.TarInfo(n); ti.size = len(d); t.addfile(ti, _io.BytesIO(d))
+            return buf.getvalue()
+        inner = tar_bytes({"src/a.log": b"start on appmdp-05\n"}, gz=True)
+        with _tmp.TemporaryDirectory() as d:
+            Path(d, "rec").mkdir()
+            Path(d, "rec/runs.tar").write_bytes(tar_bytes({"runs/x/start.log": b"GPU-1cf3e09f-4b70-9369-f482-af987eff83cd\n"}))
+            Path(d, "rec/code.tar").write_bytes(tar_bytes({"code/src.tar.gz": inner}))
+            out = []
+            ps.scan_path(Path(d, "rec"), out)
+        whats = sorted((w, loc.split(":")[0]) for _, w, loc, _ in out)
+        self.assertIn(("GPU UUID", "rec/runs.tar"), whats)
+        self.assertIn(("internal host", "rec/code.tar"), whats)
+        self.assertTrue(any(loc.startswith("rec/code.tar:code/src.tar.gz:src/a.log") for _, _, loc, _ in out))
+
+
+class Fixtures(unittest.TestCase):
+    def test_own_fixtures_do_not_block_elsewhere_they_do(self):
+        key = b"-----BEGIN OPENSSH " + b"PRIVATE KEY-----\n"
+        self.assertIn(("fixture", "private key block"), scan("x:tests/test_publish_scan.py", key))
+        self.assertIn(("secret", "private key block"), scan("x:tests/other.py", key))
+        other = b"API_KEY=" + b"zyx9876543210fedcba\n"
+        self.assertIn(("secret", "secret assignment"), scan("x:tests/test_publish_scan.py", other))
+
+
 class Rules(unittest.TestCase):
     def test_secrets_block(self):
         self.assertIn(("secret", "private key block"), scan("a.txt", b"-----BEGIN OPENSSH PRIVATE KEY-----\n"))

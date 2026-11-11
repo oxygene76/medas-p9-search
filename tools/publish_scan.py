@@ -42,6 +42,9 @@ RULES = [
     ("private", "e-mail", re.compile(rb"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[a-z]{2,}\b")),
 ]
 GAIA_PATHS = re.compile(r"(^|/)runs/(plates|ownimg)(/|$)")
+# the planted test strings of this scanner's own tests: reported as "fixture" (not blocking), only in exactly that file
+# and only these exact strings, so that a real secret there would still block
+FIXTURES = {"tests/test_publish_scan.py": {b"-----BEGIN OPENSSH PRIVATE KEY-----", b"API_KEY=abcdef0123456789xyz"}}
 # version strings of astropy-iers-data look like private IPv4 addresses: 0.2026.10.19.0.52.1
 IERS = re.compile(rb"astropy-iers-data==[0-9.]+")
 
@@ -61,7 +64,27 @@ def scan_bytes(name, data, out):
                 continue
             line = data.count(b"\n", 0, m.start()) + 1
             c = "gaia-code" if cls == "gaia" and code else cls      # a query in a program is not Gaia data
+            if cls == "secret" and any(name.endswith(f) and s in fx for f, fx in FIXTURES.items()):
+                c = "fixture"
             out.append((c, what, f"{name}:{line}", s[:80].decode(errors="replace")))
+
+
+def scan_archive_or_bytes(name, data, out, depth=0):
+    """Tar files (also .tar.gz and tars inside tars, up to 4 levels) are opened and their files scanned one by one;
+    anything else is scanned as bytes. A record directory holds its data in tar files (tools/pack_record.py), so a tar
+    must never be scanned as raw bytes: its binary headers would switch off the checks for private details."""
+    if depth < 4 and len(data) >= 18:          # the smallest gzip stream
+        try:
+            t = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
+        except (tarfile.TarError, EOFError, OSError):
+            t = None
+        if t is not None:
+            with t:
+                for m in t.getmembers():
+                    if m.isfile():
+                        scan_archive_or_bytes(f"{name}:{m.name}", t.extractfile(m).read(), out, depth + 1)
+            return
+    scan_bytes(name, data, out)
 
 
 def scan_path(p, out):
@@ -69,14 +92,9 @@ def scan_path(p, out):
     if p.is_dir():
         for f in sorted(p.rglob("*")):
             if f.is_file():
-                scan_bytes(str(f.relative_to(p.parent)), f.read_bytes(), out)
-    elif tarfile.is_tarfile(p):
-        with tarfile.open(p) as t:
-            for m in t.getmembers():
-                if m.isfile():
-                    scan_bytes(f"{p.name}:{m.name}", t.extractfile(m).read(), out)
+                scan_archive_or_bytes(str(f.relative_to(p.parent)), f.read_bytes(), out)
     else:
-        scan_bytes(str(p), p.read_bytes(), out)
+        scan_archive_or_bytes(p.name if tarfile.is_tarfile(p) else str(p), p.read_bytes(), out)
 
 
 def main():
