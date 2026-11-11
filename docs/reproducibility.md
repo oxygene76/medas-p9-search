@@ -21,7 +21,8 @@ one, with identical states).
   a binary SimulationArchive. No machine converts elements itself, so libm
   differences (sin, cos, atan2, …) never enter.
 - The integration (WHFast, democratic heliocentric, fixed step) uses only + − × ÷
-  and sqrt, all correctly rounded in IEEE-754.
+  and sqrt, all correctly rounded in IEEE-754. This holds for WHFast and for p9gpu
+  with its CPU twin. It does **not** hold for MERCURIUS (see the correction below).
 - Build without `-ffast-math` and with `-ffp-contract=off` (no fused
   multiply-add). The Makefile sets both for every variant.
 - Particles are identified by an integer id (stored in the radius field), not by
@@ -29,6 +30,26 @@ one, with identical states).
 - Removal of test particles happens at fixed step counts (every 1000 steps), the
   same on every machine; restarts from a snapshot continue bit-identically
   (checked: one run of 10,000 years against two of 5,000 years).
+
+## Correction of 2026-11-11: MERCURIUS and the libm function cbrt
+
+The matrix below used a WHFast job only. The ARM64 study of 2026-11-11 (`docs/arm64-repro-study.md` on the branch
+feat/arm64-repro) found the following.
+- **The cause:** REBOUND's MERCURIUS computes the planets' critical radii with `cbrt` (`integrator_mercurius.c`),
+  which comes from the system's libm. glibc's `cbrt` is not correctly rounded; musl's (and zig's) is.
+  - On the masses of Uranus and Planet Nine they differ by 1 ulp.
+  - glibc on aarch64 builds the same code with FMA and differs from glibc on x86-64 on about 20 % of all arguments.
+- **Bit-identical on every platform:** WHFast, and p9gpu with its CPU twin (no transcendental libm call).
+- **MERCURIUS (p9sim) so far bit-identical only with glibc on x86-64.**
+  - With zig/musl, 4 of the 38 MERCURIUS check cases of p9pair-merc differ, on x86-64 and on ARM64 alike.
+  - gcc + glibc on ARM64 passes the 38 cases only because the six job masses happen to agree.
+  - The WebAssembly build presumably behaves like musl (not run end to end).
+- **The MERCURIUS runs so far** (equivalence group M, long runs 110–112, paired tests) ran on x86-64 with glibc. They
+  passed the package checks there, so their results stand.
+- **The fix:** from a new p9sim binary on, p9sim has its own `cbrt`, which reproduces glibc's generic algorithm bit for
+  bit on every platform. It is for future packages only. The running and registered packages and their binaries stay
+  unchanged.
+- The text above as of 2026-10-18 stays in the history unchanged, as it was notarised.
 
 ## Matrix (job 0667d88a…, 100 test particles, 1 Myr, 2,000,000 steps, 10 snapshots)
 

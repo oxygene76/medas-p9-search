@@ -46,8 +46,11 @@
 - **Reference:** MERCURIUS (REBOUND 5.2.2), r_crit 3 Hill radii, the same start values.
 - **Production run:** 64,000 test bodies, 0–4 Gyr, a snapshot every 10 Myr, as 40 segments of 100 Myr.
 - **Bit reproducibility:**
-  - every segment has a result hash over the canonical states of all its snapshots (`docs/reproducibility.md` of
-    medas-p9-search-bb2021);
+  - every segment has a result hash over the canonical states of all its snapshots (`docs/reproducibility.md`);
+  - bit-identical on every platform: WHFast, and p9gpu with its CPU twin;
+  - MERCURIUS (p9sim) so far only with glibc on x86-64, where all runs were made, because REBOUND's MERCURIUS calls the
+    libm function `cbrt` and libms round it differently. A new p9sim binary fixes this for future packages
+    (correction of 2026-11-11 in `docs/reproducibility.md`);
   - every package checks its machine against known hashes before it computes (`check.sh`, "ALL SAME");
   - a resumed segment gives the same bits.
 

@@ -42,7 +42,7 @@ GPU.
 ```sh
 scripts/fetch-rebound.sh
 make                                  # gcc -O3 -> build/gcc-O3/p9sim; no -ffast-math, -ffp-contract=off
-make CC=clang OPT=-O2                 # other compilers and levels give the same bits
+make CC=clang OPT=-O2                 # other compilers and levels give the same bits (MERCURIUS: see below)
 python3 -m venv build/venv && build/venv/bin/pip install -r tools/requirements.txt
 build/venv/bin/python tools/p9job.py make --out runs/demo --t-end 10000 --snapshots 4 --tp-to 100
 build/venv/bin/python tools/p9job.py run runs/demo
@@ -56,6 +56,9 @@ build/venv/bin/python tools/p9job.py run runs/demo
    a record against its `MANIFEST.sha256`, whose sha256 is fixed by entry e6.
 3. **Bits:** any segment of a run, computed again from its stored input with the run package, gives the result hash in
    its `DONE` file. The hash is taken over the canonical states of all snapshots (`docs/reproducibility.md`).
+   - Bit-identical on every platform: WHFast, and p9gpu with its CPU twin.
+   - MERCURIUS (p9sim) so far only with glibc on x86-64, the platform of all runs so far. The cause is the libm
+     function `cbrt`. The fix comes with a new p9sim binary, for future packages.
 
 ## Methods and tools
 
