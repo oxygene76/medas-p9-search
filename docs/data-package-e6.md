@@ -82,8 +82,8 @@ pointing at each other.
 
 1. Evaluations done and committed with their result reports.
 2. Reserve the DOIs (Zenodo drafts, not published) and write them into README and `CITATION.cff`.
-3. Pack each record; `tools/publish_scan.py` over every file; `MANIFEST.sha256`; `tools/manifest.py verify-tar`
-   (still to be written).
+3. Pack each record; `tools/publish_scan.py` over every file; `MANIFEST.sha256`; `tools/pack_record.py verify`
+   (exists since 25efd3e; the proposal's `manifest.py verify-tar`).
 4. Enter e6, stamp its manifest, and regenerate the publication list.
 5. Publish the repository (`docs/publication-checklist.md`), then make the software record.
 6. Upload the files unchanged and publish the records. Reveal of the entries after the publication.
