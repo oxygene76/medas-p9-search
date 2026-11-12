@@ -1,0 +1,33 @@
+Evaluation of the paired test of set A, V5 against MERCURIUS (docs/paired-tests-evaluation-procedure.md, fixed at 80be9a5)
+
+date (UTC)            2026-11-12T08:22:21Z, wall time 7 s
+checkout              medas-p9-search 80be9a52d2225cef1af3833c7ea7c3d70d967d9b, detached, git status empty
+tool                  tools/pair_eval.py sha256 4eecce185558127701da639d10985c24559962ecc76fe1ecbbd0f7c3f96c45c9 (equal to
+                      its entry in the manifest of e5); tools/equiv_eval.py, analyze.py, v2_encounter_check.py unchanged
+                      since e83d960 (git diff --stat e83d960 HEAD: empty)
+python                3.14.4, numpy 2.5.4 (build/venv of the laptop)
+p9sim                 bin/p9sim of the M package, sha256 b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65
+                      (equal to bin/SHA256-p9sim)
+archives              pairA-v5-fed221a.tar.gz, 396,295,412 bytes,
+                      sha256 757f15672b0b4a2bef28295cb19f46a490c63260fdf44c5a1e74d332d2cbaeff
+                      pairA-merc-fed221a.tar.gz, 558,475,055 bytes,
+                      sha256 36f46613813c5d2455553147eec77471ffc9ec46824ca3140944e462624c6207
+                      (backed up encrypted at three places and restore-checked by the project lead, 2026-11-12 09:15)
+checks before     the procedure's section 3, steps 1-4 (2026-11-12): sha256 and sizes; package files unchanged against
+                      p9pair-v5-fed221a.tar.gz and p9pair-merc-fed221a.tar.gz, only the files of the set-B jobs absent
+                      (36 and 576); package checks ALL SAME (V5 72 cases, M 38 cases; both M starts after a passed
+                      check); tools/check_segments.py (31ed973): 153 of 153 jobs ok, start values paired for all 9 seeds
+lists                 pairA-v5-results-sha256-20261112.txt, 1,099 lines,
+                      sha256 1417651d659e130ebfeb4a45fc0f1945c8a23a9c4f9c827d4bababe64e8dc717
+                      pairA-merc-results-sha256-20261112.txt, 9,549 lines,
+                      sha256 0196c4e0119dfc141b765d724a96baf60b00a8c0bdafecf26c4c4b470eb2eecf
+                      (OpenTimestamps 2026-11-12 09:21Z, before the evaluation; .ots next to them)
+command               ../medas-p9-search/build/venv/bin/python -I tools/pair_eval.py --set A --v5 V5 --m M --p9sim M/bin/p9sim
+                        --json OUT/result.json --release-dir OUT/release > OUT/report.txt
+                      V5 = ../medas-p9-search-equiv/build/pairA-check-20261112/v5/p9pair-v5-fed221a
+                      M  = ../medas-p9-search-equiv/build/pairA-check-20261112/m/p9pair-merc-fed221a
+outputs               result.json 5466571fd1f0b56e7fbd7e329cfc7a695b578c633d367c57236007a8533c25ee
+                      report.txt e3583c15b126e75798f0269b20329f6ce3a331fd6a0b36fcd81442eb9752ff6f
+                      BB-A.ok 09c1771a2b637570edd234b25cdc7332756f03bd69cb8015ad16a7e487fa89c6 (written by the tool,
+                      verdict "equivalent"); one run, committed unchanged
+set B                 still running when set A was evaluated (MERCURIUS half); nothing of set B was read
