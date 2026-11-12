@@ -1,0 +1,14 @@
+Reproduction of stored segments, package p9repro-d3c2363 (A100 window, point 3), checked on 2026-11-12
+
+run              2026-11-11 from 14:35Z, on the A100 of the GPU server, while it was otherwise idle (started by the
+                 project lead); about 6.7 h of computing in all (wall_s in REPRO.tsv)
+package          p9repro-d3c2363.tar.gz, sha256 24a7d282dfdf980082c7dab63e41b59fe8baefc37235de7cdc8a6ff90cdcda94
+program          the run's own bin/p9gpu, checked by repro.sh against sha256 7666c5ba4560a8c2... (the production binary)
+results archive  repro-results-d3c2363.tar.gz, sha256 52642db9e6f287a1f8152672c140404508ecbe199fd1ef6a5093d456adbed047
+                 (RESULT/, run.log, start.log, runs/*/result.txt, runs/*/stderr.txt); committed here: REPRO.tsv,
+                 VERDICT.txt and the six result.txt, unchanged (start.log names the GPU UUID and is not committed)
+checks on the laptop, against the archives verified on 2026-11-09/10:
+                 each recomputed result_sha256 equals the DONE file and the row of segments.tsv of the stored run;
+                 each of these DONE files equals its line in the checksum list timestamped before the evaluations
+                 (prod-results-sha256-20261109T1507Z.txt, v5long-results-sha256-20261110.txt); all six result lines
+                 report program p9gpu, version 9a084ed, mode gpu, real double

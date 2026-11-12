@@ -107,7 +107,7 @@ git ignores. Nothing was uploaded, and the result is not kept.
 | `code.tar` | 3 (source at ea21771, `p9prod-9a084ed.tar.gz` and its sha256) | 13,680,640 |
 | `evaluation.tar` | 4 | 133,120 |
 | `runs-production.tar` | 517 (= the stamped checksum list) | 1,627,504,640 |
-| `checks.tar` | 2 | 61,440 |
+| `checks.tar` | 2 | 61,440 (the real packing adds the reproduction: `docs/reproduction-result-20261112/`) |
 | top | `README.md` (draft `docs/data-package/README-production.md`), `CITATION.cff`, `LICENSE-DATA.txt` (placeholder), `LICENSE-CODE.txt` | – |
 
 - **MANIFEST.sha256:** 557 lines. `pack_record.py verify` gave 557 of 557.

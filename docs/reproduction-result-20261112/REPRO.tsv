@@ -1,0 +1,7 @@
+name	segment	wall_s	result_sha256	DONE	segments.tsv	flybys.tsv	removed.tsv	verdict
+prod-seg000	0	10278.149	082589539b0ca51ae1a3becf27329121cbdce625acd6b9e13b42e3d717573889	same	same	same	same	SAME
+prod-seg019	19	4075.958	821484c5371cc0830a8c12bae0327c7ac981b2c73a7148e5c8994e94f14aa447	same	same	same	same	SAME
+prod-seg039	39	3221.060	d41152221b3dfc9ff490a21eb0120896b9bfce95a6a2bb0378c8005b0527f1c3	same	same	same	same	SAME
+v5-s110-seg019	19	2223.314	04257cb0917431f0892ee6a00a185ad3e2344845706e06a84d5ad80a401737d0	same	same	same	same	SAME
+v5-s111-seg019	19	2192.620	dc7bd906aceb44aebb553bf1f0927982ad5b47c6a418675d1ac5d7dd0cd84d2a	same	same	same	same	SAME
+v5-s112-seg019	19	2166.575	2ecf9a06b08f7baad9d8517192c7b8885c9e51eff059deb234db789e18c89b4a	same	same	same	same	SAME

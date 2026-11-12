@@ -1,0 +1,1 @@
+VERDICT: 6 of 6 segments give their stored result hash again

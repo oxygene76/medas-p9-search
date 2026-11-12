@@ -5,7 +5,8 @@
   version 3 (`docs/production-result-20261110.md`, `docs/long-runs-result-20261110.md`, commit ea21771). Both
   reports were reviewed independently twice and entered as entry r1 (chain entry #7).
 - **Still marked [RESULT]:** the sections whose runs are not yet evaluated. They stay empty until then, as fixed in
-  their criteria ("no result before its evaluation"): the paired tests and sets A and B, and the reproduction check.
+  their criteria ("no result before its evaluation"): the paired tests and sets A and B.
+- **Reproduction check (section 11):** done on 2026-11-11, 6 of 6 segments reproduced.
 
 **Author:** Eike Janßen, MEDAS Computers GmbH (ORCID to follow).
 
@@ -252,8 +253,15 @@ S(t) per run and the single differences are in the long-run report.
 
 ## 11. Reproducibility check
 
-- **[RESULT]** Six stored segments (production run segments 0, 19 and 39, and segment 19 of each V5 long run) computed
-  again on the same card from their stored inputs: result hashes compared (package p9repro-d3c2363).
+Six stored segments, computed again on the same A100 from their stored inputs with the run's own program (package
+p9repro-d3c2363, 2026-11-11), gave their stored result hashes again: **6 of 6**
+(`docs/reproduction-result-20261112.md`).
+- **Which segments:** segments 0, 19 and 39 of the production run, and segment 19 of each V5 long run.
+- **Also identical:** the flyby and removal logs.
+- **Tied to the evaluations:** the recomputed hashes equal the `DONE` files of the stored runs, whose lines are in the
+  checksum lists timestamped before the evaluations.
+- **Scope:** reproducibility on the same hardware. Across machines, the package checks and `docs/reproducibility.md`
+  apply (section 2.1).
 
 ## 12. Discussion
 
