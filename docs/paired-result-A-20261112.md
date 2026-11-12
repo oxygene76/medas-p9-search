@@ -1,6 +1,7 @@
 # Paired test of set A, V5 against MERCURIUS: result (2026-11-12)
 
-**Status:** result report, for independent review. The release file goes to the server only after the independent
+**Status:** result report, version 2 (2026-11-12): the section on a possible small systematic difference added after
+the independent recomputation, which agrees with `result.json`. Version 1 is commit 6d92c3f and stays as stamped. The release file goes to the server only after the independent
 recomputation of `result.json`, and nothing goes into the research note before the review.
 - **Criteria:** `docs/bb2021-paired-test-proposal.md` as entered in entry e5 (chain entry #6, block 10814015,
   commit e83d960).
@@ -47,6 +48,28 @@ equivalence test. The values per seed are rounded to 4 decimals, and d is comput
 The Uranus shares over 0–60 Myr are again about twice the reference: ×1.98 for fast and ×1.50 for close flybys. That
 is close to the V2 short run of set A (×2.02 and ×1.66). This is the encounter regime that made the paired test
 necessary. It does not decide anything.
+
+## A possible small systematic difference (assessment, not part of the criteria)
+
+Added on 2026-11-12 (version 2), at the request of the project lead, after the independent recomputation of
+`result.json`, which agrees.
+- **V5 lies about 0.007 above MERCURIUS** on average: S +0.0067, R at 200 Myr +0.0048, S with the observed cut
+  +0.0077.
+- **Only the interval of S with the observed cut excludes zero**, and barely: [+0.0001, +0.0153]. The other two
+  intervals include zero.
+- **How much that weighs:**
+  - These are three related measures of the same runs, not independent tests, and the observed cut is reported, not
+    deciding.
+  - One interval out of three ending just above zero is weak evidence.
+- **The same direction appears elsewhere,** at early times and in other configurations, but none of it is significant
+  on its own:
+  - the equivalence test of the production Planet Nine: V5 − M +0.0033, 95 % [−0.0055, +0.0121];
+  - the long runs 110–112 at 0.5 Gyr: d +0.0073 ± 0.0025, p ≈ 0.10 with t at 2 degrees of freedom.
+- **Reading:**
+  - A small systematic difference of v5 against MERCURIUS, of about +0.003 to +0.008 in R at 0–500 Myr, is possible.
+  - It lies well inside the margin of ±0.035, so the verdict "equivalent" is not affected.
+  - It is named openly here and will be named in the research note. Set B will show whether it appears there too; that
+    is a reading, not a pre-registered test.
 
 ## What follows (criteria section 5)
 
