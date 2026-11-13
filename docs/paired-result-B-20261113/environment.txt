@@ -1,0 +1,38 @@
+Evaluation of the paired test of set B, V5 against MERCURIUS (docs/paired-tests-evaluation-procedure.md, fixed at 80be9a5)
+
+date (UTC)            2026-11-13T13:10:17Z, wall time a few seconds
+checkout              medas-p9-search 80be9a52d2225cef1af3833c7ea7c3d70d967d9b, detached, git status empty
+tool                  tools/pair_eval.py sha256 4eecce185558127701da639d10985c24559962ecc76fe1ecbbd0f7c3f96c45c9 (equal to
+                      its entry in the manifest of e5); equiv_eval.py, analyze.py, v2_encounter_check.py unchanged since
+                      e83d960 (git diff --stat: empty)
+python                3.14.4, numpy 2.5.4 (build/venv of the laptop)
+p9sim                 bin/p9sim of the M package, sha256 b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65
+                      (equal to bin/SHA256-p9sim)
+archives              pairB-v5-fed221a.tar.gz, 410,881,418 bytes,
+                      sha256 a975c2bb723f725f6f6a7dd76a62e0d6e4f5fac26edd031790460ea8c667067c
+                      pairB-merc-fed221a.tar.gz, 576,630,893 bytes,
+                      sha256 84d06fc8a9d9252ac57dff967cd126130f2e1fe8f7c2c34bdd78f9f2b4e6378c
+                      (both equal to the server's; backed up encrypted at three places and restore-checked by the
+                      project lead, 2026-11-13)
+checks before         the procedure's section 3, steps 1-4 (2026-11-13): sha256 and sizes; sha256sum -c of the server's
+                      lists over the unpacked archives, all lines OK, as many files as lines; package files unchanged
+                      against p9pair-v5-fed221a.tar.gz and p9pair-merc-fed221a.tar.gz, only the files of the set-A jobs
+                      absent (36 and 576); package checks ALL SAME (V5 72 cases, M 38 cases, both M starts after a
+                      passed check; run.log ends "2026-11-13T10:09:08Z all slices ended"); tools/check_segments.py
+                      (31ed973): 153 of 153 jobs ok, start values paired for all 9 seeds
+lists                 made on the server and verified on the laptop:
+                      pairB-v5-results-sha256-20261113T1236Z.txt, 1,099 lines,
+                      sha256 da1c8c34b677d6b47bbc8c031b3b298ce39a531a2fd0e084b383126ffd88ab1a
+                      pairB-merc-results-sha256-20261113T1236Z.txt, 9,549 lines,
+                      sha256 83afd98eaf522437db5b15294c07c587896491febfa856bcf1127c4126b6b905
+                      (OpenTimestamps 2026-11-13 13:10Z, before the evaluation; .ots next to them)
+command               ../medas-p9-search/build/venv/bin/python -I tools/pair_eval.py --set B --v5 V5 --m M --p9sim M/bin/p9sim
+                        --json OUT/result.json --release-dir OUT/release > OUT/report.txt
+                      V5 = ../medas-p9-search-equiv/build/pairB-check-20261113/v5/p9pair-v5-fed221a
+                      M  = ../medas-p9-search-equiv/build/pairB-check-20261113/m/p9pair-merc-fed221a
+outputs               result.json bfdf1417a8542894af3dccbfd9e13883591cb74ad42ff8056c0056c80c0f1e96
+                      report.txt 8e09485979bcfee5d11ef4af02af561d373354759bf06d805fb52cbe43d1bead
+                      BB-B.ok 18de161a4617849f982d2fe5e090d0a8b2cac49d4bad4c03212aab6ed84eaae1 (written by the tool,
+                      verdict "equivalent"); one run, committed unchanged
+libc6 on the server   held since 2026-11-12 08:05 UTC (2.35-0ubuntu3.15); no libc update in the apt history since then;
+                      check.sh of the M half repeated after the end: ALL SAME

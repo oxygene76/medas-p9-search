@@ -1,0 +1,19 @@
+seed 341: S  V5 0.6736  M 0.6788
+seed 342: S  V5 0.6992  M 0.6782
+seed 343: S  V5 0.7050  M 0.6917
+seed 344: S  V5 0.6860  M 0.6888
+seed 345: S  V5 0.6873  M 0.6936
+seed 346: S  V5 0.6909  M 0.6924
+seed 347: S  V5 0.6896  M 0.6923
+seed 348: S  V5 0.6885  M 0.6941
+seed 349: S  V5 0.6900  M 0.6983
+
+set B, S (decision): mean +0.0002, sd 0.0100, 95 % [-0.0075, +0.0079] -> equivalent
+  R200 (information): mean -0.0009, 95 % [-0.0088, +0.0069] -> equivalent
+  S_obs_cut (information): mean +0.0025, 95 % [-0.0072, +0.0122] -> equivalent
+  test particles left at 200 Myr (information): V5 29930, M 29885
+  encounter shares, reported, not deciding (percent of the test particles; M: not available: p9sim (MERCURIUS) keeps no flyby log per particle):
+    V5 0-60 Myr: Neptune fast 13.60, close 3.86; Uranus fast 1.53, close 0.64; P9 fast 2.14, close 0.43
+    V5 0-200 Myr: Neptune fast 30.40, close 11.58; Uranus fast 11.50, close 5.58; P9 fast 6.38, close 1.37
+    V2 reference 0-60 Myr: Neptune fast 17.61, close 4.47; Uranus fast 2.75, close 0.84; P9 fast 1.09, close 0.26
+release file (copy it unchanged to v2/ of p9bbsets): ../pairB-eval-20261113/release/BB-B.ok, sha256 18de161a4617849f982d2fe5e090d0a8b2cac49d4bad4c03212aab6ed84eaae1
