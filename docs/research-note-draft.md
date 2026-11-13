@@ -98,6 +98,10 @@ runs:
     explicitly. The arXiv version (v2) was checked, not the journal version.
   - **Two differences remain:** their integrator (mercury6, hybrid, 300 days) against ours, and our Sun carrying the
     inner planets.
+  - **A direct comparison with mercury6, their program, was not computed** (decision of 2026-11-13). If the verdicts on
+    sets A and B agree with Brown & Batygin, it is dropped. If they deviate, it follows as an announced addendum, with
+    its own criteria entry before the run. That matches the outcomes 3 and 4 of `docs/bb2021-comparison-criteria.md`
+    section 6. A feasibility study exists (about 790 core hours for a paired test as in the equivalence test).
 - **Massless test bodies:** no self-gravity of the disk, no collisions among them.
 - **No observational bias.** M1–M5 describe the simulated distribution, not what surveys would see. The 10 observed
   objects of their Table 1 are shown for information only and are not judged (`docs/bb2021-observed-table1.tsv`,
