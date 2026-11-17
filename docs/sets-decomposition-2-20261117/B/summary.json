@@ -1,0 +1,99 @@
+{
+ "last_snapshot_yr": 4000000000.0,
+ "n_survivors": 20723,
+ "name": "B",
+ "selections": {
+  "a_q30-100_i<40/all": {
+   "anti_share_beyond_wall": 0.7884958155586845,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.03338495713522237,
+    "gt90": 0.0018278171584134618,
+    "lt30": 0.7999080221744627,
+    "lt40": 0.9246585976228399,
+    "n": 3407343
+   },
+   "mean_R_beyond_wall": 0.4820432412333681,
+   "particle_snapshots_beyond_wall": 2393390,
+   "share_i_lt30_within_selection": 0.8650847180039287,
+   "verdict": "cluster as in the figures"
+  },
+  "a_q30-100_i<40/survivors": {
+   "anti_share_beyond_wall": 0.8458665483430459,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.03889733886081893,
+    "gt90": 0.0024400130027008695,
+    "lt30": 0.8066377985303738,
+    "lt40": 0.917254664317619,
+    "n": 2491790
+   },
+   "mean_R_beyond_wall": 0.5603468104095303,
+   "particle_snapshots_beyond_wall": 1771413,
+   "share_i_lt30_within_selection": 0.8794044117840083,
+   "verdict": "cluster as in the figures"
+  },
+  "b_q42-100_i<40/all": {
+   "anti_share_beyond_wall": 0.7823136072426479,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.03612582280133732,
+    "gt90": 0.0020327828776760576,
+    "lt30": 0.7973036979008236,
+    "lt40": 0.9216027801969306,
+    "n": 2879796
+   },
+   "mean_R_beyond_wall": 0.4666649808106865,
+   "particle_snapshots_beyond_wall": 2034615,
+   "share_i_lt30_within_selection": 0.8651272706994801,
+   "verdict": "cluster as in the figures"
+  },
+  "b_q42-100_i<40/survivors": {
+   "anti_share_beyond_wall": 0.8389725070630033,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.04113690874590463,
+    "gt90": 0.0026060736297924586,
+    "lt30": 0.8034741260961865,
+    "lt40": 0.9147979996377411,
+    "n": 2191803
+   },
+   "mean_R_beyond_wall": 0.5434736746277591,
+   "particle_snapshots_beyond_wall": 1558473,
+   "share_i_lt30_within_selection": 0.8783076989831212,
+   "verdict": "cluster as in the figures"
+  },
+  "c_q>42/all": {
+   "anti_share_beyond_wall": 0.5746561518721064,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.22289919074662642,
+    "gt90": 0.008411794988751215,
+    "lt30": 0.5319829567701049,
+    "lt40": 0.6752841092588867,
+    "n": 6765619
+   },
+   "mean_R_beyond_wall": 0.15417851253382137,
+   "particle_snapshots_beyond_wall": 5883266,
+   "share_i_lt30_within_selection": 0.5319829567701049,
+   "verdict": "no cluster"
+  },
+  "c_q>42/survivors": {
+   "anti_share_beyond_wall": 0.5781179585956308,
+   "bins": 50,
+   "inc_q_cut_only": {
+    "gt50": 0.251372565257386,
+    "gt90": 0.010297955968102896,
+    "lt30": 0.5073890241840353,
+    "lt40": 0.6433236481424699,
+    "n": 5482253
+   },
+   "mean_R_beyond_wall": 0.14878052813354178,
+   "particle_snapshots_beyond_wall": 4799735,
+   "share_i_lt30_within_selection": 0.5073890241840353,
+   "verdict": "no cluster"
+  }
+ },
+ "snapshots_window": 301,
+ "wall_au": 200.0
+}
