@@ -50,14 +50,49 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
 
 ## Assessment (not part of the criteria, decides nothing)
 
-- **What is already checked:** The paired tests showed that p9gpu v5 and MERCURIUS give the same clustering statistic
-  for both sets over 0–200 Myr, within ±0.035 (`docs/paired-result-A-20261112.md`, `docs/paired-result-B-20261113.md`).
-  The long runs 110–112 found no growing bias up to 1 Gyr clearly, 2 Gyr limitedly; 4 Gyr was not testable.
-- **What remains open:** a difference of the integrator over 1–4 Gyr, and the differences of setup that section 6 names
-  for outcome 3 and the research note lists: the inner planets merged into the Sun, removal, the frame.
-- **The variants** of the frame and of the elements were reported for both sets and do not change the picture.
-- **This is exactly what the mercury6 counter-run of set A is to separate.** No further evaluation of these runs was
-  made before this outcome, and none is made outside an announced addendum.
+**The outcome and its name:**
+- "No cluster" is the name that section 6 of the criteria fixes for outcome 4. It applies to the population the
+  criteria measure: S_BB, all particles with 150 < a < 1000 au and q > 42 au, through M2.
+- **Set B:** A cluster in the direction 166.7° is present and stable over all four subsets (scatter 0.4°). Its strength,
+  0.127, lies below the limit of 0.20.
+- **Set A:** strength 0.050, direction 127.3°, wall 165 au. Three of its four judged measures are outside.
+
+**Checked before the result:**
+- **The paired tests:** p9gpu v5 and MERCURIUS give the same clustering statistic for both sets over 0–200 Myr, within
+  ±0.035 (`docs/paired-result-A-20261112.md`, `docs/paired-result-B-20261113.md`).
+- **The long runs 110–112:** no growing bias found; up to 1 Gyr clearly testable, 2 Gyr with limits, 4 Gyr not.
+
+**Observations after the result** (exploratory, fixed and timestamped before each computation, but after the outcome):
+1. **Measurement of the figures of 2021** (files of the Claude chat of 2026-11-17, recomputed independently from the
+   PDF):
+   - inside the wall the runs equal the figures: 0.074 against 0.086 (set A, 150–230 au), 0.075 against 0.075 (set B,
+     150–190 au);
+   - beyond the wall the figures show R 0.61 (Fig. 3, third panel) and 0.52 (Fig. 1), the runs 0.10 and 0.15.
+2. **Decomposition** (`docs/sets-decomposition-20261117.md`, addendum 6130d44): verdict **"core present"** in both sets.
+   - For 42 < q < 100 au and i < 30° the runs give R 0.63 (A) and 0.50 (B) beyond the wall.
+   - In this subset R rises at about 260–280 au (A) and 190–210 au (B). That is where the figures place the wall: 256 au
+     marked in Fig. 3, about 200 au in Fig. 1.
+   - The weak clustering of all of S_BB comes with a large share of particles at q > 100 au or i > 30° beyond the wall,
+     which show no cluster.
+3. **The selection of Batygin et al. 2019** (`docs/sets-decomposition-2-20261117.md`, addendum 843438e):
+   - Under their "observable" cut (30 ≤ q ≤ 100 au, i < 40°) the runs give beyond the wall R 0.55 (A) and 0.48 (B), and
+     with only the 4-Gyr survivors 0.64 and 0.56. Verdict "cluster as in the figures".
+   - Over all of q > 42 au: 0.10 and 0.15, "no cluster".
+   - **One difference:** 2019 uses the last 2 Gyr, the addendum 1–4 Gyr, like the criteria.
+
+**The literature:**
+- **The groups at high q and high inclination are described:**
+  - Batygin et al. 2019 (section 5.1, Fig. 14) keep them apart and compute the confined fraction only from the observable
+    group;
+  - Khain et al. 2018, Shankman et al. 2017 and Clement & Kaib 2020 report surviving high-inclination, circulating or
+    high-perihelion particles.
+- **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
+  q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
+
+**What this means:**
+- Outcome 4 stays as fixed: no judgement on the paper and none on Planet Nine.
+- The consequences of section 6 (mercury6 counter-run of set A, the production run not compared with B&B) are unchanged.
+  The scope of the counter-run is set after these observations.
 
 **Limits that still apply:**
 - one realisation of each set;
