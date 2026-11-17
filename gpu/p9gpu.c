@@ -27,6 +27,12 @@
 //                        planet of its close encounter (any method)
 //   P9_R_IN=au           the inner removal distance (default 5 au; Brown &
 //                        Batygin 2021: 4.5 au), checked every 1000 steps
+//   P9_R_IN_EVERY=1      the inner rule also in every step, on the synchronous
+//                        state as the regular check (default 1000: only every
+//                        1000 steps, as before; then nothing changes, not even a
+//                        bit); the outer rule stays every 1000 steps. A test
+//                        particle that never comes within R_IN is integrated
+//                        exactly as before.
 //   P9_COLLISION_RADII="id=au,..."  method smooth: the physical radii of the
 //                        planets (by body id; tools/p9job.py sets them); a test
 //                        particle closer to a planet than its radius at a
@@ -78,6 +84,12 @@
 #define R_OUT 10000.0
 static double R_IN = 5.0;  // P9_R_IN may set it (e.g. 4.5 au as Brown & Batygin 2021); 5 au by default
 #define CHECK_EVERY 1000
+// P9_R_IN_EVERY=1: the inner rule in every step (0: only with the regular check every CHECK_EVERY steps).
+// The synchronous state is computed only when the drifted state lies within R_IN + RIN_PREFILTER au: in half a
+// step (0.25 yr) a body outside R_IN moves far less than that (parabolic at 4.5 au: about 4.2 au/yr), so the
+// prefilter changes no decision; it only saves the extra Kepler drift.
+static int RIN_EVERY = 0;
+#define RIN_PREFILTER 10.0
 
 static double now_s(void) {
     struct timespec ts;
@@ -367,6 +379,13 @@ static void cpu_block(p9_body* tp, int* alive, int ntp, const planets* P, const 
                     if (step_method) F->rm_step[i] = step0 + k + 1;
                     break;
                 }
+            } else if (RIN_EVERY && p.x * p.x + p.y * p.y + p.z * p.z < (R_IN + RIN_PREFILTER) * (R_IN + RIN_PREFILTER)) {
+                const p9_body x = p9_synchronous(p, P->mu0, dt);
+                if (x.x * x.x + x.y * x.y + x.z * x.z < R_IN * R_IN) {
+                    a = 0;
+                    if (step_method) F->rm_step[i] = step0 + k + 1;
+                    break;
+                }
             }
         }
         tp[i] = p;
@@ -426,6 +445,15 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         R_IN = strtod(getenv("P9_R_IN"), &end);
         if (*end || !(R_IN > 0.0)) {
             fprintf(stderr, "P9_R_IN: the inner removal distance in au (> 0)\n");
+            return 2;
+        }
+    }
+    if (getenv("P9_R_IN_EVERY") && *getenv("P9_R_IN_EVERY")) {
+        const char* s = getenv("P9_R_IN_EVERY");
+        if (!strcmp(s, "1")) RIN_EVERY = 1;
+        else if (!strcmp(s, "1000")) RIN_EVERY = 0;
+        else {
+            fprintf(stderr, "P9_R_IN_EVERY: 1 (the inner rule in every step) or 1000 (every 1000 steps, the default)\n");
             return 2;
         }
     }
@@ -586,7 +614,7 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 double* tab = p9g_next_table(g);
                 planets_block(&P, dt, nb, tab);
                 planet_s += now_s() - p0;
-                if (p9g_launch(g, nb, steps, dt, P.mu0, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT, err, sizeof err)) {
+                if (p9g_launch(g, nb, steps, dt, P.mu0, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT, RIN_EVERY, (R_IN + RIN_PREFILTER) * (R_IN + RIN_PREFILTER), err, sizeof err)) {
                     fprintf(stderr, "GPU: %s\n", err);
                     return 3;
                 }
@@ -597,7 +625,10 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
                 planet_s += now_s() - p0;
                 if (real == P9_REAL_DOUBLE)
                     cpu_block(tp, alive, ntp, &P, r2enc, r2col, cpu_tab, nb, steps, dt, step_method + sub_method, enc_remove, &F);
-                else
+                else if (RIN_EVERY) {
+                    fprintf(stderr, "P9_R_IN_EVERY=1 needs P9GPU_REAL=double\n");
+                    return 2;
+                } else
                     p9_cpu_block_t(real, tp, alive, ntp, P.np, P.gm, r2enc, r2col, P.mu0, cpu_tab, nb, steps, dt, CHECK_EVERY, R_IN * R_IN, R_OUT * R_OUT,
                                    sub_method == 2);
             }
@@ -696,12 +727,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f r_in=%.17g "
+           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f r_in=%.17g %s"
            "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
            use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text, sub_method == 2 ? by_text : "-",
-           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, R_IN, P9_VERSION);
+           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, R_IN, RIN_EVERY ? "r_in_every=1 " : "", P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);

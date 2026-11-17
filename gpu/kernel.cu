@@ -142,7 +142,8 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
                                 unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, int* __restrict__ near,
                                 int* __restrict__ fast, int* __restrict__ close, unsigned long long* __restrict__ last_step, int* __restrict__ last_j,
                                 double* __restrict__ last_d, unsigned long long* __restrict__ rm_step, int remove, int sub,
-                                int* __restrict__ sub_steps, int* __restrict__ sub_max, int* __restrict__ sub_capped) {
+                                int* __restrict__ sub_steps, int* __restrict__ sub_max, int* __restrict__ sub_capped, int rin_every,
+                                double rin_pre2) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= ntp || alive[i] != 1) return;
     const double* q = tab;
@@ -178,6 +179,13 @@ __global__ void p9_advance_step(p9_body* __restrict__ st, int* __restrict__ aliv
             const p9_body x = p9_synchronous(p, mu0, dt);
             const double r2 = x.x * x.x + x.y * x.y + x.z * x.z;
             if (r2 > rout2 || r2 < rin2) {
+                a = 0;
+                rm_step[i] = step0 + k + 1;
+                break;
+            }
+        } else if (rin_every && p.x * p.x + p.y * p.y + p.z * p.z < rin_pre2) {  // P9_R_IN_EVERY=1 (p9gpu.c)
+            const p9_body x = p9_synchronous(p, mu0, dt);
+            if (x.x * x.x + x.y * x.y + x.z * x.z < rin2) {
                 a = 0;
                 rm_step[i] = step0 + k + 1;
                 break;
@@ -332,20 +340,24 @@ static void launch_t(p9g* g, int b, size_t n, int nb, unsigned long long step0, 
 }
 
 // Uploads the table filled last and launches the kernel; returns at once.
-extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2, char* err,
-                          int errlen) {
+extern "C" int p9g_launch(p9g* g, int nb, unsigned long long step0, double dt, double mu0, int check_every, double rin2, double rout2,
+                          int rin_every, double rin_pre2, char* err, int errlen) {
     const int b = g->cur;
     const size_t n = (size_t)nb * g->np * 9 + (size_t)nb * 6;
     // the table is packed for nb steps: q, then wa, then wb (p9gpu.c writes it that way)
     if (fail(cudaMemcpyAsync(g->d_tab[b], g->h_tab[b], sizeof(double) * n, cudaMemcpyHostToDevice, g->stream), "upload table", err, errlen)) return 1;
     if (fail(cudaEventRecord(g->copied[b], g->stream), "event", err, errlen)) return 1;
+    if (rin_every && !(g->step && g->real == P9_REAL_DOUBLE)) {
+        snprintf(err, errlen, "P9_R_IN_EVERY=1 needs a step method (step, substep, smooth) and P9GPU_REAL=double");
+        return 1;
+    }
     if (g->ntp > 0) {
         const int threads = 128, blocks = (g->ntp + threads - 1) / threads;
         if (g->step && g->real == P9_REAL_DOUBLE) {
             p9_advance_step<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                                rout2, g->d_near, g->d_fast, g->d_close, g->d_last_step, g->d_last_j, g->d_last_d,
                                                                g->d_rm_step, g->remove, g->sub, g->d_sub_steps, g->d_sub_max,
-                                                               g->d_sub_capped);
+                                                               g->d_sub_capped, rin_every, rin_pre2);
         } else if (g->j2) {
             p9_advance_j2<<<blocks, threads, 0, g->stream>>>(g->d_st, g->d_alive, g->ntp, g->d_tab[b], g->np, nb, step0, dt, mu0, check_every, rin2,
                                                              rout2);
