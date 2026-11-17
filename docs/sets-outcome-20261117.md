@@ -80,6 +80,17 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    - Over all of q > 42 au: 0.10 and 0.15, "no cluster".
    - **One difference:** 2019 uses the last 2 Gyr, the addendum 1–4 Gyr, like the criteria.
 
+4. **Fig. 4 of 2021** (measurement of the Claude chat of 2026-11-17, recomputed independently from the PDF):
+   - Its caption states the selection: "pole positions of KBOs with a > 150 AU and q > 42 AU", with no cut in
+     inclination and no upper limit in q.
+   - **The panel i9 = 15°** (m9 7, a9 500, e9 0.33) holds about 0.92–0.94 of the pole density below 30° (prograde, up
+     to 72°), with a smooth profile through 40°.
+   - **Set A** (i9 = 17°) holds 0.57–0.62 below 30° for all of q > 42 au, and 0.77–0.79 for 42 ≤ q ≤ 100 au (the range:
+     with or without folding retrograde poles onto the disk).
+   - The runs therefore contain clearly more highly inclined particles than Fig. 4.
+   - **What this weakens:** the explanation "only the selection of the particles drawn" is not shown. Whether the
+     simulated populations themselves differ is open.
+
 **The literature:**
 - **The groups at high q and high inclination are described:**
   - Batygin et al. 2019 (section 5.1, Fig. 14) keep them apart and compute the confined fraction only from the observable
@@ -88,6 +99,8 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
     high-perihelion particles.
 - **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
   q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
+- **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note of the Claude
+  chat (version 2), which read Fig. 4 as a hint at cuts, is superseded on this point.
 
 **What this means:**
 - Outcome 4 stays as fixed: no judgement on the paper and none on Planet Nine.
