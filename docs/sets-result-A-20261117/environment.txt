@@ -1,0 +1,36 @@
+Evaluation of set A of the comparison with Brown & Batygin 2021 (docs/sets-evaluation-procedure.md, fixed at 12ab70b)
+
+date (UTC)            2026-11-17, set A started 16:22:01Z, set B 16:22:54Z, outcome directly after
+checkout              medas-p9-search 12ab70babf53178eb542fd31d9a06862a75d0df8, detached, git status empty
+tool                  tools/prod_eval.py sha256 1ebb2d45c47ea0bb465b67f95d1d9b3a766678b4230fc89cad7d01c4b2c65cbb
+                      (git diff --stat prod-eval-v1 HEAD -- tools/prod_eval.py tools/analyze.py: empty;
+                      code_version prod-eval-v1-66-g12ab70b)
+observed objects      docs/bb2021-observed-table1.tsv of 12ab70b, sha256 0829fe6d...b216, unchanged since 0ca9595
+                      (checked against Table 1 of the paper on 2026-11-10)
+python                3.14.4, numpy 2.5.4 (build/venv of the laptop)
+p9sim                 bin/p9sim of the unpacked package, sha256 b14f7956999a17b22e3de8b8b377f2218bf1bde046a29a32aaa981ed21e1ea65
+                      (equal to bin/SHA256-p9sim)
+archive               setsA-p9bbsets-5b05cc3.tar.gz, 759,260,002 bytes,
+                      sha256 1c3c9f40ec33a4d840ee92ce8edffa3ac63b2a427e8f0f42888195a91e63a9e0
+                      (backed up encrypted at three places and restore-checked by the project lead, 2026-11-17 17:07)
+list                  setsA-results-sha256-20261117T1515Z.txt, 534 lines,
+                      sha256 41df2029e621a4516a383ccc564471ab236ad6d35adf9a989d540bd147f3e898;
+                      sha256sum -c of the unpacked archive: 534 of 534 OK, as many files as lines;
+                      OpenTimestamps 2026-11-17 17:19 (.ots next to it, upgrade pending)
+checks before         package files equal to p9bbsets-5b05cc3.tar.gz (sha256 6d7da465...3476, entry e4) apart from the
+                      run outputs and the other set's job (excluded); check/report.txt ALL SAME;
+                      tools/check_segments.py (= 31ed973): 0 failures, 40 of 40 segments
+command               ../medas-p9-search/build/venv/bin/python -I tools/prod_eval.py RUN --out OUT --p9sim PKG/bin/p9sim
+                        --criteria bb2021-A --window 1e9 4e9 --t-end 4e9 --n-tp 64000 --subsets 4
+                        --observed docs/bb2021-observed-table1.tsv
+                      RUN = ../medas-p9-search-equiv/build/sets-check-20261117/A/p9bbsets-5b05cc3/jobs/BB-A (relative),
+                      PKG its package directory; one run, wall 52.96 s
+outcome               ../medas-p9-search/build/venv/bin/python -I tools/prod_eval.py --outcome OUT_A/result.json
+                        OUT_B/result.json > OUT_AB/outcome.txt (docs/sets-outcome-20261117/outcome.txt)
+files                 as the tool wrote them, unchanged:
+                      3b7fc3bcbdd39e6e56a9a5df2d9000a86b1d975c23a5ddd3b6b95f48c0a1eb7c  result.json
+                      ed05e2bfb5d6864fcfae31809382b3ca02711b710ba8dada9ab140aaaad037c9  timeseries.csv
+                      6662aa2c9377647b47ee8820a760c88414ed498c0ff29c0bc6fb22f365140ec1  report.txt
+note                  check/report.txt in the archive of set A is the package check of the restart on 2026-11-15 (the
+                      archive was made on 2026-11-17); the check of set A's own start on 2026-11-12 survives only as the
+                      line "check: ALL SAME" (09:09:24Z) in run.log

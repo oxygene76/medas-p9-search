@@ -1,0 +1,11 @@
+run ../medas-p9-search-equiv/build/sets-check-20261117/B/p9bbsets-5b05cc3/jobs/BB-B  criteria bb2021-B
+window 1e+09-4e+09 yr: 301 snapshots; last snapshot 4e+09 yr; complete: True
+M1 166.7 deg (pooled n 6765619)
+M2 0.127
+M3 psi 18.0 deg
+M4 wall 185.0 au (R_plat 0.2059973293409888)
+M5 {'width_deg': 152, 'from_deg': 99.5, 'to_deg': 250.5, 'n': 107585}
+subsets: 0: M1 166.6 (0.2 deg); 1: M1 166.6 (0.2 deg); 2: M1 166.7 (0.0 deg); 3: M1 167.1 (0.4 deg)
+subset scatter 0.35587681275293903 deg (limit 10); deviating, reported: []
+variants (not judged): ecliptic: M1 167.0, psi 20.1; heliocentric: M1 166.7, psi 18.0
+== does not agree: M2 0.12727423460886161 < 0.2
