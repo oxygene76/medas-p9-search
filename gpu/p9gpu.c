@@ -668,10 +668,19 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
         sha256_final(&c2, d2);
         p9_hex(d2, hs);
     }
-    size_t removed = 0, removed_enc = 0, removed_inner = 0, by[P9_MAX_PLANETS + 1] = {0};
+    // removed_inner: model j2 only (within r_remove of the Sun, code -1 - np). removed_r_in / removed_r_out: the
+    // distance rules (alive 0) split by the heliocentric distance of the state kept at removal (near R_IN or near
+    // R_OUT; the removed particle's state is not touched after its removal); removed_collision: collisions with a
+    // planet (alive < 0 below np). Counts only; no state and no hash changes.
+    size_t removed = 0, removed_enc = 0, removed_inner = 0, removed_r_in = 0, removed_r_out = 0, removed_col = 0, by[P9_MAX_PLANETS + 1] = {0};
     for (int i = 0; i < ntp; i++) {
         removed += alive[i] != 1, removed_enc += alive[i] < 0, removed_inner += alive[i] == -1 - P.np;
-        if (alive[i] < 0 && -1 - alive[i] < P.np) by[-1 - alive[i]]++;
+        if (alive[i] < 0 && -1 - alive[i] < P.np) by[-1 - alive[i]]++, removed_col++;
+        if (alive[i] == 0) {
+            const double d2 = tp[i].x * tp[i].x + tp[i].y * tp[i].y + tp[i].z * tp[i].z;
+            if (d2 < 1000.0 * 1000.0) removed_r_in++;
+            else removed_r_out++;
+        }
     }
     // removals by close encounter per planet, by body id
     char by_text[256] = "";
@@ -727,12 +736,12 @@ static int run(const char* in, double t_end, long n_snap, const char* out, const
     }
     const double e1 = p9_energy_massive(r);
     printf("result_sha256=%s final_state_sha256=%s t=%.17g steps=%llu N_start=%zu N_end=%zu removed=%zu removed_encounter=%zu wall_s=%.3f "
-           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f r_in=%.17g %s"
+           "dE_rel=%.3e mode=%s real=%s model=%s planet_substeps=%d removed_inner=%zu removed_by=%s collisions=%s encounter_method=%s encounter_remove=%d sub_steps=%lld sub_max=%d sub_capped=%lld flybys=%s fast_flybys=%s close_flybys=%s planet_s=%.3f r_in=%.17g removed_r_in=%zu removed_r_out=%zu removed_collision=%zu %s"
            "program=p9gpu "
            "version=%s\n",
            h, hs, r->t, (unsigned long long)steps, (size_t)(P.np + 1 + ntp), r->N, removed, removed_enc, now_s() - w0, (e1 - e0) / e0,
            use_gpu ? "gpu" : "cpu", p9_real_name(real), P.j2 ? "j2" : "full", P.ksub, removed_inner, by_text, sub_method == 2 ? by_text : "-",
-           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, R_IN, RIN_EVERY ? "r_in_every=1 " : "", P9_VERSION);
+           sub_method == 2 ? "smooth" : sub_method ? "substep" : step_method ? "step" : "kick", enc_remove, n_sub, sub_max, n_capped, step_method ? near_text : "-", step_method ? fast_text : "-", step_method ? close_text : "-", planet_s, R_IN, removed_r_in, removed_r_out, removed_col, RIN_EVERY ? "r_in_every=1 " : "", P9_VERSION);
     (void)steps0;
 #ifndef P9_NO_CUDA
     if (g) p9g_free(g);
