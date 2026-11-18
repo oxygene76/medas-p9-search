@@ -217,7 +217,7 @@ committed before they ran and run from clean checkouts. Results in `runs/iras-ak
   |---|---|---|
   | 21.0 | 0.97 | 1.00 |
   | 22.0 | 0.90 | 1.00 |
-  | 22.8 (bright end of D3.1's faint limit) | 0.75 | 1.00 |
+  | 22.8 (faint end of the span of D3.1) | 0.75 | 1.00 |
   | 23.5 | 0.71 | 0.88 |
 
   - Required were at least 0.95 up to V 23.5. That fails for both colour sets.
