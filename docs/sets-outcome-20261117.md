@@ -91,14 +91,36 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    - **What this weakens:** the explanation "only the selection of the particles drawn" is not shown. Whether the
      simulated populations themselves differ is open.
 
+5. **Spread over the four subsets of set A** (`docs/sets-decomposition-addendum-3-20261117.md`, 03fcad1; written
+   after its computation, said so there):
+   - M2 per subset 0.046–0.056 (whole set 0.0496); the inclination shares agree within 0.004.
+   - This is the basis of the tolerance band of the run BB-A-rin1 (`docs/bb-a-rin1-criteria.md`, entry e6, #9):
+     twice the largest deviation of a subset, M2 ± 0.012, each share ± 0.008, retrograde ± 0.022 (q > 42 au) and
+     ± 0.011 (42 ≤ q ≤ 100 au).
+6. **Weighted reading of Fig. 4, and bounds for BB-A-rin1** (`docs/sets-decomposition-addendum-4-20261118.md`,
+   22f70fd, timestamped before the computation; result `docs/sets-decomposition-4-20261118.md`, 2ee681c):
+   - **The method:** the particles weighted as the likelihood of the paper selects simulated objects (pp. 9–10:
+     a and q kernels around the 10 objects of Table 1, q ≥ 42 au).
+   - **Set A gives 0.761 below 30°, against 0.92–0.94 in Fig. 4** (panel i9 = 15°). By the scale fixed before:
+     **"the reading does not fit"**. Set B gives 0.844, for information.
+   - **R beyond the wall with the q weighting:** 0.274 (A) against 0.60 (Fig. 3, third panel), 0.467 (B) against
+     0.51 (Fig. 1).
+   - **The removal cadence:** MERCURIUS (p9sim) removed with the same rule and cadence as p9gpu (r < 4.5 au and
+     r > 10,000 au every 1000 steps). The comparisons of V5 with MERCURIUS therefore say nothing about the cadence.
+   - **Bounds for BB-A-rin1** (set A without the particles whose q was ever below X at a snapshot):
+     - X = 10 au leaves M2 0.051 and R beyond the wall 0.098;
+     - X = 30 au gives M2 0.131, M1 154.5° and R 0.166, still below M2 0.20 and outside 160–200°.
+     - The bound holds under one stated assumption: a dip below 4.5 au between two snapshots shows q < X at one of them.
+   - **The prediction fixed in the criteria before the run:** most likely "the removal rule is not the cause".
+
 **The literature:**
 - **The groups at high q and high inclination are described:**
   - Batygin et al. 2019 (section 5.1, Fig. 14) keep them apart and compute the confined fraction only from the observable
     group;
   - Khain et al. 2018, Shankman et al. 2017 and Clement & Kaib 2020 report surviving high-inclination, circulating or
     high-perihelion particles.
-- **Bansal, Brunton, Batygin, Pichierri & Nesvorný 2026** (arXiv:2607.15646v1, preprint, read from the PDF on
-  2026-11-18):
+- **Bansal, Brunton, Batygin, Pichierri & Nesvorný 2026** (arXiv:2607.15646v1, a preprint, not peer-reviewed; read
+  from the PDF on 2026-11-18):
   - **Inclination pumping as part of the mechanism:** their introduction calls it "not merely incidental but essential
     to the Planet Nine mechanism". The interaction "acts to lift the perihelia of momentarily-inclined TNOs,
     potentially removing them from the observable domain".
@@ -110,9 +132,9 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
   - **What this supports:** the authors' group measures the clustering on the observable selection in 2019 and again
     in 2026, and describes the lifted, inclined particles as expected dynamics.
   - **What it does not say:** anything on how Figs. 1, 3 and 4 of 2021 were built.
-  - **Selection (b) of addendum 2** (42 ≤ q ≤ 100 au, i < 40°) is close to their selection but not equal: a beyond
-    the wall up to 700 au instead of a ≥ 250 AU, R per 10-au bin instead of κ of the whole selection, 1–4 Gyr instead
-    of the last Gyr.
+  - **Selection (b) of addendum 2** (42 ≤ q ≤ 100 au, i < 40°) is a similar selection, not the same: a beyond the
+    wall up to 700 au instead of a ≥ 250 AU, R per 10-au bin instead of κ of the whole selection, 1–4 Gyr instead of
+    the last Gyr.
 - **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
   q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
 - **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note of the Claude
