@@ -41,12 +41,12 @@ ARGS=()
 while read -r line; do ARGS+=(--repo "${line%%=*}=$REPOS_DIR/${line%%=*}"); done < <(manifest_repos "$MANIFEST")
 python3 -I "$TMP/tool/tools/manifest.py" archive "$MANIFEST" "$SET/p9-$NAME-files.tar" "${ARGS[@]}"
 
-# git bundle of exactly the manifest's commits (temporary refs, removed afterwards)
-while read -r line; do
-  ref=refs/notary-backup/$NAME/${line%%=*}
-  git -C "$GIT_REPO" update-ref "$ref" "${line#*=}"
+# git bundle of exactly the manifest's commits: those of its repositories and those of files listed at another commit
+# (temporary refs, removed afterwards)
+while read -r ref c; do
+  git -C "$GIT_REPO" update-ref "$ref" "$c"
   REFS+=("$ref")
-done < <(manifest_repos "$MANIFEST")
+done < <(bundle_refs "$MANIFEST" "$NAME")
 git -C "$GIT_REPO" bundle create "$SET/p9-$NAME-git.bundle" "${REFS[@]}" 2> /dev/null
 git -C "$GIT_REPO" bundle verify "$SET/p9-$NAME-git.bundle" > /dev/null 2>&1 || die "bundle does not verify"
 

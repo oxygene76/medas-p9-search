@@ -74,6 +74,26 @@ manifest_repos() {
 for n, r in sorted(json.load(open(sys.argv[1]))['repositories'].items()): print(n + '=' + r['commit'])" "$1"
 }
 
+# the refs of the git bundle of a backup, one "REF COMMIT" per line: the repository commits of the manifest
+# (refs/notary-backup/NAME/REPO), and every other commit of a file listed with git ("at" in the spec, e.g. a program
+# change on another branch; refs/notary-backup/NAME/REPO-at-COMMIT). Without the latter the restored repository lacks
+# such a commit, and manifest.py verify falls back to the file of the checked-out commit (e6, 2026-11-18).
+bundle_refs() {
+  python3 -I -c "import json, sys
+m = json.load(open(sys.argv[1])); name = sys.argv[2]
+heads = {n: r['commit'] for n, r in m['repositories'].items()}
+for n, c in sorted(heads.items()): print(f'refs/notary-backup/{name}/{n} {c}')
+extra = sorted({(f['repo'], f['git']['commit']) for f in m['files'] if f.get('git') and f['git']['commit'] != heads[f['repo']]})
+for n, c in extra: print(f'refs/notary-backup/{name}/{n}-at-{c} {c}')" "$1" "$2"
+}
+
+# every commit of a file listed with git, as "REPO COMMIT" (for the check that the restored repository has them)
+manifest_file_commits() {
+  python3 -I -c "import json, sys
+m = json.load(open(sys.argv[1]))
+for n, c in sorted({(f['repo'], f['git']['commit']) for f in m['files'] if f.get('git')}): print(n, c)" "$1"
+}
+
 # the full fingerprint of a primary key in the keyring that can encrypt, not revoked or expired;
 # sets ENC_KEYIDS (long key ids of the keys that can encrypt)
 check_recipient() {
@@ -130,6 +150,9 @@ verify_set() {
     git -C "$work/.repo" worktree add -q --detach "$work/$r" "$c" || die "commit $c of $r not in the bundle"
     [ -z "$(git -C "$work/$r" status --porcelain)" ] || die "$work/$r is not clean"
   done
+  while read -r r c; do
+    git -C "$work/.repo" cat-file -e "$c^{commit}" 2>/dev/null || die "commit $c (files of $r) not in the bundle"
+  done < <(manifest_file_commits "$m")
   tar xf "$set/p9-$name-files.tar" -C "$work" --exclude="$(basename "$MANIFEST")"   # REPO/PATH of the files without git
   local args=()
   for line in $repos; do args+=(--repo "${line%%=*}=$work/${line%%=*}"); done
