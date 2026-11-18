@@ -118,6 +118,9 @@ def main():
     ap.add_argument("--V", type=float, nargs="+", default=[19.3, 21.0, 22.0, 23.0])
     ap.add_argument("--json")
     ap.add_argument("--orbits", default=None)
+    ap.add_argument("--per-orbit", type=int, default=0, metavar="TRIALS",
+                    help="also the recovery probability of each draw (TRIALS trials each) and the share of the draws with "
+                         "P >= 0.9 (addendum D3.2 c of docs/iras-akari-criteria.md)")
     a = ap.parse_args()
     exps = [e for e in json.loads(Path(a.exposures).read_text()) if "EXPNUM" in e]
     exps = sorted({e["EXPNUM"]: e for e in exps}.values(), key=lambda e: e["dateobs_center"])
@@ -202,6 +205,25 @@ def main():
                                     "median_nunique": float(np.median(nun))})
             print(f"  {name:13s} {Vmag:5.1f} " + " ".join(f"{mags[b]:5.1f}" for b in "griz")
                   + f"   {n_rec / a.trials:8.3f}       {np.median(nun):4.0f}")
+    if a.per_orbit:
+        print(f"\nper draw ({a.per_orbit} trials each): share of the draws with P(recovered) >= 0.9, and the 5 % quantile of P")
+        out["per_orbit"] = []
+        for name, col in COLOURS.items():
+            for Vmag in a.V:
+                mags = {b: band_mag(Vmag, col, b) for b in M50}
+                p = {b: TRANSIENT * C / (1 + math.exp(K * (mags[b] - M50[b]))) for b in M50}
+                Pj = np.zeros(a.n)
+                for j in range(a.n):
+                    rows_j = [r for r in des if masks[r["expnum"]][j]]
+                    k = 0
+                    for _ in range(a.per_orbit):
+                        det = {day[r["expnum"]] for r in rows_j if rng.random() < p[r["band"]]}
+                        k += recovered(np.array(sorted(det)))
+                    Pj[j] = k / a.per_orbit
+                share = float((Pj >= 0.9).mean())
+                out["per_orbit"].append({"colours": name, "V": Vmag, "share_P_ge_0.9": share, "P_q05": float(np.percentile(Pj, 5)),
+                                         "P_mean": float(Pj.mean())})
+                print(f"  {name:13s} {Vmag:5.1f}   share P>=0.9 {share:6.3f}   P 5 % quantile {np.percentile(Pj, 5):6.3f}   mean {Pj.mean():6.3f}")
     if a.json:
         Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
 
