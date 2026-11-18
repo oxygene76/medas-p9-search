@@ -47,6 +47,9 @@ FOV_DEG2 = (2688 * 0.2184 / 3600) * (1520 * 0.2184 / 3600)   # Mewlon 300 + 0.8x
 PHAN = {"iras": {"ra": 35.74075, "dec": -48.5125, "t0": "1983-06-26T00:00:00", "t1": "1983-09-01T00:00:00"},
         "akari": {"ra": 35.18379, "dec": -49.2135, "t": "2006-12-26T12:00:00", "t_variant": "2006-06-26T12:00:00"},
         "flux_jy": {"IRAS 100": (100.0, 0.52), "AKARI 90": (90.0, 0.27)}}   # the bands not flagged as unreliable (A4)
+# addendum D: the IRAS Faint Source Catalog entry (IRSA irasfsc, 2026-11-18): 95 % ellipse 18" x 7" at 79 deg, as
+# 1 sigma divided by sqrt(chi2_2(0.95)) = 2.4477
+PHAN_FSC_IRAS = {"ra": 35.740746, "dec": -48.512474, "ell": (18.0 / 2.4477, 7.0 / 2.4477, 79.0)}
 CHEN = {"J0250422-150114": {"ra": 42.676, "dec": -15.021, "t": "2007-07-28", "flux90": (0.61, 1.62), "ell": (3.5, 2.3, 340.3)},
         "J0301112-164240": {"ra": 45.297, "dec": -16.711, "t": "2006-07-30", "flux90": (1.27, 0.51), "ell": (3.5, 2.3, 340.7)}}
 
@@ -468,12 +471,50 @@ def evaluate(name, fam, flux_fit, des, open_pix32, outdir, single):
     return res
 
 
+def addendum_d_brightness(fam):
+    """D3.1: the share of the kept weight with V <= 23.5 (DES limit 24.0 - 0.5) at the DES epoch, per model:
+    (a) blackbody 30-50 K fitted to the fluxes (A4), albedo 0.2-0.75; (b) Phan's radius from 7-17 Earth masses at
+    1.27-1.64 g/cm3, albedo 0.2-0.75; for information albedo 0.05 and 0.1 and T 28 and 53 K."""
+    r, v = fam["r"], fam["v"]
+    _, rs, ds = observe(r, v, fam["t_jd"], jd(SURVEYS["DES"]["epoch"] + "T00:00:00"))
+    lim = SURVEYS["DES"]["V_limit"] - 0.5
+    def radii_T(T):
+        R1 = radius_km(PHAN["flux_jy"]["IRAS 100"][1], 100.0, T, fam["rho1"])
+        R2 = radius_km(PHAN["flux_jy"]["AKARI 90"][1], 90.0, T, fam["rho2"])
+        return np.sqrt(R1 * R2)
+    def radius_mass(m_earth, rho_gcc):
+        return (3 * m_earth * 5.9722e24 / (4 * math.pi * rho_gcc * 1000.0)) ** (1 / 3) / 1000.0
+    out = {"V_limit_used": lim}
+    rows = {}
+    for T in T_GRID + [28.0, 53.0]:
+        Rk = radii_T(T)
+        for p in P_GRID + [0.05, 0.1]:
+            V = v_mag(Rk, p, rs, ds)
+            rows[f"a_T{T:g}_p{p:g}"] = {"share_V_le_lim": float((V <= lim).mean()), "V_p5": float(np.percentile(V, 5)),
+                                        "V_p95": float(np.percentile(V, 95)), "deciding": (T in T_GRID and p in P_GRID)}
+    for m in (7.0, 17.0):
+        for rho in (1.27, 1.46, 1.64):
+            Rk = np.full(len(rs), radius_mass(m, rho))
+            for p in P_GRID + [0.05, 0.1]:
+                V = v_mag(Rk, p, rs, ds)
+                rows[f"b_m{m:g}_rho{rho:g}_p{p:g}"] = {"share_V_le_lim": float((V <= lim).mean()), "V_p5": float(np.percentile(V, 5)),
+                                                      "V_p95": float(np.percentile(V, 95)), "radius_km": radius_mass(m, rho),
+                                                      "deciding": p in P_GRID}
+    out["rows"] = rows
+    dec = [x["share_V_le_lim"] for x in rows.values() if x["deciding"]]
+    out["min_share_deciding"] = min(dec)
+    out["D3_1_carries"] = bool(min(dec) >= 0.95)
+    out["V_range_deciding"] = (min(x["V_p5"] for x in rows.values() if x["deciding"]), max(x["V_p95"] for x in rows.values() if x["deciding"]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True)
     ap.add_argument("--des", required=True)
     ap.add_argument("--open", default=None)
     ap.add_argument("--n", type=int, default=100000)
+    ap.add_argument("--addendum-d", action="store_true", help="only the cases of addendum D (phan-fsc, phan-fsc-akari90)")
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -513,6 +554,22 @@ def main():
         return f
 
     t_iras = jd(P["iras"]["t0"]) + rng.uniform(0, jd(P["iras"]["t1"]) - jd(P["iras"]["t0"]), a.n)
+    if a.addendum_d:
+        results["criteria"] = "docs/iras-akari-criteria.md (sections 1-4, addenda A-C, addendum D)"
+        I = PHAN_FSC_IRAS
+        for label, sig2 in (("phan-fsc", 30.0), ("phan-fsc-akari90", 90.0)):
+            fam = ranging_two(rng, a.n, I["ra"], I["dec"], t_iras, None, P["akari"]["ra"], P["akari"]["dec"], jd(P["akari"]["t"]), sig2,
+                              ell1=I["ell"])
+            res = evaluate(label, fam, phan_flux, des, open32, out, single=False)
+            res["addendum_D"] = addendum_d_brightness(fam)
+            results["cases"].append(res)
+            np.savez(out / f"{label}-orbits.npz", r=fam["r"], v=fam["v"], t_jd=fam["t_jd"], r1=fam["r1"], r2=fam["r2"])
+        (out / "result.json").write_text(json.dumps(results, indent=1, default=float) + "\n")
+        for cse in results["cases"]:
+            print(cse["name"], cse["n_kept"], round(cse["kept_share"], 5), cse.get("Q_O"), cse.get("Q_P"))
+            for k, v in cse["addendum_D"].items():
+                print("   ", k, v)
+        return
     for label, sig, t_ak in (("phan-30arcsec", 30.0, P["akari"]["t"]), ("phan-90arcsec", 90.0, P["akari"]["t"]),
                              ("phan-30arcsec-akari-june", 30.0, P["akari"]["t_variant"])):
         fam = ranging_two(rng, a.n, P["iras"]["ra"], P["iras"]["dec"], t_iras, sig, P["akari"]["ra"], P["akari"]["dec"], jd(t_ak), sig)

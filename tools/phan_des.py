@@ -14,6 +14,9 @@ Inputs (downloaded, see docs/phan-des.md):
 
 Position: the Monte Carlo draws of tools/phan_candidate.py (same seed), at the centre time of each exposure, with
 full parallax. Per exposure: the fraction of the draws that fall on a CCD.
+  --orbits NPZ  instead: the kept bound orbits of tools/iras_akari.py (r, v at t_jd; addendum D of
+                docs/iras-akari-criteria.md), --n of them drawn with --seed, places by two-body propagation with the
+                Earth from DE440s and light time (iras_akari.observe).
 
 Detection model of Belyakov, Bernardinelli & Brown (2022, AJ 163, 216, sec. 3): per exposure the probability
 p(m) = c / (1 + exp(k (m - m50))) times the transient efficiency 0.955, with c = 0.943, k = 6.37 (Bernardinelli et al.
@@ -114,23 +117,38 @@ def main():
     ap.add_argument("--trials", type=int, default=2000)
     ap.add_argument("--V", type=float, nargs="+", default=[19.3, 21.0, 22.0, 23.0])
     ap.add_argument("--json")
+    ap.add_argument("--orbits", default=None)
     a = ap.parse_args()
     exps = [e for e in json.loads(Path(a.exposures).read_text()) if "EXPNUM" in e]
     exps = sorted({e["EXPNUM"]: e for e in exps}.values(), key=lambda e: e["dateobs_center"])
     ccds = {k: np.array(v) for k, v in ast.literal_eval(Path(a.ccds).read_text().split("\n", 2)[2]).items()}
     polys = read_footprint(a.footprint)
-    _, P2, V, t2 = draws(a.n, a.seed)
+    if a.orbits:
+        import iras_akari as ia
+        orb = np.load(a.orbits)
+        pick = np.random.default_rng(a.seed).choice(len(orb["r"]), size=min(a.n, len(orb["r"])), replace=False)
+        R0, V0, T0 = orb["r"][pick], orb["v"][pick], orb["t_jd"][pick]
+        a.n = len(pick)
+
+        def directions_at(t):
+            u, _, _ = ia.observe(R0, V0, T0, t.tdb.jd)
+            return ia.radec(u)
+    else:
+        _, P2, V, t2 = draws(a.n, a.seed)
+
+        def directions_at(t):
+            return directions(P2, V, t2, t)
 
     print(f"{len(exps)} DECam exposures with centres in the query box; draws {a.n}")
     for season in range(2013, 2019):
         t = Time(f"{season}-11-15T00:00:00")
-        ra, dec = directions(P2, V, t2, t)
+        ra, dec = directions_at(t)
         print(f"  {season}-11-15: draws inside the DES footprint {100 * in_footprint(ra, dec, polys).mean():.0f} %")
 
     rows, masks = [], {}
     for e in exps:
         t = Time(e["dateobs_center"].rstrip("Z"), scale="utc")
-        ra, dec = directions(P2, V, t2, t)
+        ra, dec = directions_at(t)
         x, y = frame_offsets(ra, dec, e["ra_center"], e["dec_center"])
         on = np.zeros(len(x), bool)
         ccd_hit = defaultdict(int)
