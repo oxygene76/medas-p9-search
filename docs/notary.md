@@ -79,8 +79,24 @@ for good.
 | (e4) addendum 16 (V2 short runs on the L40S, 16,000 test particles) and the packages of sets A and B (note, refers to the (e3) entry) | `runs/notary/spec-e4-bb2021-v2-20261104.json` (manifest sha256 `5e5829b7461ff56a42518190b0fc2cdbfcdaa695f761b0663dad3c0bf61b22cc`) | entry #5 (refers to #4), 2026-11-04 17:06:01 UTC, block 10728476, tx `D63E2D39E0B4325743484FA63E852F9D1E6A3FE363FAAB309C2E7037906E92DB`, commitment `5219949b8f6cf5b8e7c08ec065ff316b3a9a6f18fd3252c7f20ce863ba1bff1f` |
 | (e5) criteria of the paired tests V5 against MERCURIUS for sets A and B, before any of their runs (job, refers to the (e4) entry #5) | `runs/notary/spec-e5-paired-tests-20261106.json` (spec sha256 `e424cd1ec67f43c7eee50feae4ba12e8e7d49a0d9611b6df11c742ed9693b99f`; manifest sha256 `a3dc42d8fc6b91c98f76effd49cca637a54788e7732b367d1a5f3b5e0aa6b037`) | entry #6 (refers to #5), 2026-11-10 07:18:02 UTC, block 10814015, tx `91273FA27ED2AE101C1C1E3230703F993E809734819784780B6003FD84CC32EB`, commitment `61232c7217024299c5dbee92bbf99bf024b93714fcf920d7711f7adda8108d75` |
 | (r1) results of the production run and of the paired long runs 110–112, evaluated by the criteria of entry #4, after two independent reviews of the reports, version 3 (result, refers to the (e3) entry #4) | `runs/notary/spec-r1-results-20261110-v3.json` (spec sha256 `d9bddafaeb02a8e9a563dc74f749ed528822ca4fd66250afddcd52f282e6d06e`; manifest sha256 `eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d`; supersedes the manifest `6f5de6de…` with version 2) | entry #7 (refers to #4), 2026-11-11 07:30:03 UTC, block 10829443, tx `43CBB3CAEF23009C17FD70AC5DC356DEA88CC85CF94125C3733D7789EAA2FA67`, commitment `6b211b7c9de3a72fa34d3a9f45c774d6040d9698ab22be0313c7793fd5a39ead` |
+| (e6) criteria of the run BB-A-rin1 (set A with the inner removal in every step), before the run (job, refers to the (e4) entry #5) | `runs/notary/spec-e6-bb-a-rin1-20261118.json` (spec sha256 `babe5b6ffd245fc30c9229a7720bf2f984337267518e53993452505ead31a651`; manifest sha256 `e25436425b6634bf6ca4079644e5e18a6f3cc99b71d505438f00be30e28257c5`, 25 files, commits medas-p9-search `f80681f`, medas-p9-search-equiv `fed221a`) | not yet (expected: entry #9) |
 | (b) production run, before its start | superseded by (e3) | – |
 | trial | `runs/notary/spec-trial.json` | not yet |
+
+**Entry #8** (2026-11-14, block 10880174) belongs to another project, not to this campaign. The next entry of the
+campaign is therefore #9.
+
+**Names of entries (fixed 2026-11-18).** This is the one place where they are kept:
+- **e6** is the criteria of the run BB-A-rin1 (above).
+- **e7** is the data package (Zenodo records). Documents written up to 2026-11-18 call it e6:
+  `docs/data-package-e6.md` (the file name stays), `docs/data-package-proposal.md`, `docs/research-note-draft.md`,
+  `docs/publication-commits.md`, `docs/publication-checklist.md`, `docs/reproduction-result-20261112.md`, and notes in
+  `runs/notary`.
+- **e8** is the later data package for sets A and B, if the data package is split. The same documents call it e7
+  (`docs/data-package-e6.md` section 2, `docs/publication-checklist.md`).
+- **r2** stays the result of sets A and B (`result`, refers to e4, #5).
+- **r3** is proposed for the result of BB-A-rin1 (`result`, refers to e6).
+- Older documents are not rewritten; read their e6 and e7 with this list.
 
 The entries #2 to #7 were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
 contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`; their receipts are backed up encrypted
