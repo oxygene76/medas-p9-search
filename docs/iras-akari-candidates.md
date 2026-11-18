@@ -161,3 +161,75 @@ altitude).
 - Two-body orbits around the Sun with the planets' masses inside, no perturbations: over 23 years at 500 au this
   is far below the position errors.
 - Values of the papers from the arXiv HTML of v1. The PDF was not converted.
+
+## 9. Addendum D (2026-11-18): the Phan et al. pair recomputed with the catalogue error ellipse
+
+As fixed in addendum D of `docs/iras-akari-criteria.md` (52ff92a, timestamped before the computation). Code
+`tools/iras_akari.py --addendum-d` (7cfb8a6) and `tools/phan_des.py --orbits … --per-orbit 400` (48f2ee3), both
+committed before they ran and run from clean checkouts. Results in `runs/iras-akari/runD-7cfb8a6/` (not in git;
+`result.json` sha256 `85c07f7f…`, `phan-des-fsc-perorbit.json` `b4f447a6…`).
+
+**Inputs, new:**
+- IRAS position and error from the Faint Source Catalog: 95 % ellipse 18″ × 7″ at 79° (1σ 7.35″ × 2.86″).
+- AKARI epoch 2006-12-26, now from the PDF. Phan et al. publish no AKARI error, so 30″ is used, with a variant of 90″.
+
+**Ranging** (10^5 trials, seed 2026):
+
+| case | kept | r (5–95 %) | a (median) | q (median) | i vs invariable plane (5–95 %) | 95 % region 2026-11 |
+|---|---|---|---|---|---|---|
+| IRAS ellipse, AKARI 30″ | 679 (0.68 %) | 507–657 au | 1,089 au | 430 au | 116.1–118.0° | 4.4′ × 3.3′ |
+| IRAS ellipse, AKARI 90″ | 694 (0.69 %) | 507–665 au | 1,106 au | 407 au | 115.2–118.6° | 7.7′ × 7.3′ |
+
+- All bound orbits are still retrograde.
+- Planet Nine parameter space: 0 % of the kept weight (Q-P "excluded").
+- The narrower IRAS error changes the family only a little; the AKARI error, still assumed, dominates.
+
+**D3.1, the brightness from the infrared fluxes: carries the verdict.**
+- In every deciding combination V ≤ 23.5 holds at the DES epoch for 100 % of the kept weight:
+  - (a) blackbody 30–50 K fitted to the fluxes, albedo 0.2–0.75;
+  - (b) Phan's radii from 7–17 Earth masses at 1.27–1.64 g/cm³, 18,300–26,700 km, albedo 0.2–0.75.
+- The span of V over all of these is 18.1–22.8.
+- For information, outside the deciding grid:
+  - albedo 0.1 keeps V ≤ 23.5 for 94–100 % of the weight;
+  - albedo 0.05 does not in every case: 38–53 % for 7 Earth masses, 47 % at 50 K, 15 % at 53 K.
+  - A very dark body (albedo ≲ 0.05) could therefore escape this limit.
+
+**D3.2, the DES search: does not carry the verdict.**
+- **(a) Distance range, carries.** Belyakov, Bernardinelli & Brown 2022 (arXiv:2203.07642, PDF sha256
+  `d5b0bb52…d4c7`) give two statements:
+  - p. 3: "Bernardinelli et al. (2022) reported the search for KBOs to be >99% complete for objects at distances
+    29 < d < 2500 AU … that appear in at least 7 nights of data in at least 2 opposition seasons with at least a
+    triplet of detections per season";
+  - p. 5: "complete to a magnitude of r≈23.8 for distances 29 < d < 2500 AU and 100% efficiency for objects in the
+    catalog above 200AU".
+- **(b) No restriction against retrograde orbits: not established.**
+  - Belyakov et al. test only the reference population of Brown & Batygin 2021b (p. 2–3), whose orbits come from the
+    prograde Planet Nine posterior.
+  - p. 5: "we do not search for these objects using a full pipeline that would recover orbits".
+  - Neither page says anything about retrograde or highly inclined bodies. The linking of Bernardinelli et al. 2022
+    was not read; since (c) does not hold either, it would not change the verdict.
+- **(c) Recovery on the actual exposures: does not hold.**
+  - Coverage of the kept orbits with the December epoch: 35 DES wide exposures on 26 nights in four seasons put the
+    track on a CCD (the old analysis with the June epoch: 34 exposures, 25 nights).
+  - Recovery probability per orbit, with the criteria of Belyakov et al.: share of the orbits with P ≥ 0.9.
+
+  | V | Neptune-like colours | BB21 colours |
+  |---|---|---|
+  | 21.0 | 0.97 | 1.00 |
+  | 22.0 | 0.90 | 1.00 |
+  | 22.8 (bright end of D3.1's faint limit) | 0.75 | 1.00 |
+  | 23.5 | 0.71 | 0.88 |
+
+  - Required were at least 0.95 up to V 23.5. That fails for both colour sets.
+  - The mean recovery probability stays high: 0.88 (Neptune-like) and 0.95 (BB21) at V 23.5; 0.90 and 1.00 at V 23.0.
+    A body of this kind would probably have been found, but not with the certainty fixed in D3.2.
+
+**Verdict (D4):** Q-O **"not excluded, but outside the Planet Nine parameter space"**; Q-P "excluded" (0 %).
+- **Against 2026-11-03:** The earlier "excluded" rested on footprint and limiting magnitude alone. The per-exposure
+  recovery and the missing statement on retrograde orbits do not carry it with the certainty required here.
+- **What stands:**
+  - Every bound orbit through both detections is retrograde (i ≈ 116–118° to the invariable plane).
+  - None lies in the Planet Nine parameter space that produces the clustering we model.
+  - If the pair is one body, it is not this Planet Nine.
+- **What this does not say:** that the infrared sources are a real body. The verdict only removes "excluded" as a
+  statement about the optical surveys.
