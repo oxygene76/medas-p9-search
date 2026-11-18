@@ -115,20 +115,34 @@ def verify(a):
     print(f"manifest sha256 {sha256_bytes(raw)} ({m['title']})")
     dirs = {k: Path(v) for k, v in (x.split("=", 1) for x in a.repo)}
     bad = 0
+    missing_commits = set()
     for f in m["files"]:
         d = dirs.get(f["repo"], Path(a.root))
+        status = None
         if f["git"]:
-            try:
-                data = git(d, "show", f"{f['git']['commit']}:{f['path']}", binary=True)
-            except subprocess.CalledProcessError:
-                data = (d / f["path"]).read_bytes() if (d / f["path"]).exists() else None
+            commit = f["git"]["commit"]
+            in_git = subprocess.run(["git", "-C", str(d), "rev-parse", "--git-dir"], capture_output=True).returncode == 0
+            if in_git and subprocess.run(["git", "-C", str(d), "cat-file", "-e", f"{commit}^{{commit}}"],
+                                         capture_output=True).returncode != 0:
+                # the commit is not in this repository (e.g. a branch or tag not fetched): say so, and do not fall
+                # back to the checked-out file, which may be of another commit
+                data, status = None, f"COMMIT MISSING ({commit})"
+                missing_commits.add((f["repo"], commit))
+            else:
+                try:
+                    data = git(d, "show", f"{commit}:{f['path']}", binary=True)
+                except subprocess.CalledProcessError:
+                    # not a git directory (files exported under REPO/PATH), or the path is not in the commit
+                    data = (d / f["path"]).read_bytes() if (d / f["path"]).exists() else None
         else:
             p = d / f["path"]
             data = p.read_bytes() if p.exists() else None
         ok = data is not None and sha256_bytes(data) == f["sha256"] and len(data) == f["bytes"]
         bad += not ok
         if not ok or a.verbose:
-            print(f"{'OK  ' if ok else 'MISSING' if data is None else 'DIFFERENT'} {f['repo']}/{f['path']}")
+            print(f"{'OK  ' if ok else status or ('MISSING' if data is None else 'DIFFERENT')} {f['repo']}/{f['path']}")
+    for repo, commit in sorted(missing_commits):
+        print(f"commit missing: {commit} of {repo} is not in the given repository (fetch the branch or tag that holds it)")
     print(f"{len(m['files']) - bad} of {len(m['files'])} files match")
     sys.exit(1 if bad else 0)
 

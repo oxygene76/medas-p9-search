@@ -77,7 +77,8 @@ for n, r in sorted(json.load(open(sys.argv[1]))['repositories'].items()): print(
 # the refs of the git bundle of a backup, one "REF COMMIT" per line: the repository commits of the manifest
 # (refs/notary-backup/NAME/REPO), and every other commit of a file listed with git ("at" in the spec, e.g. a program
 # change on another branch; refs/notary-backup/NAME/REPO-at-COMMIT). Without the latter the restored repository lacks
-# such a commit, and manifest.py verify falls back to the file of the checked-out commit (e6, 2026-11-18).
+# such a commit; manifest.py verify then fell back to the file of the checked-out commit (e6, 2026-11-18), and since
+# 2026-11-18 it reports "COMMIT MISSING". The manifest's own manifest.py is used, so older ones still fall back.
 bundle_refs() {
   python3 -I -c "import json, sys
 m = json.load(open(sys.argv[1])); name = sys.argv[2]
