@@ -1,12 +1,12 @@
-# Run BB-A-rin1: set A with the inner removal in every step (criteria, DRAFT of 2026-11-17, version 2 of 2026-11-18)
+# Run BB-A-rin1: set A with the inner removal in every step (criteria, fixed 2026-11-18)
 
 **Status:**
-- Draft for review by the Claude chat.
-- To be entered on medasdigital-2, as its hash only, **before** the run starts. Nothing is started before:
-  1. the review;
-  2. the proof run on the A100 has passed (`p9rinproof-0b8971f`: segments 0–5 of BB-A bit for bit);
-  3. the entry;
-  4. the project lead's go.
+- **Fixed** on 2026-11-18, after the review by the Claude chat (draft 38c7a0b, version 2 ca87c80 with expectation and
+  prediction, counters e3f7a0e). Entered on medasdigital-2, as its hash only, **before** the run starts.
+- **Done before the entry:**
+  - the proof run on the A100 has passed (`p9rinproof-0b8971f`: segments 0–5 of BB-A bit for bit, `PROOF.ok`);
+  - the timing test (section 2).
+- **Still to come:** the entry, then the project lead's go. Nothing is started before.
 - Exploratory, after outcome 4. **It changes nothing:** not the criteria of the sets, not their verdicts, not outcome 4,
   not the consequences of section 6 of `docs/bb2021-comparison-criteria.md`. The mercury6 counter-run of set A stays
   prescribed.
@@ -99,12 +99,19 @@ beyond the wall:
 - The check never changes a particle's state, and the test particles do not act on each other or on the planets.
 - So every particle that never comes within 4.5 au in BB-A-rin1 has bit for bit the same state as in BB-A. The
   population of BB-A-rin1 is, at every snapshot, a subset of that of BB-A.
-- **Early check after segment 0** (not a look at any measure):
-  - every particle present in both runs at the snapshots of segment 0 has the same state (`p9sim state`, per particle);
+- **Early check after segment 0** (not a look at any measure; `early-check.sh` of the package):
+  - every particle present in both runs at the snapshots of segment 0 has the same state (`p9sim dump`, per particle,
+    bit for bit);
   - the particles of BB-A-rin1 are a subset of those of BB-A;
   - every missing particle is removed with the distance rule (alive 0), with a state at removal inside 1000 au
     (`removed_r_in` of the result line).
-  - **If this fails, the run is stopped** and nothing is evaluated.
+  - **If this fails, the run is stopped** and nothing is evaluated. The same holds for the counters of segments 0–5
+    (section 3, point 5).
+
+**Timing test** (A100, 2026-11-18, 1 Myr from `input.sa` of BB-A, before the entry):
+- cadence 1000: `result_sha256` `fda499f969ab97489c0f0af0099058c964ada3f147de1ddb52264c4b2e0d3e8b`, 64.241 s, `removed_r_in` 0;
+- cadence 1: the same hash, 65.034 s, `removed_r_in` 0, `r_in_every=1`;
+- extra cost 1.2 %. With BB-A's 54.8 h the run takes about 55.5 h.
 
 ## 3. What is measured (window 1–4 Gyr, 301 snapshots, elements as `prod_eval.py`)
 
@@ -203,7 +210,7 @@ information, not part of the scale. Their measurement by the Claude chat is reco
 
 ## 5. A look during the run
 
-The run takes about 55–60 h, more than 30 h. Therefore one announced, purely informative status after 2 Gyr (segment 19):
+The run takes about 55.5 h (timing test, section 2), more than 30 h. Therefore one announced, purely informative status after 2 Gyr (segment 19):
 - R beyond the wall and the inclination shares for the window 1–2 Gyr;
 - no outcome, no consequence for the run; it is not stopped or changed because of it.
 - Otherwise during the run only the status: segments, particle numbers, hashes, the removal counters.
@@ -224,10 +231,15 @@ The run takes about 55–60 h, more than 30 h. Therefore one announced, purely i
 3. **What follows:** Its result ("does not explain", no particle-snapshot lost at X = 4.5 au) makes a large effect
    unlikely but does not rule it out. The run applies the rule itself.
 
-## 8. Entry (proposal)
+## 8. Entry
 
 - **Type:** `job`, referring to entry #5 (e4, which holds the package of sets A and B).
-- **Content:** a manifest of this file (as committed), of `docs/sets-decomposition-addendum-3-20261117.md`, of the
-  package `p9rin-0b8971f` with its job BB-A-rin1, of the proof `p9rinproof-0b8971f` with its result, and of the tools
-  named in section 3.
+- **Content:** a manifest of
+  - this file (as committed);
+  - `docs/sets-decomposition-addendum-3-20261117.md` and the result of addendum 4 (basis of the tolerance and the
+    prediction);
+  - the package `p9rin-0b8971f` with its job BB-A-rin1;
+  - the proof `p9rinproof-0b8971f` with its result `PROOF.ok`;
+  - the program change 0b8971f;
+  - the tools named in section 3.
 - **After the run:** its result as `result` referring to this entry.
