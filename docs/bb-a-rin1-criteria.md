@@ -1,4 +1,4 @@
-# Run BB-A-rin1: set A with the inner removal in every step (criteria, DRAFT of 2026-11-17)
+# Run BB-A-rin1: set A with the inner removal in every step (criteria, DRAFT of 2026-11-17, version 2 of 2026-11-18)
 
 **Status:**
 - Draft for review by the Claude chat.
@@ -20,9 +20,40 @@ beyond the wall:
 
 **The two rules:**
 - **Ours:** r < 4.5 au on the synchronous state, checked only every 1000 steps (500 yr; `CHECK_EVERY`, fixed in p9gpu).
-  A passage inside 4.5 au lasts about 0.6–2 yr, so most of them are not seen.
+  A passage inside 4.5 au lasts about 0.5–2 yr, so most single passages are not seen. That holds per passage, not per
+  particle (see "Expectation" below).
+- **MERCURIUS (p9sim) has the same rule and cadence** (heartbeat every 1000 steps, dt 0.5 yr, no collisions with the
+  Sun). The comparisons of p9gpu with MERCURIUS therefore say nothing about the cadence (addendum 4).
 - **The paper's:** "reach r < 4.5 … AU are removed" (p. 8). mercury6 removes a body at its first perihelion passage
   inside 4.5 au (own mercury6 study of 2026-11-11, section 3).
+
+**Expectation, computed before the run:**
+- **The old rule delays a removal, it does not prevent it.** For a parabolic passage with perihelion q the time inside
+  4.5 au is 2√(2q³/μ)(D + D³/3), D = √(4.5/q − 1).
+  - It is 1.65 yr at q = 0.5 au, 2.0 yr at 2 au, 1.3 yr at 4 au and 0.5 yr at 4.44 au.
+  - The chance that the check every 500 yr hits a passage is 0.27–0.40 % for q = 0.5–4 au, and 0.1 % at 4.44 au.
+  - With orbital periods of about 5,000–15,000 yr (a = 300–600 au), an orbit that keeps q < 4.5 au is removed on
+    average after about 1.3–5.5 Myr; near q = 4.44 au after up to about 15 Myr.
+  - Such orbits also cross Jupiter's and Saturn's and are often ejected before that.
+- **The new rule removes these particles at their first passage.** Since BB-A-rin1 can only lose particles against BB-A
+  (section 2), its effect is bounded by what removing the particles that came close to the Sun can do. Addendum 4 (c)
+  measures that bound on set A (`docs/sets-decomposition-4-20261118.md`):
+  - excluding the particles whose q was ever below 4.5 au at a snapshot removes nothing;
+  - below 10 au: M2 0.051, R beyond the wall 0.098 (set A: 0.050, 0.097);
+  - below 30 au, the conservative bound: M2 0.131, M1 154.5°, R beyond the wall 0.166, share below 30° at q > 42 au 0.72.
+- **How much the 10-Myr cadence of the snapshots can underestimate this:**
+  - It misses only particles that dip below 4.5 au and come back between two snapshots.
+  - To stay out of the X = 30 au bound, a particle would have to go from q > 30 au to below 4.5 au and back above 30 au
+    within 10 Myr. With periods of thousands of years and secular changes of q over tens to hundreds of Myr, that needs
+    close planet encounters and is not expected to be common. It is not excluded.
+
+**Prediction, fixed before the run:**
+- **Most likely:** "the removal rule is not the cause". M2 and the inclination shares stay within the tolerance band
+  around set A, as for X = 10 au.
+- **Less likely:** "unclear", if many particles dip below 4.5 au between snapshots. The bound for X = 30 au (M2 0.13,
+  M1 155°) would then be reached at most.
+- **Not expected:** "the removal rule is the cause" (M2 ≥ 0.20 with M1 within 160–200°). It would need many particles of
+  the kind the bound does not cover.
 
 ## 2. The run
 
