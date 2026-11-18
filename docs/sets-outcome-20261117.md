@@ -97,6 +97,22 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
     group;
   - Khain et al. 2018, Shankman et al. 2017 and Clement & Kaib 2020 report surviving high-inclination, circulating or
     high-perihelion particles.
+- **Bansal, Brunton, Batygin, Pichierri & Nesvorný 2026** (arXiv:2607.15646v1, preprint, read from the PDF on
+  2026-11-18):
+  - **Inclination pumping as part of the mechanism:** their introduction calls it "not merely incidental but essential
+    to the Planet Nine mechanism". The interaction "acts to lift the perihelia of momentarily-inclined TNOs,
+    potentially removing them from the observable domain".
+  - **The clustering is measured on an observable selection** (section 3.2): a ≥ 250 AU, q ∈ (40, 100) AU,
+    i ≤ 40°, "crude proxies for observability". Section 3.1 uses a ∈ (200, 2000) AU, q ∈ (40, 80) AU and i < 40°
+    over the last Gyr, every 10 Myr.
+  - **Their runs without cluster perturbations** are those of Batygin et al. 2019 (section 2.3). For the broader set
+    they refer to Brown & Batygin 2021.
+  - **What this supports:** the authors' group measures the clustering on the observable selection in 2019 and again
+    in 2026, and describes the lifted, inclined particles as expected dynamics.
+  - **What it does not say:** anything on how Figs. 1, 3 and 4 of 2021 were built.
+  - **Selection (b) of addendum 2** (42 ≤ q ≤ 100 au, i < 40°) is close to their selection but not equal: a beyond
+    the wall up to 700 au instead of a ≥ 250 AU, R per 10-au bin instead of κ of the whole selection, 1–4 Gyr instead
+    of the last Gyr.
 - **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
   q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
 - **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note of the Claude
