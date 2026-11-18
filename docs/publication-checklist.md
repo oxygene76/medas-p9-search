@@ -23,6 +23,7 @@ Decided:
 **New rule: no host names are published any more.**
 - Notarised files stay unchanged; the exception of 2026-11-04 holds only for them, and for the published history that
   cannot change without a rewrite. Both are listed with entry and path in `docs/publication-host-exceptions.tsv`.
+- **Notarised versions against newer versions** (decision of 2026-11-18): package sources that are notarised at an older commit (`EXPECTED-TIME`, `select-gpu.sh`, `docs/gpu-check.md`, `docs/production-package.md`, the speed comparison) get neutral newer versions by new commits, so that future packages hold no host name, while the notarised versions stay unchanged and verifiable at their commits; a finished notarised document such as the A100 acceptance report of 2026-11-03 gets no newer version and stays as it is.
 - **New documents, reports, commit messages, file names, packages and scripts:** only neutral names ("GPU server",
   "notebook"). No host name in `EXPECTED-TIME`, `select-gpu.sh`, templates or log headers of future packages.
 - **`tools/publish_scan.py`:** the known host names are a blocking class. A finding outside the exception list blocks.
