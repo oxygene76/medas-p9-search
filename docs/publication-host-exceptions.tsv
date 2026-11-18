@@ -12,6 +12,7 @@ a11fec37ce101785c861bfcba10b797a6de51a537de2774a7216af740373874f	e3	medas-p9-sea
 2934f040f3f28e2ef1acb91d561a4cf21ea3aba2d2d5617212e581e7a083602c	e3	medas-p9-search	docs/long-runs-110-112-criteria.md
 696a3b9086a75d8a107836ed657ff4f119a6dfca7468a0c8133d7a904e252113	e3	medas-p9-search	docs/production-criteria.md
 6a08d162339513d6d92014d50eef041524cc1e39de6c005c1d45ed50aa40c3af	e3	medas-p9-search	runs/notary/bb2021-comparison-criteria-224b7a1.md
+fa4d84fb5619cf7746f26cbfd0d9102a1961db8f26c7fc88e0f0e69208b03c60	e3	medas-p9-search	runs/notary/manifest-e3-production-20261104.json
 6dd5f94ed9cb3b4f1294a6c6f42ff0808cca2a49625e33a572f7d5982e13a3e1	e3	medas-p9-search-bb2021	docs/a100-acceptance-20261103.md
 2ddc64b711555ae5dba3c4ed6cf3435a05a8a93247223d48804eeba7214d149a	e3	medas-p9-search-bb2021	docs/speed-comparison-<host>.md
 bcfc1d14a81566be4c2b5eabd1370adf3de8cf464aa2de246cdf394907afa030	e3	medas-p9-search-bb2021	speed/estimate_a100.py

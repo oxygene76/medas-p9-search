@@ -67,6 +67,23 @@ scientific content): entry with burn, reveal, revocation, end state. Never
 the real manifests with the test address: an entry is bound to its address
 for good.
 
+## Before a manifest is made: host names (rule of 2026-11-18)
+
+No host name is published any more (`docs/publication-checklist.md`, decisions of 2026-11-18). Before the
+manifest of a new entry (r2, r3, e7, …) is made, every file it will list is scanned:
+
+```sh
+build/venv/bin/python -I tools/publish_scan.py FILE_OR_DIR ...       # the files without git, packages included
+build/venv/bin/python -I tools/publish_scan.py --git HEAD            # the files with git, at the commit of the manifest
+```
+
+- **Expected:** 0 blocking findings. Host names only as `host-listed`, i.e. in a file of
+  `docs/publication-host-exceptions.tsv`: unchanged from a notarised entry or from the published history up to e6.
+- **A `host` finding blocks:** the file is made neutral ("GPU server", "notebook") before the manifest is made.
+- **A stamped file** that holds a host name and cannot change is a decision of the project lead before the manifest.
+- **After the entry:** `tools/host_exceptions.py` adds the entry's manifest and files to the list. A host name is
+  only in it for files that were notarised before 2026-11-18.
+
 ## Manifests
 
 | | specification | entered |

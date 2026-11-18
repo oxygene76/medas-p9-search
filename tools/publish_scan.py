@@ -80,17 +80,36 @@ FIXTURES = {"tests/test_publish_scan.py": _PLANTED, "tools/publish_scan.py": _PL
 IERS = re.compile(rb"astropy-iers-data==[0-9.]+")
 
 
-def scan_hosts(name, data, out, line_only=False):
-    sha = None
+PRINTABLE = re.compile(rb"[\x20-\x7e\t\r\n]")
+
+
+def host_matches(data):
+    """The matches of the host patterns. In a binary file only those inside a printable run of at least 8 characters:
+    the bytes of a REBOUND archive spell a short capital word by chance (seen once in 2.5 GB)."""
+    binary = b"\0" in data[:8192]
     for cls, what, rx in HOSTS:
         for m in rx.finditer(data):
-            if line_only:
-                c = "host-line"
-            else:
-                sha = sha or hashlib.sha256(data).hexdigest()
-                c = "host-listed" if sha in HOST_EXCEPTIONS else cls
-            line = data.count(b"\n", 0, m.start()) + 1
-            out.append((c, what, f"{name}:{line}", m.group(0)[:80].decode(errors="replace")))
+            if binary:
+                i, j = m.start(), m.end()
+                while i > 0 and PRINTABLE.match(data, i - 1):
+                    i -= 1
+                while j < len(data) and PRINTABLE.match(data, j):
+                    j += 1
+                if j - i < 8:
+                    continue
+            yield cls, what, m
+
+
+def scan_hosts(name, data, out, line_only=False):
+    sha = None
+    for cls, what, m in host_matches(data):
+        if line_only:
+            c = "host-line"
+        else:
+            sha = sha or hashlib.sha256(data).hexdigest()
+            c = "host-listed" if sha in HOST_EXCEPTIONS else cls
+        line = data.count(b"\n", 0, m.start()) + 1
+        out.append((c, what, f"{name}:{line}", m.group(0)[:80].decode(errors="replace")))
 
 
 def scan_bytes(name, data, out, line_only=False):

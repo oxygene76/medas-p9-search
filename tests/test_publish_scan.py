@@ -47,6 +47,7 @@ class Hosts(unittest.TestCase):
         data = b"on " + HOST + b" at night\n"
         self.assertIn(("host", "host name"), scan("r.md", data))
         self.assertIn(("host", "host name"), scan("output.sa", b"\0\0" + data))      # binary too
+        self.assertEqual(scan("output.sa", b"\0\x80F" + b"LUX@\xda\0"), [])              # by chance in binary data
         self.assertIn(("host", "host name"), scan("r.md", b"backup on F" + b"LUX\n"))
         self.assertEqual(scan("r.md", b"the flux of a field; Neptune\n"), [])
         import hashlib

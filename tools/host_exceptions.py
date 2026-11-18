@@ -5,8 +5,8 @@
   python3 -I tools/host_exceptions.py OUT.tsv --manifest ENTRY=MANIFEST ... --repo NAME=DIR ... --history REV ...
 
 Two kinds of files, matched later by the sha256 of their bytes (tools/publish_scan.py, class host-listed):
-- **notarised:** each file of a manifest, and each member of a tar file in it (also tars inside tars), exactly as
-  listed (git files from their commit);
+- **notarised:** each manifest itself (its bytes are the content of the entry), each file of it, and each member of a
+  tar file in it (also tars inside tars), exactly as listed (git files from their commit);
 - **published history:** each file version reachable from the given commits (the tips of the last entry), as it is
   there; publishing them publishes these versions, and the history is not rewritten.
 A host name in a path is written as <host>; the list itself holds none. Columns: sha256, entry, repo, path.
@@ -22,11 +22,11 @@ import tarfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from publish_scan import HOSTS  # noqa: E402
+from publish_scan import HOSTS, host_matches  # noqa: E402
 
 
 def has_host(data):
-    return any(rx.search(data) for _, _, rx in HOSTS)
+    return any(True for _ in host_matches(data))
 
 
 def mask(path):
@@ -65,7 +65,10 @@ def main():
     rows = {}
     for spec in a.manifest:
         entry, mpath = spec.split("=", 1)
-        for f in json.load(open(mpath))["files"]:
+        mbytes = Path(mpath).read_bytes()
+        if has_host(mbytes):
+            rows.setdefault(hashlib.sha256(mbytes).hexdigest(), (entry, "medas-p9-search", "runs/notary/" + mask(Path(mpath).name)))
+        for f in json.loads(mbytes)["files"]:
             d = Path(dirs[f["repo"]])
             data = git(d, "show", f"{f['git']['commit']}:{f['path']}") if f["git"] else (d / f["path"]).read_bytes()
             for name, b in members(f["path"], data):
