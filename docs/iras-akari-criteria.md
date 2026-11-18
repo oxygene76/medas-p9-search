@@ -230,3 +230,59 @@ Two points of interpretation that the result showed. They change no verdict; the
 - The verdict "excluded" for Q-P of the two Chen candidates follows the letter of section 3 (0 % of the family in the
   Planet Nine space). It says nothing about the candidates.
 - It is reported as "excluded by the letter, not informative".
+
+## Addendum D (2026-11-18): recomputation of the Phan et al. pair with the catalogue error ellipse; written before any computation
+
+Asked for by the project lead on 2026-11-18 ("Vorschlag (b)"). No pilot run, no new criteria for a simulation. The
+values below were read before this addendum: the PDF of Phan et al. (arXiv v1 and PASA 42, e064; read on 2026-11-18)
+and the IRAS Faint Source Catalog entry; the result of 2026-11-03 is known (it is the reason for this addendum).
+
+**D1. Inputs.**
+- **IRAS F02211-4844:** the Faint Source Catalog entry (IRSA table `irasfsc`, queried 2026-11-18): RA 35.740746°,
+  Dec −48.512474° (J2000, epoch B1983.5), 95 % error ellipse 18″ × 7″, position angle 79°. As a two-dimensional
+  Gaussian: 1σ = 18″/2.4477 × 7″/2.4477 = 7.35″ × 2.86″ at 79°. The catalogue position replaces the rounded one of
+  Phan's Table 2 (difference 0.15″).
+- **AKARI-MUSL J0220440-491247:** no error is published (the list is not public). The fallback of A1 stays: 1σ = 30″,
+  variant 90″.
+- **AKARI epoch:** 2006-12-26 (PDF, section 4.2: the two detections of 26 December 2006; the three scans of 26 June
+  2006 without detection). The June variant of A2 is not computed again.
+- Everything else as in sections 2–3 and addenda A–C: r1, r2 uniform in 500–1,000 au, 10^5 trials, seed 2026, the
+  temperature grid 30–50 K and the albedo grid 0.2–0.75 (A4), the survey limits and footprints (B).
+
+**D2. Computation.**
+- `tools/iras_akari.py` with two new cases, the code change committed before it runs: `phan-fsc` (IRAS ellipse,
+  AKARI 30″) and `phan-fsc-akari90` (IRAS ellipse, AKARI 90″).
+- **DES coverage per exposure** for the kept orbits of `phan-fsc`:
+  - the method of `docs/phan-des.md` (`tools/phan_des.py`), evaluated at the centre time of every DES wide exposure;
+  - the same archive list, footprint and CCD map (`runs/phan-des/`, sha256 there);
+  - the places from the kept orbits (two-body, Earth from DE440s, light time) instead of the straight-line draws of
+    `tools/phan_candidate.py`, which used the June epoch.
+  - The detection model and the recovery criteria of Belyakov, Bernardinelli & Brown 2022 as in `docs/phan-des.md`:
+    per-exposure efficiency, NUNIQUE ≥ 7, ARCCUT ≥ 180 days, a triplet within 90 days.
+
+**D3. What the verdict "excluded" rests on, and when each part carries it.**
+1. **The optical brightness from the infrared fluxes.** It carries the verdict if V ≤ 23.5 (the DES limit V 24.0
+   minus the margin of 0.5 mag of 2.5) at the DES epoch for at least 95 % of the kept weight, for every combination
+   of both models:
+   - (a) the grid of A4: blackbody of 30–50 K fitted to the fluxes, geometric albedo 0.2–0.75;
+   - (b) Phan's own assumptions: radius from 7–17 Earth masses at a density of 1.27–1.64 g/cm³ (their 1.46 and the
+     Uranus and Neptune values), albedo 0.2–0.75.
+   - Reported beside it, for information and not deciding: albedos below 0.2 (0.05 and 0.1) and the temperature range
+     28–53 K that Phan et al. quote.
+2. **The DES search.** It carries the verdict if all of these hold:
+   - (a) the published search covers bodies at 500–700 au: distance or motion range, with page;
+   - (b) it states no restriction that excludes a retrograde or highly inclined bound orbit: orbit linking, priors,
+     injected population, with page;
+   - (c) the recovery probability under its own criteria (D2), on the exposures that hold the kept orbits, is at least
+     0.9 for V ≤ 23.5 in at least 95 % of the kept weight.
+   - The source is the paper of Belyakov, Bernardinelli & Brown 2022 (AJ 163, 216) and the search it uses (Bernardinelli
+     et al. 2022, ApJS 258, 41). Read after this addendum, with page numbers in the report. If the papers say
+     nothing on (a) or (b), that part does not carry the verdict.
+
+**D4. Verdicts.**
+- Both parts of D3 carry it, and the survey criterion of section 3 holds: Q-O **"excluded"**, as on 2026-11-03.
+- One of them does not: Q-O **"not excluded, but outside the Planet Nine parameter space"**, if Q-P gives less than
+  5 % of the kept weight inside the space of 2.6; otherwise Q-P as in section 3.
+- Q-P is computed in either case and reported.
+
+Nothing in sections 1–4 or in addenda A–C is changed by this addendum.
