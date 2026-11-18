@@ -1,4 +1,4 @@
-# Checklist for publishing the repository (2026-11-10)
+# Checklist for publishing the repository (2026-11-10, updated 2026-11-18 after entry e6)
 
 Builds on `docs/publication-commits.md` (what is published, and in which order) and `docs/data-package-proposal.md`
 section 7 (secret scan, private details, history unchanged). Each point is ticked off with its date. Nothing of this
@@ -12,10 +12,18 @@ has been done yet, except where a date is given.
   - production run;
   - long runs 110–112;
   - paired tests A and B;
-  - sets A and B, if released (or a later e7, `docs/data-package-e6.md` section 2).
-- [ ] Entry e6 is on chain, and `docs/notary.md` is updated.
-- [ ] `docs/publication-commits.md` is regenerated with e6 (`tools/notary_refs.py`). The tips and the closure are
-      known.
+  - sets A and B, if released (or a later e8, called e7 in `docs/data-package-e6.md` section 2);
+  - BB-A-rin1 (r3, proposed), if it is to be in the publication.
+- **Names:** kept in `docs/notary.md` (2026-11-18). e6 is the criteria of BB-A-rin1; the data package is e7, called e6
+  in documents written up to 2026-11-18, among them this list before 2026-11-18 and `docs/data-package-e6.md`.
+- [x] Entry e6 (criteria of BB-A-rin1) is on chain, entry #9 (2026-11-18, block 10942017), and `docs/notary.md` is
+      updated (01a6d6a).
+- [ ] Entries r2 (result of sets A and B) and, if wanted, r3 (result of BB-A-rin1) are on chain, and `docs/notary.md`
+      is updated.
+- [ ] Entry e7 (the data package) is on chain, and `docs/notary.md` is updated.
+- [x] `docs/publication-commits.md` is regenerated with e6 (2026-11-18, 01a6d6a). Four tips: fed221a, d4dadd9,
+      f80681f and 0b8971f; closure 305 of 361.
+- [ ] It is regenerated again after each further entry (r2, r3, e7); the tips and the closure are known.
 - [ ] All pending OTS stamps are upgraded and checked against two block explorers (only block heights sent).
 - [ ] The decisions still open in `docs/data-package-proposal.md` are made: ORCID, wording of the methods section.
 
@@ -43,6 +51,14 @@ has been done yet, except where a date is given.
 - [ ] **Published:** only `main` and the tags of the list (`notary-<entry>-<commit>`, one per referenced commit). The
       existing tags inside the closure, `bb2021-criteria-draft-1`, `make-ic-v1` and `prod-eval-v1`, are published
       with them.
+- [ ] **Among them, explicitly, the tips outside `feat/pilot`.** A third party can check e6 only with them; tested on
+      2026-11-18: a clone of `feat/pilot` alone gives 18 of 25.
+  - `notary-e6-0b8971f` on 0b8971f, the program change of BB-A-rin1 (`gpu/p9gpu.c`, `gpu/kernel.cu`,
+    `gpu/p9gpu_api.h`). The branch `feat/rin-every` itself stays private; the tag is enough.
+  - `notary-e5-fed221a` on fed221a, the commit of `medas-p9-search-equiv` named by e5 and e6.
+  - `notary-e5-d4dadd9` on d4dadd9 (`medas-p9-search-bb2021`).
+  - After D all of them are also ancestors of `main`. The tags are still set, so each commit can be found from its
+    manifest.
 - [ ] **Not published:**
   - all other branches, among them the worktree branches (`feat/plate-pilot`, `feat/own-images`, `feat/new-etnos`,
     `feat/c3-bundle`, `run/*` …);
@@ -53,7 +69,10 @@ has been done yet, except where a date is given.
 ## D. Merge into `main`, only right before the push
 
 - [ ] **Dry run, done 2026-11-10 for the tips after e5** (`e83d960`, `d4dadd9`, `fed221a`): `git merge-tree
-      --write-tree`, pairwise and all three together, gives no conflict. Repeat it with the tips after e6.
+      --write-tree`, pairwise and all three together, gives no conflict.
+- [x] **Dry run with the four tips after e6, done 2026-11-18** (`fed221a`, `d4dadd9`, `f80681f`, `0b8971f`):
+      pairwise (6 pairs) and all four in sequence, no conflict. Objects only, no refs. Repeat it with the tips after
+      the last entry.
 - [ ] **Merge commit** on `main` of the tips: a new commit, no rebase and no rewrite. Message: "Publication: the state
       of the campaign (tips …)".
 - [ ] Afterwards, every referenced commit is an ancestor of `main` or of a tag:
@@ -72,6 +91,15 @@ Run after D, and before the push:
       is decided before the push.
 - [ ] `git count-objects` and the size of a fresh `git clone --mirror` of only the published refs (in a temporary
       directory), as a check that nothing large or private comes along.
+- [ ] **Probe "fresh clone, verify", before 2026-11-24, before the push:**
+  - In a temporary directory, make a fresh clone that holds only the published refs: `main` and the tags of the list,
+    each named, from a `--no-local` clone.
+  - Check out each repository commit of a manifest as a detached worktree (e6: f80681f and fed221a).
+  - Unpack the files without git from the archive of the reveal (`manifest.py archive`).
+  - Run `manifest.py verify` (version of 0ee3dc9 or later, which reports a missing commit as COMMIT MISSING) for every
+    manifest on chain.
+  - **Expected:** every one complete, e6 **25 of 25**, no COMMIT MISSING.
+  - The same done by hand on 2026-11-18 with a local clone of all branches gave 25 of 25.
 
 ## F. Push
 
@@ -80,7 +108,9 @@ Run after D, and before the push:
 - [ ] Clone it fresh from the remote, then check:
   - `git log --oneline main | wc -l` equals the closure of the list;
   - the tags are present;
-  - `git show <commit>:<path>` of three manifest lines (a3, e3, e5) works, and their sha256 equals the manifest.
+  - `git show <commit>:<path>` of three manifest lines (a3, e3, e5) works, and their sha256 equals the manifest;
+  - `manifest.py verify` of e6 from this clone, with the reveal archive, gives 25 of 25 (the p9gpu files at 0b8971f
+    included).
 - [ ] Software record on Zenodo (GitHub integration or upload of `git archive`) at the published commit.
 
 ## G. Afterwards
