@@ -120,7 +120,7 @@ order below scans the final state anyway.
   - A control repository with three planted keys gave 2 findings, so the scanner works.
 - **`tools/publish_scan.py --history`:** no secrets, no Gaia data.
   - Over the trees of the three tips and of `main`: 0 blocking findings.
-  - Reported, and published unchanged by decision: the host name `appmdp-05`, the home path in
+  - Reported, and published unchanged by decision: the host name of the GPU server (in the notarised files only; rule of 2026-11-18), the home path in
     `environment.txt` and the GPU UUID in the acceptance report.
 
 ## Order of the publication (decision of 2026-11-04)

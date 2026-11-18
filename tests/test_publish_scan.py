@@ -9,6 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import publish_scan as ps  # noqa: E402
 
 
+# a host name of the known kind, put together here so that this file does not hold one
+HOST = b"app" + b"mdp-" + b"05"
+
+
 def scan(name, data):
     out = []
     ps.scan_bytes(name, data, out)
@@ -25,7 +29,7 @@ class Archives(unittest.TestCase):
                 for n, d in files.items():
                     ti = _tar.TarInfo(n); ti.size = len(d); t.addfile(ti, _io.BytesIO(d))
             return buf.getvalue()
-        inner = tar_bytes({"src/a.log": b"start on appmdp-05\n"}, gz=True)
+        inner = tar_bytes({"src/a.log": b"start on " + HOST + b"\n"}, gz=True)
         with _tmp.TemporaryDirectory() as d:
             Path(d, "rec").mkdir()
             Path(d, "rec/runs.tar").write_bytes(tar_bytes({"runs/x/start.log": b"GPU-1cf3e09f-4b70-9369-f482-af987eff83cd\n"}))
@@ -34,8 +38,29 @@ class Archives(unittest.TestCase):
             ps.scan_path(Path(d, "rec"), out)
         whats = sorted((w, loc.split(":")[0]) for _, w, loc, _ in out)
         self.assertIn(("GPU UUID", "rec/runs.tar"), whats)
-        self.assertIn(("internal host", "rec/code.tar"), whats)
+        self.assertIn(("host name", "rec/code.tar"), whats)
         self.assertTrue(any(loc.startswith("rec/code.tar:code/src.tar.gz:src/a.log") for _, _, loc, _ in out))
+
+
+class Hosts(unittest.TestCase):
+    def test_host_names_block_unless_the_file_is_listed(self):
+        data = b"on " + HOST + b" at night\n"
+        self.assertIn(("host", "host name"), scan("r.md", data))
+        self.assertIn(("host", "host name"), scan("output.sa", b"\0\0" + data))      # binary too
+        self.assertIn(("host", "host name"), scan("r.md", b"backup on F" + b"LUX\n"))
+        self.assertEqual(scan("r.md", b"the flux of a field; Neptune\n"), [])
+        import hashlib
+        ps.HOST_EXCEPTIONS[hashlib.sha256(data).hexdigest()] = "e3 x/r.md"
+        try:
+            self.assertIn(("host-listed", "host name"), scan("r.md", data))
+            self.assertIn(("host", "host name"), scan("r.md", data + b"changed\n"))   # another version blocks
+        finally:
+            ps.HOST_EXCEPTIONS.clear()
+
+    def test_history_lines_are_reported(self):
+        out = []
+        ps.scan_bytes("c:r.md", b"on " + HOST, out, line_only=True)
+        self.assertEqual([(c, w) for c, w, *_ in out], [("host-line", "host name")])
 
 
 class Fixtures(unittest.TestCase):
@@ -63,7 +88,6 @@ class Rules(unittest.TestCase):
 
     def test_private_text_only(self):
         self.assertIn(("private", "home or root path"), scan("env.txt", b"p9sim /home/someone/dev/x\n"))
-        self.assertIn(("private", "internal host"), scan("r.md", b"on appmdp-05 at night\n"))
         self.assertIn(("private", "private IPv4"), scan("r.md", b"host 192.168.1.20 up\n"))
         self.assertEqual(scan("output.sa", b"\0\0C@S.ot 10.1.2.3"), [])          # binary: no private patterns
         self.assertEqual(scan("requirements.txt", b"astropy-iers-data==0.2026.10.19.0.52.1\n"), [])

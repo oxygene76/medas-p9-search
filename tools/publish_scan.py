@@ -5,6 +5,11 @@
   python3 -I tools/publish_scan.py PATH [PATH ...]          directories or .tar / .tar.gz files
   python3 -I tools/publish_scan.py --git REV [--repo DIR]    the tracked files of a commit (what git archive gives)
   python3 -I tools/publish_scan.py --history [--repo DIR]    every line ever added or removed, all branches
+  python3 -I tools/publish_scan.py --blobs REV [REV ...] [--repo DIR]
+                                                             every version of every file reachable from these
+                                                             commits or tags (what publishing them makes public)
+  --host-exceptions TSV   the list of files that may hold a host name (default docs/publication-host-exceptions.tsv
+                          next to this tool)
 
 Findings, by class (exit 1 if there is any of the classes that block, 0 otherwise):
   secret     private key blocks, tokens of common services, assignments of passwords, secrets, API keys and tokens,
@@ -13,13 +18,19 @@ Findings, by class (exit 1 if there is any of the classes that block, 0 otherwis
              table names, VizieR I/345, I/350, I/355; files under runs/plates or runs/ownimg (licence: the package
              is CC BY 4.0, Gaia-derived catalogues are not to be redistributed in it)                       (blocks)
   gaia-code  the same in programs and documents (.py, .sh, .md, .txt, .c, .h, .cu): a query, not data      (reported)
-  private    (text files only) home and root paths (/home/<user>, /root/), internal host names (appmdp-NN), private IPv4 addresses,
-             GPU UUIDs and serial numbers, e-mail addresses other than the author's                        (reported)
+  host       the known internal host names (rule of 2026-11-18: no host name is published any more), in text and
+             binary files                                                                                   (blocks)
+  host-listed  the same in a file of the exception list: matched by the sha256 of its bytes, i.e. exactly that file
+             as notarised or as it is in the published history up to entry e6               (reported, does not block)
+  host-line  the same in a line of --history, where the file is not at hand: decided with --blobs        (reported)
+  private    (text files only) home and root paths (/home/<user>, /root/), private IPv4 addresses, GPU UUIDs and
+             serial numbers, e-mail addresses other than the author's                                      (reported)
 Binary files are scanned as text too (REBOUND archives hold no text, so they give no hits). Only text matches are
 found: a check of what goes out, not a proof that nothing else does.
 """
 
 import argparse
+import hashlib
 import io
 import re
 import subprocess
@@ -36,20 +47,54 @@ RULES = [
     ("gaia", "Gaia columns", re.compile(rb"(?i)\bsource_id\b.{0,200}\b(phot_g_mean_mag|bp_rp|parallax_error)\b")),
     ("gaia", "Gaia table", re.compile(rb"(?i)\bgaia(e?dr[23])\.gaia_source\b|\bI/(345|350|355)/")),
     ("private", "home or root path", re.compile(rb"/home/[a-z_][a-z0-9_-]*/|/root/\.[A-Za-z]")),
-    ("private", "internal host", re.compile(rb"(?i)\bappmdp-?[0-9]+\b")),
     ("private", "private IPv4", re.compile(rb"\b(10\.(?:[0-9]{1,3}\.){2}[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3})\b(?![.0-9])")),
     ("private", "GPU UUID", re.compile(rb"\bGPU-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")),
     ("private", "e-mail", re.compile(rb"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[a-z]{2,}\b")),
 ]
+# the known internal host names, written so that this file does not hold them: the three machine-name families with
+# "mdp" and a suffix, and the name of the backup host in capitals
+HOSTS = [
+    ("host", "host name", re.compile(rb"(?i)\b(?:app|chain|web)" rb"mdp-?[0-9a-z]+\b")),
+    ("host", "host name", re.compile(rb"\bF" rb"LUX\b")),
+]
+HOST_EXCEPTIONS = {}            # sha256 of the bytes -> "entry path", filled by load_host_exceptions()
+
+
+def load_host_exceptions(path):
+    """docs/publication-host-exceptions.tsv: sha256, entry, repo, path (tab separated, '#' comments)."""
+    p = Path(path)
+    if not p.exists():
+        return
+    for line in p.read_text().splitlines():
+        if line and not line.startswith("#"):
+            sha, entry, repo, fpath = line.split("\t")[:4]
+            HOST_EXCEPTIONS[sha] = f"{entry} {repo}/{fpath}"
+
+
 GAIA_PATHS = re.compile(r"(^|/)runs/(plates|ownimg)(/|$)")
 # the planted test strings of this scanner's own tests: reported as "fixture" (not blocking), only in exactly that file
 # and only these exact strings, so that a real secret there would still block
-FIXTURES = {"tests/test_publish_scan.py": {b"-----BEGIN OPENSSH PRIVATE KEY-----", b"API_KEY=abcdef0123456789xyz"}}
+_PLANTED = {b"-----BEGIN OPENSSH PRIVATE KEY-----", b"API_KEY=abcdef0123456789xyz"}
+FIXTURES = {"tests/test_publish_scan.py": _PLANTED, "tools/publish_scan.py": _PLANTED}   # here: their definition
 # version strings of astropy-iers-data look like private IPv4 addresses: 0.2026.10.19.0.52.1
 IERS = re.compile(rb"astropy-iers-data==[0-9.]+")
 
 
-def scan_bytes(name, data, out):
+def scan_hosts(name, data, out, line_only=False):
+    sha = None
+    for cls, what, rx in HOSTS:
+        for m in rx.finditer(data):
+            if line_only:
+                c = "host-line"
+            else:
+                sha = sha or hashlib.sha256(data).hexdigest()
+                c = "host-listed" if sha in HOST_EXCEPTIONS else cls
+            line = data.count(b"\n", 0, m.start()) + 1
+            out.append((c, what, f"{name}:{line}", m.group(0)[:80].decode(errors="replace")))
+
+
+def scan_bytes(name, data, out, line_only=False):
+    scan_hosts(name, data, out, line_only)
     if GAIA_PATHS.search(name):
         out.append(("gaia", "file of the plate or own-images tools", name, ""))
     data = IERS.sub(b"", data)
@@ -102,8 +147,11 @@ def main():
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--git")
     ap.add_argument("--history", action="store_true")
+    ap.add_argument("--blobs", nargs="+", metavar="REV")
     ap.add_argument("--repo", default=".")
+    ap.add_argument("--host-exceptions", default=str(Path(__file__).resolve().parents[1] / "docs" / "publication-host-exceptions.tsv"))
     a = ap.parse_args()
+    load_host_exceptions(a.host_exceptions)
     out = []
     if a.git:
         tar = subprocess.run(["git", "-C", a.repo, "archive", "--format=tar", a.git], capture_output=True, check=True).stdout
@@ -121,16 +169,27 @@ def main():
             elif raw.startswith(b"+++ b/"):
                 path = raw[6:].decode(errors="replace")
             elif raw[:1] in (b"+", b"-") and not raw.startswith((b"+++", b"---")):
-                scan_bytes(f"{commit}:{path}", raw[1:], out)
+                scan_bytes(f"{commit}:{path}", raw[1:], out, line_only=True)
+    if a.blobs:
+        objs = subprocess.run(["git", "-C", a.repo, "rev-list", "--objects", *a.blobs], capture_output=True, check=True).stdout
+        rows = [l.split(b" ", 1) for l in objs.splitlines() if b" " in l]
+        cat = subprocess.Popen(["git", "-C", a.repo, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        for oid, path in rows:
+            cat.stdin.write(oid + b"\n"); cat.stdin.flush()
+            hdr = cat.stdout.readline().split()
+            data = cat.stdout.read(int(hdr[2])); cat.stdout.read(1)
+            if hdr[1] == b"blob":
+                scan_archive_or_bytes(f"{oid[:12].decode()}:{path.decode(errors='replace')}", data, out)
+        cat.stdin.close(); cat.wait()
     for p in a.paths:
         scan_path(p, out)
-    blocking = [x for x in out if x[0] in ("secret", "gaia")]
+    blocking = [x for x in out if x[0] in ("secret", "gaia", "host")]
     seen = {}
     for cls, what, where, text in out:
         seen.setdefault((cls, what, text), []).append(where)
     for (cls, what, text), wheres in sorted(seen.items()):
         print(f"{cls:8s} {what:22s} {text!r:60.60s} {len(wheres):4d}x  e.g. {wheres[0]}")
-    print(f"== {len(out)} findings, {len(blocking)} blocking (secret, gaia)")
+    print(f"== {len(out)} findings, {len(blocking)} blocking (secret, gaia, host)")
     sys.exit(1 if blocking else 0)
 
 
