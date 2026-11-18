@@ -135,6 +135,28 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
   - **Selection (b) of addendum 2** (42 ≤ q ≤ 100 au, i < 40°) is a similar selection, not the same: a beyond the
     wall up to 700 au instead of a ≥ 250 AU, R per 10-au bin instead of κ of the whole selection, 1–4 Gyr instead of
     the last Gyr.
+- **Highly inclined and retrograde particles in the authors' own work** (read from the PDFs on 2026-11-18):
+  - **Batygin & Morbidelli 2017** (section 5.2, p. 13): "in our simulation, 38% of all stable objects experience at
+    least one such excursion" to high inclination.
+    - Their model: m9 10 M⊕, a9 700 AU, e9 0.6.
+    - All four giant planets, Neptune included, are only a J2 moment of the Sun, with an absorbing radius of 20 AU.
+    - Particles start with q 30–36 AU, a half-normal of σi = 5°.
+  - **Batygin et al. 2019** (section 5.4, p. 57): the solution with e9 = 0.25 "produces retrograde TNOs in much greater
+    proportions than its lower eccentricity counterpart". Fig. 23 shows this for m9 5 M⊕. The text attributes it to
+    an octupolar term, which needs a significant eccentricity.
+  - **Clement & Kaib 2020** (Table 4, p. 6; Planet Nine of 2019, 5 M⊕, 500 au, e 0.25, i 20°): only 0.06–0.24 of the
+    particles are still "detectable" (q < 100 au) after 4 Gyr.
+  - **Bansal et al. 2026** (above): inclination pumping is essential to the mechanism.
+- **What is open:**
+  - These papers describe a considerable share of highly inclined and retrograde particles, growing with e9.
+  - Fig. 4 of 2021 (e9 0.33) shows hardly any at q > 42 au: 0.92–0.94 of the pole density below 30° in the panel
+    i9 = 15°.
+  - How the two fit together is open.
+  - **What the paper says about Fig. 4:** Its caption names no weighting and does not say how retrograde poles are
+    drawn. The text (p. 12) weights the pole distributions of the likelihood with a and q, but does not say whether
+    Fig. 4 shows these.
+  - The weighted reading, tried in addendum 4, does not fit for set A (observation 6).
+  - No judgement on the paper.
 - **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
   q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
 - **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note of the Claude
