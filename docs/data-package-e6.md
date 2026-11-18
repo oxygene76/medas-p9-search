@@ -1,5 +1,18 @@
 # Data package and entry e6: structure and metadata (draft, 2026-11-10)
 
+**Names, since 2026-11-18** (`docs/notary.md`): the entry of the data package is **e7**; "e6" in this file means e7.
+The later entry for sets A and B called "e7" in section 2 is **e8**. The file name stays.
+
+**Decisions of 2026-11-18** (project lead; `docs/publication-checklist.md`, "Decisions of 2026-11-18"):
+- **GPU UUID unchanged, no placeholder:** in `gpu-uuid`, `start.log`, `check/report.txt` and `a100-start.log`, because
+  the checksum lists of the results (production, long runs, sets A and B) are stamped and the files must equal them.
+  This replaces the placeholder plan in section 1 ("Logs") and settles decision 1 of section 4.
+- **No host names in anything new:** README, metadata, scripts and reports of the records name the machines neutrally
+  ("GPU server", "notebook"). Files taken unchanged from notarised or stamped states keep what they hold; they are in
+  `docs/publication-host-exceptions.tsv`.
+- **Before the manifest of e7 (and r2, r3) is made:** `tools/publish_scan.py` over every file to be added. A host name
+  outside the exception list blocks.
+
 This file builds on `docs/data-package-proposal.md`, whose decisions of 2026-11-04 apply unchanged: CC BY 4.0, one
 record per campaign, flyby logs, no Gaia data, history unchanged. It adds three things:
 - the concrete records, with the sizes measured on the verified result archives;
@@ -41,9 +54,13 @@ medas-p9-search-<campaign>-1.0.0/
 ```
 - **`receipt-public.json`** holds the parts of a receipt that are public after the reveal: entry number, height, tx,
   commitment and the reveal. It never contains a salt of an entry that is not revealed.
-- **Logs** go in only after `tools/publish_scan.py`: host names, addresses and user names are replaced by placeholders,
-  and the README notes it. The V5 run directory holds the GPU UUID in the file `gpu-uuid` (its `run.log` does not);
-  that file is replaced by a placeholder too.
+- **Logs** go in only after `tools/publish_scan.py`. Superseded on 2026-11-18 (top of this file):
+  - **Unchanged:** the run directories go in as the packages wrote them. They equal the stamped checksum lists; the
+    GPU UUID in `gpu-uuid` and in the logs stays.
+  - **A host name** that `tools/publish_scan.py` finds in them blocks, unless the file is in
+    `docs/publication-host-exceptions.tsv` (taken unchanged from a notarised package).
+  - **New files of the record** (README, metadata) name no host.
+  - (Was: host names, addresses and user names replaced by placeholders, also the file `gpu-uuid`.)
 
 ## 2. Entry e6
 
@@ -128,5 +145,6 @@ git ignores. Nothing was uploaded, and the result is not kept.
    - Or replace it by a placeholder: the file then differs from the list in exactly that line, which the README must
      explain.
    - Proposed: leave it unchanged, as for the notarised documents (7.1).
+   - **Decided 2026-11-18: unchanged** (top of this file).
 2. **`LICENSE-DATA.txt`:** the full legal code of CC BY 4.0 instead of the placeholder.
 3. **The `long-110-112` record** is packed in the same way. Its MERCURIUS part has 28,987 files in one tar.

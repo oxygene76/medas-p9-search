@@ -6,6 +6,30 @@ has been done yet, except where a date is given.
 
 **Rule:** no merge into `main`, no tag and no push until point E. The repository has no remote yet.
 
+## Decisions of 2026-11-18 (project lead, after the check of the published history and the reveal archives)
+
+The check covered the 305 commits of `main` and the four tips after e6, all 796 file versions and the commit
+messages, and the 233 files without git of the seven manifests, tars inside tars included. It found no obstacle.
+Decided:
+1. **Author and committer** (`Eike <e.janssen@medas-computers.de>`, all 305 commits) and the time zones of the
+   timestamps are published.
+2. **The home path in `runs/accept-v5/maketest.log`** (a3, notarised) is published, as the one in `environment.txt`.
+3. **Point B below:** the files under `runs/` and the `defaults.env` that are in the published trees are explicit
+   exceptions.
+4. **GPU UUID in the run logs unchanged**, no placeholder. The checksum lists of sets A and B, among others, are
+   stamped. `docs/data-package-e6.md` is adjusted.
+5. **The researcher address** stays named in `docs/notary.md`.
+
+**New rule: no host names are published any more.**
+- Notarised files stay unchanged; the exception of 2026-11-04 holds only for them, and for the published history that
+  cannot change without a rewrite. Both are listed with entry and path in `docs/publication-host-exceptions.tsv`.
+- **New documents, reports, commit messages, file names, packages and scripts:** only neutral names ("GPU server",
+  "notebook"). No host name in `EXPECTED-TIME`, `select-gpu.sh`, templates or log headers of future packages.
+- **`tools/publish_scan.py`:** the known host names are a blocking class. A finding outside the exception list blocks.
+- **For r2, e7 and r3:** before the manifest is made, `tools/publish_scan.py` over every file to be added. Files taken
+  unchanged from notarised packages are in the exception list.
+
+
 ## A. Before anything else
 
 - [ ] All evaluations covered by the publication are done, with their result reports committed and stamped:
@@ -45,6 +69,14 @@ has been done yet, except where a date is given.
       stay unchanged (option 7.1); the README says so.
 - [ ] `runs/`, `build/` and `.env`-like files are ignored and appear in no published tree: `git ls-tree -r` of the
       state to be published, checked for `runs/`, `build/`, `*.env` and `*receipt*`.
+  - **Explicit exceptions** (decision of 2026-11-18), committed on purpose and checked: no secrets, no paths, no UUID.
+    - `runs/compare-rebound-p9gpu-dkd.txt` and `runs/compare-rebound-p9gpu-kdk-late.txt`, at all tips;
+    - `runs/speed/RESULT.md`, `runs/speed/run.sh`, `runs/speed/run-cpu.sh` and `runs/speed/run.log`, at 0b8971f and
+      d4dadd9. `RESULT.md` holds the host name; it is in the published history and in the exception list.
+    - `bb/sets/defaults.env`, `bb/v2short/defaults.env` and `pair/v5/defaults.env` (package defaults: GPU name, socket,
+      card check), at fed221a.
+    - `tools/notary/notary-receipt-backup.sh` matches `*receipt*`. It is a script, not a receipt.
+  - Any other match blocks.
 
 ## C. Branches and tags
 
@@ -86,6 +118,8 @@ Run after D, and before the push:
       `main` and the tags. Expected: no leaks. A control repository with planted keys proves the scanner works.
 - [ ] **`tools/publish_scan.py --git <rev>`** over the tree of `main` and of every tag. Expected: 0 blocking findings
       (secrets, Gaia data).
+- [ ] **`tools/publish_scan.py --blobs main <tags>`** over every file version of the published state. Expected: 0
+      blocking findings; host names only in the exception list (`docs/publication-host-exceptions.tsv`).
 - [ ] **`tools/publish_scan.py --history`** over the published state. Reported private details are compared with the
       known list (data package proposal section 7: host name, home path, GPU UUID, author address), and anything new
       is decided before the push.
