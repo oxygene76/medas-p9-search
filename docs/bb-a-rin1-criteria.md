@@ -120,8 +120,37 @@ beyond the wall:
 4. **Survivors** at 1, 2, 3, 4 Gyr (all, and in S_BB beyond the wall).
 5. **Removals per segment** from the result line: `removed_r_in`, `removed_r_out`, `removed_collision` (new in 0b8971f;
    `removed_inner` counts only the j2 model and stays 0).
-   - BB-A has only the sum (`removed`, `removed_encounter`). The comparison with BB-A is therefore made for the sum per
-     segment; the split is reported for BB-A-rin1 alone.
+   - **Segments 6–39:** BB-A has only the sum (`removed`, `removed_encounter`). There the comparison with BB-A is made
+     for the sum per segment; the split is reported for BB-A-rin1 alone.
+   - **Segments 0–5: the split of BB-A is known** from the proof run `p9rinproof-0b8971f` (BB-A with cadence 1000,
+     bit-identical to set A in all 6 segments, `PROOF.ok`):
+
+     | segment | `removed_r_in` | `removed_r_out` | `removed_collision` | sum | N_end of set A |
+     |---|---|---|---|---|---|
+     | 0 | 147 | 6951 | 6 | 7104 | 56,902 |
+     | 1 | 178 | 6571 | 6 | 6755 | 50,147 |
+     | 2 | 132 | 3504 | 3 | 3639 | 46,508 |
+     | 3 | 94 | 2375 | 2 | 2471 | 44,037 |
+     | 4 | 75 | 2176 | 2 | 2253 | 41,784 |
+     | 5 | 66 | 2071 | 1 | 2138 | 39,646 |
+     | 0–5 | 692 | 23,648 | 20 | 24,360 | |
+
+     Each sum is the decrease of N_end (from 64,006 bodies: 64,000 test particles and 6 massive bodies).
+   - **What must hold for these six segments,** as a consequence of section 2: up to its own removal, a particle runs
+     bit-identically in both runs, and BB-A-rin1 only adds removals inside 4.5 au. Hence, summed over segments 0..k
+     for every k = 0..5:
+     - `removed_r_in` of BB-A-rin1 ≥ that of BB-A: every particle that BB-A removes inside is removed inside by
+       BB-A-rin1 too, at the same time or earlier;
+     - `removed_r_out` and `removed_collision` of BB-A-rin1 ≤ those of BB-A: each of these removals in BB-A-rin1 is
+       also one in BB-A, at the same step;
+     - N_end of BB-A-rin1 ≤ N_end of BB-A. The difference equals the excess of all removals of BB-A-rin1 over those of
+       BB-A: the particles that BB-A-rin1 removes inside while BB-A still keeps them.
+     - A violation is treated like a failed early check: `sh stop.sh`, evaluate nothing.
+   - **Reported for segments 0–5** (information, not judged), per segment and summed over 0–5:
+     - the excess of `removed_r_in` over BB-A;
+     - how much of it are particles that BB-A removes outside or by a collision in the same or a later of these
+       segments;
+     - how much are particles that BB-A still keeps at the end of segment 5.
 
 ## 4. The scale, fixed before the run
 
