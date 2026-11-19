@@ -122,8 +122,8 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
     group;
   - Khain et al. 2018, Shankman et al. 2017 and Clement & Kaib 2020 report surviving high-inclination, circulating or
     high-perihelion particles.
-- **Bansal, Brunton, Batygin, Pichierri & Nesvorný 2026** (arXiv:2607.15646v1, a preprint, not peer-reviewed; read
-  from the PDF on 2026-11-18):
+- **Bansal, Brunton, Batygin, Pichierri & Nesvorný 2026** (Icarus 460, 117248, doi:10.1016/j.icarus.2026.117248,
+  peer-reviewed; read from the arXiv version 2607.15646v1 on 2026-11-18, the pages below are those of that version):
   - **Inclination pumping as part of the mechanism:** their introduction calls it "not merely incidental but essential
     to the Planet Nine mechanism". The interaction "acts to lift the perihelia of momentarily-inclined TNOs,
     potentially removing them from the observable domain".
