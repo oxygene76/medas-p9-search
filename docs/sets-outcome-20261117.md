@@ -67,7 +67,9 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    PDF):
    - inside the wall the runs equal the figures: 0.074 against 0.086 (set A, 150–230 au), 0.075 against 0.075 (set B,
      150–190 au);
-   - beyond the wall the figures show R 0.61 (Fig. 3, third panel) and 0.52 (Fig. 1), the runs 0.10 and 0.15.
+   - beyond the wall the figures show R 0.60–0.61 (Fig. 3, third panel, 270–700 au) and 0.51–0.52 (Fig. 1,
+     230–700 au), the runs 0.10 and 0.15 over the same ranges. The two values per figure come from two readings of the
+     colour scale (empirical and gamma), not from different ranges.
 2. **Decomposition** (`docs/sets-decomposition-20261117.md`, addendum 6130d44): verdict **"core present"** in both sets.
    - For 42 < q < 100 au and i < 30° the runs give R 0.63 (A) and 0.50 (B) beyond the wall.
    - In this subset R rises at about 260–280 au (A) and 190–210 au (B). That is where the figures place the wall: 256 au
@@ -103,8 +105,9 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
      a and q kernels around the 10 objects of Table 1, q ≥ 42 au).
    - **Set A gives 0.761 below 30°, against 0.92–0.94 in Fig. 4** (panel i9 = 15°). By the scale fixed before:
      **"the reading does not fit"**. Set B gives 0.844, for information.
-   - **R beyond the wall with the q weighting:** 0.274 (A) against 0.60 (Fig. 3, third panel), 0.467 (B) against
-     0.51 (Fig. 1).
+   - **R beyond the wall with the q weighting:** 0.274 (A, 260–700 au) against 0.60–0.61 (Fig. 3, third panel,
+     270–700 au); 0.467 (B, 200–700 au) against 0.51–0.52 (Fig. 1, 230–700 au). The runs use the ranges of addendum 2,
+     the figure values those of their measurement (observation 1).
    - **The removal cadence:** MERCURIUS (p9sim) removed with the same rule and cadence as p9gpu (r < 4.5 au and
      r > 10,000 au every 1000 steps). The comparisons of V5 with MERCURIUS therefore say nothing about the cadence.
    - **Bounds for BB-A-rin1** (set A without the particles whose q was ever below X at a snapshot):
@@ -171,7 +174,11 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
 - one realisation of each set;
 - the B&B values read from figures;
 - the model without galactic tide, passing stars or observational bias (B&B likewise name no tide);
-- the late clustering strength cannot be checked conclusively against MERCURIUS over 4 Gyr.
+- the late clustering strength cannot be checked conclusively against MERCURIUS over 4 Gyr;
+- the package differs from the paper in some points: set B with i9 = 17° (Table 2 and section 4.3 of the paper; the
+  caption of Fig. 1 says 16°), 64,000 test particles instead of 17,500 and 25,600, the test particles in the ecliptic
+  frame instead of the plane of the giant planets (up to 1.6°), the integrator and time step, the cadence of the
+  inner removal. All rows: `docs/bb2021-article-vs-package.md`.
 
 ## What follows, for the project lead's decision
 
@@ -184,3 +191,14 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    the same environment (stage 8 of the guide).
 4. **Website and research note:** not before the review. The content for 2026-11-24 has to state outcome 4 instead of
    an agreement.
+5. **The run BB-A-rin1** (set A with the inner removal in every step):
+   - its criteria are entered as e6: entry #9, block 10942017, 2026-11-18 16:12:49 UTC;
+   - it runs since 2026-11-18;
+   - it is evaluated by the entered criteria after its end, and the result is entered as r3. No date is set.
+   - It changes nothing of outcome 4.
+6. **Open point, for the project lead's decision:** several observations name "the Claude chat" as a source.
+   Proposed: name the file and its SHA-256 instead, e.g.:
+   - `bb2021-abbildungen-messung.md` (`ba1a449a…26e5`) with `bb2021-abbildungen-messung.csv` (`007b1e7e…8da9`) and
+     `bb2021_abbildungen_messung.py` (`ab7191f9…4702`) for observation 1;
+   - `bb2021-abb4-messung-20261117.md` (`6209a499…94fa`) for observation 4.
+   - Until decided, the text stays as it is.
