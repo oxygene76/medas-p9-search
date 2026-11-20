@@ -63,8 +63,10 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
 - **The long runs 110–112:** no growing bias found; up to 1 Gyr clearly testable, 2 Gyr with limits, 4 Gyr not.
 
 **Observations after the result** (exploratory, fixed and timestamped before each computation, but after the outcome):
-1. **Measurement of the figures of 2021** (files of the Claude chat of 2026-11-17, recomputed independently from the
-   PDF):
+1. **Measurement of the figures of 2021** (2026-11-17: `bb2021-abbildungen-messung.md`, SHA-256
+   `ba1a449a5abaec798bb0acd88ec4b1fb338bebfd13c078dc5d6303a4b07926e5`, with `bb2021-abbildungen-messung.csv`, SHA-256
+   `007b1e7ef54092cefce5e22ecfcfb1a05aeee107979bd8665bab698bdad88da9`, and `bb2021_abbildungen_messung.py`, SHA-256
+   `ab7191f9c3c63d7a3fa2218c504a813d02646dbb0ddb217d3fbfc2f26b234702`; recomputed independently from the PDF):
    - inside the wall the runs equal the figures: 0.074 against 0.086 (set A, 150–230 au), 0.075 against 0.075 (set B,
      150–190 au);
    - beyond the wall the figures show R 0.60–0.61 (Fig. 3, third panel, 270–700 au) and 0.51–0.52 (Fig. 1,
@@ -82,7 +84,8 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    - Over all of q > 42 au: 0.10 and 0.15, "no cluster".
    - **One difference:** 2019 uses the last 2 Gyr, the addendum 1–4 Gyr, like the criteria.
 
-4. **Fig. 4 of 2021** (measurement of the Claude chat of 2026-11-17, recomputed independently from the PDF):
+4. **Fig. 4 of 2021** (measurement of 2026-11-17, `bb2021-abb4-messung-20261117.md`, SHA-256
+   `6209a499dad91728d46a6d6ad1723a09cf19dc1fc81df529daba1a4c94db94fa`; recomputed independently from the PDF):
    - Its caption states the selection: "pole positions of KBOs with a > 150 AU and q > 42 AU", with no cut in
      inclination and no upper limit in q.
    - **The panel i9 = 15°** (m9 7, a9 500, e9 0.33) holds about 0.92–0.94 of the pole density below 30° (prograde, up
@@ -162,8 +165,10 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
   - No judgement on the paper.
 - **Not shown:** that the figures of 2021 were built with the cuts of 2019. The text of 2021 states a > 150 au and
   q > 42 au "for both the data and for the simulations", and the captions of Figs. 1 and 3 give no further selection.
-- **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note of the Claude
-  chat (version 2), which read Fig. 4 as a hint at cuts, is superseded on this point.
+- **Fig. 4 speaks against an inclination cut:** It names q > 42 au and shows no cut. The research note
+  `recherche-population-jenseits-der-wand-20261117-v2.md` (SHA-256
+  `5cdf46647ab3c31af53cf8b4c46a06c3a4c80d1318aaf57fd093002c173a73b7`), which read Fig. 4 as a hint at cuts, is
+  superseded on this point.
 
 **What this means:**
 - Outcome 4 stays as fixed: no judgement on the paper and none on Planet Nine.
@@ -196,9 +201,5 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    - it runs since 2026-11-18;
    - it is evaluated by the entered criteria after its end, and the result is entered as r3. No date is set.
    - It changes nothing of outcome 4.
-6. **Open point, for the project lead's decision:** several observations name "the Claude chat" as a source.
-   Proposed: name the file and its SHA-256 instead, e.g.:
-   - `bb2021-abbildungen-messung.md` (`ba1a449a…26e5`) with `bb2021-abbildungen-messung.csv` (`007b1e7e…8da9`) and
-     `bb2021_abbildungen_messung.py` (`ab7191f9…4702`) for observation 1;
-   - `bb2021-abb4-messung-20261117.md` (`6209a499…94fa`) for observation 4.
-   - Until decided, the text stays as it is.
+6. **Sources named by file and SHA-256** (decision of the project lead, 2026-11-20): the measurements and the research
+   note above are named by file and SHA-256. They are not in this repository; they go into the data package.
