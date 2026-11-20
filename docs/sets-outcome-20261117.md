@@ -202,4 +202,4 @@ addendum, with its own criteria entry on medasdigital-2 before the run.
    - it is evaluated by the entered criteria after its end, and the result is entered as r3. No date is set.
    - It changes nothing of outcome 4.
 6. **Sources named by file and SHA-256** (decision of the project lead, 2026-11-20): the measurements and the research
-   note above are named by file and SHA-256. They are not in this repository; they go into the data package.
+   note above are named by file and SHA-256. They are not in this repository. Whether they are published with the data package is open.
