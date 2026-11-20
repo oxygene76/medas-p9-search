@@ -31,6 +31,18 @@ Decided:
   unchanged from notarised packages are in the exception list.
 
 
+## Decisions of 2026-11-20 (project lead)
+
+1. **Sources named by file and SHA-256** instead of "the Claude chat" (outcome report, c1866b0).
+2. **The account name of the GPU server** stays in notarised files and in the published history; these are in
+   `docs/publication-host-exceptions.tsv`. `tools/publish_scan.py` blocks it in account contexts elsewhere (f7c4081;
+   its message should read 87 files and 8 tests). Newer versions of package sources avoid it (`a100/` on
+   feat/bb2021-setup f9743be, feat/rin-every e0f2744, feat/run-status 731ae59).
+3. **Entry #9** goes into section 5 of the website and into the register as "Criteria, check run" / "Kriterien
+   Prüflauf", shown as sealed on 2026-11-24. r2, e7 and r3 are added later, each as a new delivery of section 5 with
+   the register.
+4. **Section 6 of the website** is final in the version of 2026-11-20; it is not shortened further.
+
 ## A. Before anything else
 
 - [ ] All evaluations covered by the publication are done, with their result reports committed and stamped:
