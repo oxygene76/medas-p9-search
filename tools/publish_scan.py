@@ -23,6 +23,8 @@ Findings, by class (exit 1 if there is any of the classes that block, 0 otherwis
   host-listed  the same in a file of the exception list: matched by the sha256 of its bytes, i.e. exactly that file
              as notarised or as it is in the published history up to entry e6               (reported, does not block)
   host-line  the same in a line of --history, where the file is not at hand: decided with --blobs        (reported)
+  account    the account name of the GPU server in an account context (rule of 2026-11-20), with the same
+             exception list (account-listed) and the same treatment in --history                            (blocks)
   private    (text files only) home and root paths (/home/<user>, /root/), private IPv4 addresses, GPU UUIDs and
              serial numbers, e-mail addresses other than the author's                                      (reported)
 Binary files are scanned as text too (REBOUND archives hold no text, so they give no hits). Only text matches are
@@ -57,6 +59,15 @@ HOSTS = [
     ("host", "host name", re.compile(rb"(?i)\b(?:app|chain|web)" rb"mdp-?[0-9a-z]+\b")),
     ("host", "host name", re.compile(rb"\bF" rb"LUX\b")),
 ]
+# the account that runs the jobs on the GPU server (rule of 2026-11-20). Its name is also the name of our MERCURIUS
+# program, so only contexts that name an account match: "as/als/user/Benutzer <name>", "user … (<name>)", a home
+# directory, "<name>@", "sudo -u <name>". Written so that this file does not hold the name.
+_ACC = rb"p9" rb"sim"
+HOSTS += [
+    ("account", "account name", re.compile(rb"(?i)\b(?:as|als|user|benutzer|account|konto)\s+" + _ACC + rb"\b")),
+    ("account", "account name", re.compile(rb"(?i)\buser\b[^\n()]{0,40}\(" + _ACC + rb"\)")),
+    ("account", "account name", re.compile(rb"/home/" + _ACC + rb"\b|\b" + _ACC + rb"@|sudo\s+-u\s+" + _ACC + rb"\b")),
+]
 HOST_EXCEPTIONS = {}            # sha256 of the bytes -> "entry path", filled by load_host_exceptions()
 
 
@@ -89,6 +100,8 @@ def host_matches(data):
     binary = b"\0" in data[:8192]
     for cls, what, rx in HOSTS:
         for m in rx.finditer(data):
+            if cls == "account" and b"flags" in data[max(0, m.start() - 12):m.start()]:
+                continue                      # "built with the same flags as <name>" names the program (Makefile)
             if binary:
                 i, j = m.start(), m.end()
                 while i > 0 and PRINTABLE.match(data, i - 1):
@@ -107,7 +120,7 @@ def scan_hosts(name, data, out, line_only=False):
             c = "host-line"
         else:
             sha = sha or hashlib.sha256(data).hexdigest()
-            c = "host-listed" if sha in HOST_EXCEPTIONS else cls
+            c = (cls + "-listed") if sha in HOST_EXCEPTIONS else cls
         line = data.count(b"\n", 0, m.start()) + 1
         out.append((c, what, f"{name}:{line}", m.group(0)[:80].decode(errors="replace")))
 
@@ -202,13 +215,13 @@ def main():
         cat.stdin.close(); cat.wait()
     for p in a.paths:
         scan_path(p, out)
-    blocking = [x for x in out if x[0] in ("secret", "gaia", "host")]
+    blocking = [x for x in out if x[0] in ("secret", "gaia", "host", "account")]
     seen = {}
     for cls, what, where, text in out:
         seen.setdefault((cls, what, text), []).append(where)
     for (cls, what, text), wheres in sorted(seen.items()):
         print(f"{cls:8s} {what:22s} {text!r:60.60s} {len(wheres):4d}x  e.g. {wheres[0]}")
-    print(f"== {len(out)} findings, {len(blocking)} blocking (secret, gaia, host)")
+    print(f"== {len(out)} findings, {len(blocking)} blocking (secret, gaia, host, account)")
     sys.exit(1 if blocking else 0)
 
 

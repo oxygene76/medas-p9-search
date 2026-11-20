@@ -1,4 +1,4 @@
-# Files that hold a known host name and stay unchanged (rule of 2026-11-18, docs/publication-checklist.md).
+# Files that hold a known host name (rule of 2026-11-18) or the account name (rule of 2026-11-20) and stay unchanged.
 # Made by tools/host_exceptions.py; matched by the sha256 of the bytes (tools/publish_scan.py, host-listed).
 # entries: a3, e2, e3, e4, e5, r1, e6; history: every file version reachable from main fed221a d4dadd9 f80681f 0b8971f. A host name in a path is written as <host>.
 # sha256	entry	repo	path
@@ -15,6 +15,8 @@ a11fec37ce101785c861bfcba10b797a6de51a537de2774a7216af740373874f	e3	medas-p9-sea
 fa4d84fb5619cf7746f26cbfd0d9102a1961db8f26c7fc88e0f0e69208b03c60	e3	medas-p9-search	runs/notary/manifest-e3-production-20261104.json
 6dd5f94ed9cb3b4f1294a6c6f42ff0808cca2a49625e33a572f7d5982e13a3e1	e3	medas-p9-search-bb2021	docs/a100-acceptance-20261103.md
 2ddc64b711555ae5dba3c4ed6cf3435a05a8a93247223d48804eeba7214d149a	e3	medas-p9-search-bb2021	docs/speed-comparison-<host>.md
+cfa5d5a53fedd71aa7f013eded74a23363d566321df50a857e22efbaf338cde6	e3	medas-p9-search-bb2021	prod/README-a100-start.txt
+75fdce046ebc3a2d18a56e4a3e9e0808ae07df083c6beaeb46186771bca15c1b	e3	medas-p9-search-bb2021	prod/start-a100.sh
 bcfc1d14a81566be4c2b5eabd1370adf3de8cf464aa2de246cdf394907afa030	e3	medas-p9-search-bb2021	speed/estimate_a100.py
 a6e455a2588650629d891bb822b16a91aa5e14723e211e2cd01152cbb1a68c47	e3	medas-p9-search-equiv	long/merc/EXPECTED-TIME.txt
 2f270ae03bf39f0e42a01a859c1e42fece06faae9418b19f793b37948608b006	e3	medas-p9-search-equiv	long/v5/EXPECTED-TIME.txt
@@ -22,12 +24,21 @@ e909bcaa1d671125046d463bc1928df39bd9e498e7013a76e1a04457c0d7ac51	e3	medas-p9-sea
 0df5822b6b75dd866f47f8fd2d1911cf8d2455a4ae73f7e7b637fb862d31897b	e4	medas-p9-search	docs/bb2021-comparison-criteria.md
 467a49edb595187d85200887f087ec119c3ac1af692093f9dccf26b48715711a	e4	medas-p9-search-equiv	bb/sets/EXPECTED-TIME.txt
 b6190578b86c2f02aa5fff24e667c2d361945a3b35209c049d5e618f34315343	e4	medas-p9-search-equiv	bb/v2short/EXPECTED-TIME.txt
+ee09f8626eab24052a379e042c07c5320f5748c83ff382ee2da221e922ffeaf1	e5	medas-p9-search-bb2021	chain/chain-a100.sh
 83ac08c14a7cdadbf3f2d3479be3f56a8a711ee07e1cb3add38a3e30a2ae5a37	history	medas-p9-search	a100/README.txt
 391a8307b99cc2d7a4639c93b4037761d30a9019bec26f08e2d081c862df3de4	history	medas-p9-search	a100/README.txt
 97551fc0b2dfd31d8c9089a142befd2810f295a7d7e082af1b855b49d146e3fc	history	medas-p9-search	a100/acceptance.sh
 02757a31c0b5c92e836fa18b573c094db2b78e70fc71065b7dc3b747987115af	history	medas-p9-search	a100/acceptance.sh
 819e3e3ba3c090d4740b8a168cc961e7ad6c966ce485080d3176346887314959	history	medas-p9-search	a100/acceptance.sh
 b368f78811f319551af9896c0e7f1633285e6a8809a41c42663d6b1ff355237d	history	medas-p9-search	bb/v2short/EXPECTED-TIME.txt
+79d4fc539a5b5bdfdd256060ad2dc0c2c52f55c834ef532aee5d8f429af329b5	history	medas-p9-search	chain/ANLEITUNG.md
+f8f3804bfde5e2bf3d4428e61a440364dccb655d0d41beb31ba8af18bd6ce453	history	medas-p9-search	chain/ANLEITUNG.md
+ee6ab645105b29d5e1d0ad92aab3882fbac69e48f11f0211e5c8305392eda10e	history	medas-p9-search	chain/ANLEITUNG.md
+e323b268b5d35c930a533cae6785df9165f37de2c69678a9ea0bcd8dc40ae81a	history	medas-p9-search	chain/ANLEITUNG.md
+222996989b3721524a966bdbc1dead9fe7c6457d92e471ef4050c5204b183185	history	medas-p9-search	chain/ANLEITUNG.md
+6e024ec36f9bd3586dfab1ceb42070271286a38078c74ecfbabca73b935c5b2f	history	medas-p9-search	chain/chain-a100.sh
+93b62776a9ec02444c2a36a02815ad12f25f3f8e96085222264a4885df509338	history	medas-p9-search	chain/chain-a100.sh
+9ea6cf94099593b116273293f90c25efba00a998412352c09304d51acf2b11df	history	medas-p9-search	chain/chain-a100.sh
 4ec8c0916dc454878d653f7968c803773b9f01bf69a88979fa7a2a0cd00792dd	history	medas-p9-search	docs/a100-acceptance-20261103.md
 12e6ffe083c0e8756eb492cfc7aad3f50633ea47032c2af7d3e4084abc99aa9a	history	medas-p9-search	docs/bb2021-comparison-criteria.md
 5b3bfbc7a88507247f5c02a0739e8c3f2de8f9cfc3efbb57440b2c64aeefc0d8	history	medas-p9-search	docs/bb2021-comparison-criteria.md
@@ -39,12 +50,16 @@ cc1b37a61bc01f90e230123cd9be5656a663d26d5234d3954c3ad2e2472eed90	history	medas-p
 84c28689409b051f53652344f1ee434ae7611e5aece35c4ed0439d20ec58bfcc	history	medas-p9-search	docs/cause-analysis.md
 5e024dd0fc19ca85d8c347d908d15e9ebe22d1fdff03a6a3063464dfe6f672f8	history	medas-p9-search	docs/cause-analysis.md
 363774da0f50c2bbad9d1deabdc693ee21e39bb90844180ee121237ce9e741ab	history	medas-p9-search	docs/cause-analysis.md
+02184776f9f811b7f2d690b0ef0a7cff9cae66a755d8f015f083319e516919ec	history	medas-p9-search	docs/cause-analysis.md
 4433e1b091d15494ea1487ecc4f3cc2632217678c26f2dbc34d5d9efc5e3df02	history	medas-p9-search	docs/data-package-proposal.md
 7857389aa132f224f588c9872924c3d4411aa39550ac19bc131f45a37b11ffcd	history	medas-p9-search	docs/data-package-proposal.md
 78021e0edeba5ba8db283cb12d7d0987c81248a3562affcb7c746891afbff27b	history	medas-p9-search	docs/data-package-proposal.md
 f6b82d14514fc95cb608ced26aacd0058f3139fd28f4a138cdff2a4abb8db6e4	history	medas-p9-search	docs/equivalence-criteria.md
 0965e0d1fdedffb8163f9921c48d321ddd11212d4b2a2cbaaee37d7ea708de38	history	medas-p9-search	docs/equivalence-criteria.md
 673689cf01237c28a54e94968a4bc75abd92552bc558f502559609c9382fb34c	history	medas-p9-search	docs/equivalence-criteria.md
+b3af84ccb1af7b18bbe0251573a13a59480b235bbeff31dfddcb7f7dfa9199d1	history	medas-p9-search	docs/gpu-integrator.md
+9e76038b10e4a58760e56a49a91a8aaceb963cc6d95bfafc197a67ad39a858d6	history	medas-p9-search	docs/gpu-integrator.md
+8f9cad1748929ad1addd2d4ef98ed2ad3e2bdbe0accd04b2441384d01dd6d964	history	medas-p9-search	docs/gpu-integrator.md
 57858393a877c69bcf2c4a02a3fe43e1dea529d2628d5e0df8830b12ebf70b5d	history	medas-p9-search	docs/long-runs-110-112-criteria.md
 daa405fdfd135f662d0e33177072310bd3d9f6fc5eb21da2bae257d07ee45004	history	medas-p9-search	docs/long-runs-110-112-criteria.md
 f378fc383f24b909cb3afaad02aac0d7d486c31503a1da49f0b725618ca98c0e	history	medas-p9-search	docs/long-runs-110-112-criteria.md
@@ -63,9 +78,14 @@ ba8e1f4a19c963c6228f4382b4f57f821d56a76a853e8f7b8d478d81e718516b	history	medas-p
 7b5ee87b0dc1e9f33a6fa6633e9f1fefaf236f7c86ec81c12fb4e370b1a9c8b8	history	medas-p9-search	docs/speed-comparison-<host>.md
 b138a7221d8b74004957880f076b6ec345caff61b333dae07c6622a04e8b5487	history	medas-p9-search	long/merc/EXPECTED-TIME.txt
 b84d4dfddb9e1f6b41a8ff3f130a9a1b6c474f7afd6c735502199ec6643c03ae	history	medas-p9-search	long/v5/select-gpu.sh
+64fc978c460d2ed3d2cdb42af6ff8c8a9d8021ae686d4999b7b649c2af729969	history	medas-p9-search	prod/README.txt
+2685ad7bddafc58eb7b0c31696d4027685005e572ff7e9e8ad47fcc4770ebe00	history	medas-p9-search	prod/start-a100.sh
 46c0324820aff4e6006796e7678ec9b9f0e53e41de67316466f77b9f17294d9d	history	medas-p9-search	runs/speed/RESULT.md
+301eb67d5b39c0948b689674ec408034f20acfb9652c80321a3c46966043a91b	history	medas-p9-search	speed/README.txt
 c76d47089d2a80e769307a435d7ea87bda4178ae6673e7099411af337d0c5add	history	medas-p9-search	speed/make_jobs.sh
 eb251b00b84ece0b4ada84e263d7e8776c3df34ff49cd29bb71d2d8e33bbc433	history	medas-p9-search	tests/test_publish_scan.py
 d2095be7553ed19377e0faaa7f66ca316196c66ab9db8e4ec0fd7d2906e58b77	history	medas-p9-search	tests/test_publish_scan.py
+95c378b07d4a93bd5f1cdc59e6fe9fe534448e056a8357f50b2f6f2eada52e84	history	medas-p9-search	tools/direct_wh.c
+df2273b5037c4f4fed4429d5f1e53a077a5a32249a91bba8d8bf1c8926995045	history	medas-p9-search	tools/ias15_run.py
 6b3ea038c35e1e1955be9679c6e0adacb3a06046988b99c052c0cdb4a0917a8f	history	medas-p9-search	tools/publish_scan.py
 580911d0e688cc3061ffbbabd184bf094612ff37720e9a41ad7649fd9d50c775	history	medas-p9-search	tools/publish_scan.py

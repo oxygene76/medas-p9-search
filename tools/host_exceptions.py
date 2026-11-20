@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""The exception list of the host-name rule (2026-11-18): every file that holds a known host name and cannot change.
+"""The exception list of the host-name rule (2026-11-18) and the account-name rule (2026-11-20): every file that holds a
+known host name or the account name in an account context, and cannot change.
 
   python3 -I tools/host_exceptions.py OUT.tsv --manifest ENTRY=MANIFEST ... --repo NAME=DIR ... --history REV ...
 
@@ -87,7 +88,7 @@ def main():
                     rows.setdefault(hashlib.sha256(b).hexdigest(), ("history", "medas-p9-search", mask(name)))
         cat.stdin.close(); cat.wait()
     with open(a.out, "w") as o:
-        o.write("# Files that hold a known host name and stay unchanged (rule of 2026-11-18, docs/publication-checklist.md).\n")
+        o.write("# Files that hold a known host name (rule of 2026-11-18) or the account name (rule of 2026-11-20) and stay unchanged.\n")
         o.write("# Made by tools/host_exceptions.py; matched by the sha256 of the bytes (tools/publish_scan.py, host-listed).\n")
         o.write(f"# entries: {', '.join(s.split('=')[0] for s in a.manifest)}; history: every file version reachable from "
                 f"{' '.join(a.history)}. A host name in a path is written as <host>.\n")

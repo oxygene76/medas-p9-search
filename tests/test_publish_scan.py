@@ -58,6 +58,15 @@ class Hosts(unittest.TestCase):
         finally:
             ps.HOST_EXCEPTIONS.clear()
 
+    def test_account_name_only_in_account_context(self):
+        acc = b"p9" + b"sim"
+        self.assertIn(("account", "account name"), scan("r.md", b"Run as " + acc + b", in this directory.\n"))
+        self.assertIn(("account", "account name"), scan("r.sh", b"# Runs as the user of the runs (" + acc + b"), never as root.\n"))
+        self.assertIn(("account", "account name"), scan("r.md", b"cd /home/" + acc + b"/runs\n"))
+        self.assertEqual(scan("r.md", b"MERCURIUS (" + acc + b") removes with the same rule\n"), [])
+        self.assertEqual(scan("r.md", b"bin/" + acc + b" dump out.sa 0\n"), [])
+        self.assertEqual(scan("Makefile", b"# the host part is built with the same flags\n# as " + acc + b". PTX\n"), [])
+
     def test_history_lines_are_reported(self):
         out = []
         ps.scan_bytes("c:r.md", b"on " + HOST, out, line_only=True)
