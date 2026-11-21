@@ -1,11 +1,9 @@
-# Run BB-A2: set A with a second seed (criteria, DRAFT of 2026-11-21)
+# Run BB-A2: set A with a second seed (criteria, fixed 2026-11-21)
 
 **Status:**
-- Draft for review. To be entered on medasdigital-2, as its hash only, **before** the run starts.
-- Nothing is started before:
-  1. the review;
-  2. the entry;
-  3. the project lead's go.
+- **Fixed** on 2026-11-21 after the review (draft a95ae22, two corrections). To be entered on medasdigital-2, as its
+  hash only, **before** the run starts.
+- Nothing is started before the entry and the project lead's go.
 - **It changes nothing:** not the criteria of sets A and B, not their verdicts, not outcome 4, not its consequences.
   There is no pass or fail. The run gives a measure of spread, fixed here before it exists.
 
@@ -37,6 +35,10 @@
 **The only difference:**
 - the seed 313. `job.json` of BB-A2 differs from that of BB-A only in the seed, `ic_sha256`, the input sha256 and
   the job id.
+
+**If the run is interrupted** (a fault of the device or the system): it is continued at the segment boundary from
+the last complete segment, as set B was on 2026-11-15. A run continued this way counts as the same run; the segments
+are deterministic, so a recomputed segment gives the same result hash.
 
 **Checked before the start:**
 - **The recipe:** rebuilding BB-A with seed 311 by the same command gives the state of BB-A's `input.sa`, by
@@ -93,8 +95,18 @@ Sources: `docs/sets-result-A-20261117/result.json`, `docs/sets-decomposition-202
   `docs/bb2021-comparison-criteria.md`, set A). It changes nothing of outcome 4, which was fixed for BB-A and BB-B.
 
 **Prediction, fixed now:**
-- **M2 and the ten shares:** all within the tolerance. Expected are differences of the order of the subset spread
-  divided by two, since the samples are four times larger: about 0.003 for M2 and 0.002–0.004 for the shares.
+- **M2 and the ten shares:** all within the tolerance.
+  - **Why:** A subset of 16,000 test particles scatters with some standard deviation σ_sub. A whole run of 64,000
+    scatters about half as much, σ_sub / 2. The difference of two independent whole runs scatters √2 times as much as
+    one run: √2 · σ_sub / 2 ≈ 0.7 σ_sub.
+  - **Expected** (σ_sub from the four subsets of addendum 3):
+    - M2 about 0.003;
+    - the share below 30° at q > 42 au about 0.002;
+    - the other prograde shares 0.0006–0.0015;
+    - the retrograde shares about 0.005 (q > 42 au) and 0.003 (42 ≤ q ≤ 100 au).
+  - **Against the tolerance:** It is at least 3.8 times these values for every measure. With σ_sub estimated from four
+    subsets only, it could be about twice as large. Even then each measure would be within with a probability of
+    about 0.94 or more.
 - **M1:** BB-A2 − BB-A within ± 15°. The cluster of set A is weak (R ≈ 0.05), so its direction scatters more than its
   strength. The four subsets of BB-A lie at 123–134°.
 - **M4:** may differ by a few 10-au bins, because it is the first bin above a threshold of R.
