@@ -110,3 +110,49 @@ retrograde 0.171; at 42 ≤ q ≤ 100 au 0.794 / 0.109 / 0.045 / 0.053, retrogra
 - **Report:** `docs/bb-a-rin1-result-<date>.md`, with the files of the tools as written, committed and stamped.
 - **Review:** an independent review.
 - **Entry:** only then, with the project lead's go, the entry r3: `result`, referring to entry #9.
+
+## Addendum 1 (2026-11-21): what was known before the evaluation, and the comparison of the segment hashes
+
+Written after step 2 and before any part of step 3. Decided by the project lead on 2026-11-21. Nothing of section 3 is
+changed.
+
+**What was known before the evaluation, and from where:**
+1. **During the run,** as section "Basis" above:
+   - the early check after segment 0 (passed);
+   - the counters of segments 0–5 with N_end of these segments (COUNTERS OK, 2026-11-19);
+   - the run times.
+   - The Telegram messages of `rin-watch.sh` reported N_end and the run time of each finished segment to the project
+     lead. They were not passed on for comparison; this addendum does not use them.
+2. **In step 2, check 4,** on 2026-11-21:
+   - The project lead ran `tools/check_segments.py --p9sim PKG/bin/p9sim --jobs RUN` on the unpacked archive (list
+     `rin1-results-sha256-20261121T0912Z.txt`, archive `cc1891bd…0b0a`).
+   - He reported its line `BB-A-rin1: ok; last row N 17622, result e9e711fb…81fe`, that is N and the result hash of
+     the last row of `segments.tsv` (segment 39, 4 Gyr).
+   - On 2026-11-21, at about 12:20 UTC, this was compared with the line of the segment check of set A of 2026-11-17
+     (`runs/notary/sets-results/check_segments-setsA-20261117.txt`):
+     `BB-A: ok; last row N 17622, result e9e711fbb683b41e02c939535bf421bb11e7b4ee857b38366a6203b97cab81fe`.
+   - **Both N (17,622 bodies: 17,616 test particles and 6 massive bodies) and the result hash of segment 39 are the
+     same.** At 4 Gyr the two runs are therefore bit for bit the same.
+   - Nothing else of the output of BB-A-rin1 was looked at: no other row of its `segments.tsv`, no snapshot, no
+     measure.
+
+**The comparison added by this addendum** (step 3, before the measures; reported, not judged):
+- **Per segment 0–39:** N_end and the result hash of the row of `jobs/BB-A-rin1/segments.tsv` (unpacked archive of
+  step 2), against the same row of `jobs/BB-A/segments.tsv` (the checked archive of set A, list
+  `setsA-results-sha256-20261117T1515Z.txt`).
+- **Reported:**
+  - the table of both columns, side by side;
+  - the first segment from which the hashes are the same;
+  - whether all later ones are the same as well;
+  - the segments with different N_end.
+- **Command,** from the clean checkout of section 3, with RUN as there and A the unpacked
+  `p9bbsets-5b05cc3/jobs/BB-A` of set A:
+  ```sh
+  join -t "$(printf '\t')" -j 1 <(cut -f1,3,5 RUN/segments.tsv) <(cut -f1,3,5 A/segments.tsv) > OUT/segments-compare.tsv
+  awk -F'\t' '{ s = ($3 == $5) ? "same" : "different"; print $1, $2, $4, s }' OUT/segments-compare.tsv
+  ```
+- **What it can say:**
+  - From the first segment with the same hash on, the two runs hold the same particles in the same states.
+  - Every snapshot in such segments is the same in both runs.
+  - The measures of section 3 then differ only through the snapshots before it.
+- **The outcome stays as section 3 fixes it,** from the measures.
