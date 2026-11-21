@@ -97,6 +97,7 @@ build/venv/bin/python -I tools/publish_scan.py --git HEAD            # the files
 | (e5) criteria of the paired tests V5 against MERCURIUS for sets A and B, before any of their runs (job, refers to the (e4) entry #5) | `runs/notary/spec-e5-paired-tests-20261106.json` (spec sha256 `e424cd1ec67f43c7eee50feae4ba12e8e7d49a0d9611b6df11c742ed9693b99f`; manifest sha256 `a3dc42d8fc6b91c98f76effd49cca637a54788e7732b367d1a5f3b5e0aa6b037`) | entry #6 (refers to #5), 2026-11-10 07:18:02 UTC, block 10814015, tx `91273FA27ED2AE101C1C1E3230703F993E809734819784780B6003FD84CC32EB`, commitment `61232c7217024299c5dbee92bbf99bf024b93714fcf920d7711f7adda8108d75` |
 | (r1) results of the production run and of the paired long runs 110–112, evaluated by the criteria of entry #4, after two independent reviews of the reports, version 3 (result, refers to the (e3) entry #4) | `runs/notary/spec-r1-results-20261110-v3.json` (spec sha256 `d9bddafaeb02a8e9a563dc74f749ed528822ca4fd66250afddcd52f282e6d06e`; manifest sha256 `eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d`; supersedes the manifest `6f5de6de…` with version 2) | entry #7 (refers to #4), 2026-11-11 07:30:03 UTC, block 10829443, tx `43CBB3CAEF23009C17FD70AC5DC356DEA88CC85CF94125C3733D7789EAA2FA67`, commitment `6b211b7c9de3a72fa34d3a9f45c774d6040d9698ab22be0313c7793fd5a39ead` |
 | (e6) criteria of the run BB-A-rin1 (set A with the inner removal in every step), before the run (job, refers to the (e4) entry #5) | `runs/notary/spec-e6-bb-a-rin1-20261118.json` (spec sha256 `babe5b6ffd245fc30c9229a7720bf2f984337267518e53993452505ead31a651`; manifest sha256 `e25436425b6634bf6ca4079644e5e18a6f3cc99b71d505438f00be30e28257c5`, 25 files, commits medas-p9-search `f80681f`, medas-p9-search-equiv `fed221a`) | entry #9 (refers to #5), 2026-11-18 16:12:49 UTC, block 10942017, tx `9226E0378D4C27FD710D21447D40474347BD54823C8580731DE3D4BA9DDD5E2F`, commitment `a3946cb52309a9ce401468d59899b9c4a84473e2ec961e899f306d42fdfde030` |
+| (e9) criteria of the run BB-A2 (set A with a second seed for the test particles), before the run (job, refers to the (e4) entry #5) | `runs/notary/spec-e9-bb-a2-20261121.json` (spec sha256 `a5d466dc7d54e65789c3d89cd4abe996b1385289d8d6484673191a3314f0658f`; manifest sha256 `ee2ff1003c0b37a12381bbf0762179e98646d2f8b54f2eb5a9a00d9842d04be1`, 18 files, commit medas-p9-search `0003408`) | entry #10 (refers to #5), 2026-11-21 12:46:24 UTC, block 10986124, tx `01529BD28AFBA1774A06BC21C77FBB8477A2635FDDF31F8B22CFAFFB538998B6`, commitment `f68621bfdd876ff690361d72d7d0e2b4d3b9b614f5c937ff8a4b9dc6dca7aa50` |
 | (b) production run, before its start | superseded by (e3) | – |
 | trial | `runs/notary/spec-trial.json` | not yet |
 
@@ -113,15 +114,18 @@ with #9 (e6).
   (`docs/data-package-e6.md` section 2, `docs/publication-checklist.md`).
 - **r2** stays the result of sets A and B (`result`, refers to e4, #5).
 - **r3** is proposed for the result of BB-A-rin1 (`result`, refers to e6).
+- **e9** is the criteria of the run BB-A2 (entry #10), **r4** its result (`result`, refers to e9).
+- **rp** is the result of the paired tests (`result`, refers to e5, #6), entered before r2.
 - Older documents are not rewritten; read their e6 and e7 with this list.
 
-The entries #2 to #7 and #9 were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
+The entries #2 to #7, #9 and #10 were made from the researcher address `medas1s7y4lg3y96qfltgs8xx9ezyhvn9hgysu78r6wj` in the notary
 contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`; their receipts are backed up encrypted
 and checked with `notary-restore-check.sh` (the receipts of #4 and #5: backed up, as reported by the project lead on
 2026-11-04; the backup of e5, checked with 37 of 37 files, on three places, and the receipt of #6 backed up encrypted, as
 reported on 2026-11-10; the backup of r1 (version 3) and the receipt of #7 on three places, as reported on
 2026-11-11; the backup of e6 (p9-e6-2026-11-18_1709, 25 of 25 files when backed up and in the restore check) and the
-receipt of #9 on three places, as reported on 2026-11-18. A first backup attempt of e6 stopped at 22 of 25 and kept
+receipt of #9 on three places, as reported on 2026-11-18; the backup of e9 (p9-e9-2026-11-21_1342, 18 of 18 files when backed
+up and in the restore check) and the receipt of #10 on three places, as reported on 2026-11-21. A first backup attempt of e6 stopped at 22 of 25 and kept
 nothing: the bundle lacked the commit 0b8971f of three listed files, fixed in the tools in 91b5e53).
 
 ## Backup scripts
