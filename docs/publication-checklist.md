@@ -43,6 +43,26 @@ Decided:
    the register.
 4. **Section 6 of the website** is final in the version of 2026-11-20; it is not shortened further.
 
+## Decisions of 2026-11-21 (project lead)
+
+1. **Everything is prepared on 2026-11-22;** the state is frozen on 2026-11-22 in the evening. The push goes into the
+   private repository `https://github.com/oxygene76/medas-p9-search` on 2026-11-22 in the evening, by the project lead
+   after the fresh-clone check. The repository becomes public on 2026-11-24 shortly before 09:00 UTC.
+2. **The reveals on the chain** (#3, #5, #6, #7, #11, #12) are made by the project lead on 2026-11-22 in the evening,
+   together with `verify_commitments.py`, so the receipts are decrypted only once. **This lifts the earlier rule "from
+   09:00, not before" for the reveals on the chain.** A reveal stores only the salt and the SHA-256 of the manifest
+   (`medas-notary-contract` 0.2.0, `reveal`); nothing of the result can be read from it before the documents are
+   public. The documents become public only on 2026-11-24.
+3. **Before anything is made public on 2026-11-24:**
+   - proof that the repository and its whole history hold nothing of #2, #4, #9, #10 (salt, receipt, also
+     encrypted, manifests, documents);
+   - a secret scan of the whole history (keys, tokens, passphrases, host names, internal addresses).
+   - The documents under version control are part of the history by design. The weighing of "whole repository"
+     against "a separate public repository with the release only" is left to the project lead
+     (`runs/notary/NACHWEIS-veroeffentlichung-20261121.md`, not in git).
+4. **No transaction and no push by the working session;** the project lead makes the reveals, the push and the
+   publication himself.
+
 ## A. Before anything else
 
 - [ ] All evaluations covered by the publication are done, with their result reports committed and stamped:
