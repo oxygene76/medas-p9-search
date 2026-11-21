@@ -136,7 +136,7 @@ and checked with `notary-restore-check.sh` (the receipts of #4 and #5: backed up
 reported on 2026-11-10; the backup of r1 (version 3) and the receipt of #7 on three places, as reported on
 2026-11-11; the backup of e6 (p9-e6-2026-11-18_1709, 25 of 25 files when backed up and in the restore check) and the
 receipt of #9 on three places, as reported on 2026-11-18; the backup of e9 (p9-e9-2026-11-21_1342, 18 of 18 files when backed
-up and in the restore check) and the receipt of #10 on three places, as reported on 2026-11-21; the backups of rp (p9-rp-2026-11-21_1418, 27 of 27 files) and r2 (p9-r2-2026-11-21_1423, 78 of 78 files), each with its restore check, and the receipts of #11 and #12 (p9-rp-receipt-2026-11-21_1423 on three places; the receipt of #12 as reported), as reported on 2026-11-21. A first backup attempt of e6 stopped at 22 of 25 and kept
+up and in the restore check) and the receipt of #10 on three places, as reported on 2026-11-21; the backups of rp (p9-rp-2026-11-21_1418, 27 of 27 files) and r2 (p9-r2-2026-11-21_1423, 78 of 78 files), each with its restore check, and the receipts of #11 and #12 (p9-rp-receipt-2026-11-21_1423 and p9-r2-receipt-2026-11-21_1427, each on three places), as reported on 2026-11-21. A first backup attempt of e6 stopped at 22 of 25 and kept
 nothing: the bundle lacked the commit 0b8971f of three listed files, fixed in the tools in 91b5e53).
 
 ## Backup scripts
