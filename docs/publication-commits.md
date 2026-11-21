@@ -1,10 +1,10 @@
-# Commits and tags for the publication of medas-p9-search (2026-11-21, after entry e9)
+# Commits and tags for the publication of medas-p9-search (2026-11-21, after entries rp and r2)
 
 Decision of 2026-11-04: published are `main` and every commit and tag that the notary entries refer to. All other
 branches stay private. The history stays unchanged, so the notarised documents are published as they were entered.
 
-This list was made with `tools/notary_refs.py` (regenerated on 2026-11-21 after entry e9) from the manifests of
-the eight entries of the campaign on chain:
+This list was made with `tools/notary_refs.py` (regenerated on 2026-11-21 after entries rp and r2) from the manifests of
+the ten entries of the campaign on chain:
 - a3 (entry #2);
 - e2 (entry #3);
 - e3 (entry #4, block 10723643);
@@ -12,17 +12,20 @@ the eight entries of the campaign on chain:
 - e5 (entry #6, block 10814015);
 - r1 (entry #7, block 10829443);
 - e6 (entry #9, block 10942017; the criteria of the run BB-A-rin1);
-- e9 (entry #10, block 10986124; the criteria of the run BB-A2).
+- e9 (entry #10, block 10986124; the criteria of the run BB-A2);
+- rp (entry #11, block 10986511; the results of the paired tests);
+- r2 (entry #12, block 10986554; the result of sets A and B).
 
 Entry #8 belongs to another project. The data package is now e7 (called e6 in documents up to 2026-11-18; the names
-are kept in `docs/notary.md`). This list is to be regenerated after each further entry (rp, r2, r3, r4, e7):
+are kept in `docs/notary.md`). This list is to be regenerated after each further entry (r3, r4, e7):
 
 ```sh
 build/venv/bin/python -I tools/notary_refs.py "a3 (#2)=runs/notary/manifest-a3-validation-status-20261021.json" \
   "e2 (#3)=runs/notary/manifest-e2-equivalence-20261023.json" "e3 (#4)=runs/notary/manifest-e3-production-20261104.json" \
   "e4 (#5)=runs/notary/manifest-e4-bb2021-v2-20261104.json" "e5 (#6)=runs/notary/manifest-e5-paired-tests-20261106.json" \
   "r1 (#7)=runs/notary/manifest-r1-results-20261110-v3.json" "e6 (#9)=runs/notary/manifest-e6-bb-a-rin1-20261118.json" \
-  "e9 (#10)=runs/notary/manifest-e9-bb-a2-20261121.json"
+  "e9 (#10)=runs/notary/manifest-e9-bb-a2-20261121.json" "rp (#11)=runs/notary/manifest-rp-paired-results-20261121.json" \
+  "r2 (#12)=runs/notary/manifest-r2-sets-results-20261121.json"
 ```
 
 "How":
@@ -57,24 +60,41 @@ build/venv/bin/python -I tools/notary_refs.py "a3 (#2)=runs/notary/manifest-a3-v
 | `0ca95953e343` | 2026-11-06 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-0ca9595` |
 | `6a6985476de6` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-6a69854` |
 | `af2e058e966d` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-af2e058` |
-| `cce5b9212ff1` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-cce5b92` |
 | `ea38f05f1fd2` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-ea38f05` |
+| `cce5b9212ff1` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-cce5b92` |
 | `85d4061f441b` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-85d4061` |
 | `2e2186449655` | 2026-11-10 | r1 (#7): named | no | feat/arm64-repro, feat/pilot | – | `notary-r1-2e21864` |
 | `ea21771860b7` | 2026-11-10 | r1 (#7): files, named, repository medas-p9-search | no | feat/arm64-repro, feat/pilot | – | `notary-r1-ea21771` |
+| `31ed973bc7b9` | 2026-11-11 | rp (#11): named | no | feat/arm64-repro, feat/pilot | – | `notary-rp-31ed973` |
+| `80be9a52d222` | 2026-11-11 | rp (#11): named | no | feat/arm64-repro, feat/pilot | – | `notary-rp-80be9a5` |
+| `6d92c3fd1477` | 2026-11-12 | rp (#11): named | no | feat/pilot | – | `notary-rp-6d92c3f` |
+| `2d4670ec4c6e` | 2026-11-12 | rp (#11): named | no | feat/pilot | – | `notary-rp-2d4670e` |
+| `12ab70babf53` | 2026-11-12 | r2 (#12): named | no | feat/pilot | – | `notary-r2-12ab70b` |
+| `4124c9595b38` | 2026-11-13 | rp (#11): named | no | feat/pilot | – | `notary-rp-4124c95` |
+| `a9cbc465d94a` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-a9cbc46` |
+| `f6dcdded05b8` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-f6dcdde` |
+| `7cf1a4232c84` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-7cf1a42` |
+| `6130d441dc28` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-6130d44` |
+| `f7ae12c0863c` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-f7ae12c` |
+| `843438ec6e3a` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-843438e` |
+| `8233c911346d` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-8233c91` |
+| `704bfcf5c4b7` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-704bfcf` |
+| `9210345bdf8b` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-9210345` |
+| `03fcad13572f` | 2026-11-17 | r2 (#12): named | no | feat/pilot | – | `notary-r2-03fcad1` |
 | `0b8971fbf96e` | 2026-11-17 | e6 (#9): files, named | no | feat/rin-every | – | `notary-e6-0b8971f` |
-| `22f70fd2f6a7` | 2026-11-18 | e6 (#9): named | no | feat/pilot | – | `notary-e6-22f70fd` |
-| `2ee681cd51c8` | 2026-11-18 | e6 (#9): named | no | feat/pilot | – | `notary-e6-2ee681c` |
+| `22f70fd2f6a7` | 2026-11-18 | e6 (#9): named; r2 (#12): named | no | feat/pilot | – | `notary-e6-22f70fd` |
+| `2ee681cd51c8` | 2026-11-18 | e6 (#9): named; r2 (#12): named | no | feat/pilot | – | `notary-e6-2ee681c` |
 | `f80681f933aa` | 2026-11-18 | e6 (#9): files, named, repository medas-p9-search | no | feat/pilot | – | `notary-e6-f80681f` |
 | `0003408b1591` | 2026-11-21 | e9 (#10): files, named, repository medas-p9-search | no | feat/pilot | – | `notary-e9-0003408` |
+| `57985549db3b` | 2026-11-21 | rp (#11): files, named, repository medas-p9-search; r2 (#12): files, named, repository medas-p9-search | no | feat/pilot | – | `notary-rp-5798554` |
 
 Tips (each referenced commit is one of these or an ancestor of one):
 - `fed221ad835c` 2026-11-06 pair/merc: own scripts for the MERCURIUS half of the paired tests (decision of 2026-11-06
 - `d4dadd9263fc` 2026-11-06 chain: the paired packages of fed221a (the MERCURIUS half at nice 19 with idle I/O on the
 - `0b8971fbf96e` 2026-11-17 p9gpu: removals counted separately per run: removed_r_in, removed_r_out, removed_collisio
-- `0003408b1591` 2026-11-21 BB-A2 criteria fixed after the review: the expected differences of two whole runs are abo
+- `57985549db3b` 2026-11-21 Procedure of the evaluation of BB-A2, fixed while the run computes (started 2026-11-21T12
 
-Closure: main and the referenced commits with all their ancestors are 333 of 399 commits; 66 stay private.
+Closure: main and the referenced commits with all their ancestors are 338 of 407 commits; 69 stay private.
 Existing tags in the closure: bb2021-criteria-draft-1, make-ic-v1, prod-eval-v1; outside: etno-tier2-v1, own-images-criteria-v1, own-images-criteria-v2, own-images-v1, p9sim-cbrt-v1, p9sim-cbrt-v2, plates-core-v1, plates-core-v2, plates-core-v3, plates-core-v4, plates-core-v5, plates-core-v6, plates-core-v7, plates-core-v8.
 
 ## What this means
@@ -82,20 +102,20 @@ Existing tags in the closure: bb2021-criteria-draft-1, make-ic-v1, prod-eval-v1;
 - **No referenced commit is on `main`.** `main` holds only the first commit (e38179b). Branches stay private, so the
   referenced commits can only be published as tags. The proposed names are in the last column: one tag per
   referenced commit, after the first entry that refers to it.
-  - The four tips alone would make all 35 reachable.
+  - The four tips alone would make all 52 reachable.
   - One tag each makes them easy to find from the manifests.
-- **Since e9 the four tips are** fed221a, d4dadd9, 0003408 (`feat/pilot`, replacing f80681f, which is now its
+- **Since rp and r2 the four tips are** fed221a, d4dadd9, 5798554 (`feat/pilot`, replacing 0003408, which is now its
   ancestor) and 0b8971f (`feat/rin-every`, the program change of BB-A-rin1).
   - 0b8971f is not an ancestor of any other tip. Without it (or its tag) three files of e6 cannot be checked:
     `gpu/p9gpu.c`, `gpu/kernel.cu`, `gpu/p9gpu_api.h`.
   - A clone without fed221a cannot check e6 either (`medas-p9-search-equiv`).
   - Tested 2026-11-18 on a local clone: all branches 25 of 25; `feat/pilot` alone 18 of 25.
-- **A published commit publishes its ancestors.** `main` and the 35 commits with their history are 333 of 399 commits
-  (2026-11-21, after e9).
+- **A published commit publishes its ancestors.** `main` and the 52 commits with their history are 338 of 407 commits
+  (2026-11-21, after rp and r2).
   - That includes parts of the branches that otherwise stay private, as far as they lie before a referenced commit:
-    `feat/pilot` up to 0003408, `feat/bb2021-setup` up to d4dadd9, `feat/long-runs` up to fed221a, `feat/rin-every`
+    `feat/pilot` up to 5798554, `feat/bb2021-setup` up to d4dadd9, `feat/long-runs` up to fed221a, `feat/rin-every`
     up to 0b8971f.
-  - Private stay: the 66 later commits or commits of other branches, among them the plate and own-images tools with
+  - Private stay: the 69 later commits or commits of other branches, among them the plate and own-images tools with
     their Gaia queries and their tags (`plates-core-*`, `own-images-*`, `etno-tier2-v1`, `p9sim-cbrt-*`).
   - Since e5, `tools/export_timelapse.py`, `tools/publish_scan.py`, the proposals of the data package and the first
     version of this list lie before a tip and are published with it.
@@ -113,8 +133,10 @@ Existing tags in the closure: bb2021-criteria-draft-1, make-ic-v1, prod-eval-v1;
     the exception list, the decompositions' addenda, the outcome report until its final version, the table article
     against package, addendum D of the IRAS/AKARI track, the evaluation procedure of BB-A-rin1 and the criteria of
     BB-A2.
-  - Also private: everything after the tips, such as the e9 entry in `tools/notary`, addendum 1 of the BB-A-rin1
-    procedure and this version of the list, until it is published separately.
+  - **Since rp and r2 (tip 5798554) also the 5 commits 0003408..5798554:** the e9 case in `tools/notary`, the register
+    with #10, addendum 1 of the BB-A-rin1 procedure (3969a01, 9245266) and the evaluation procedure of BB-A2.
+  - Also private: everything after the tips, such as the rp and r2 cases in `tools/notary`, the register with #11 and
+    #12 and this version of the list, until it is published separately.
 - **Existing tags in the published part:** `bb2021-criteria-draft-1` (224b7a1, named in e3), `make-ic-v1`,
   `prod-eval-v1`. They are published with it.
 
