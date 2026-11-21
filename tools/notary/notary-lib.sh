@@ -54,9 +54,9 @@ manifest_of() {
         MANIFEST_SHA=aeb03f83b91b791e87fa93623de1a212eb21402dd2f6b939da0fdf5665e634ab
         EXPECT="medas-p9-search=57985549db3bbdf9564105e37de2e7f6d905010c"
         WH=0 ;;
-    r2) MANIFEST=$NOTARY_DIR/manifest-r2-sets-results-20261121.json; SPEC=$NOTARY_DIR/spec-r2-sets-results-20261121.json
-        MANIFEST_SHA=0009d8615c73a2e898edcc43733e924cd2a8ef3613b63a2f0de78ed4b9f3165e
-        EXPECT="medas-p9-search=57985549db3bbdf9564105e37de2e7f6d905010c"
+    r2) MANIFEST=$NOTARY_DIR/manifest-r2-sets-results-20261121-v2.json; SPEC=$NOTARY_DIR/spec-r2-sets-results-20261121-v2.json
+        MANIFEST_SHA=c3118df3c7770a063fba3381ea6b2d195cd0a6ed9aee8717cc3880dd938dcb84
+        EXPECT="medas-p9-search=508271cd3a841582bb8e1bfabe9560c5f19d6dc2"
         WH=0 ;;
     r1) MANIFEST=$NOTARY_DIR/manifest-r1-results-20261110-v3.json; SPEC=$NOTARY_DIR/spec-r1-results-20261110-v3.json
         MANIFEST_SHA=eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d
