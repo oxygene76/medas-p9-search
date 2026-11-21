@@ -20,3 +20,11 @@ changes a registered result; where a computation is needed, it is fixed and time
 | C5 | "beyond the wall" bounded twice (bins with lower edge ≥ wall, and a ≥ wall) | note in the decomposition reports |
 | C6 | tests of the evaluation do not cover the read path of the runs or inclined orbits | tests |
 | C7 | removal counters (`removed_inner` only for the model j2) | documented; separate counters since 0b8971f |
+
+## Questions to the authors of Brown & Batygin 2021 (to be asked, as the criteria foresee)
+
+- How the density images of Figs. 1 and 3 were formed: which particles and snapshots, and **which inclinations they
+  count** (addendum 5: with the registered measure and only orbits below 40°, both sets reach a strength above 0.20).
+- How ϖ of the simulated particles was formed, and how retrograde orbits were treated (the paper does not use the
+  word "retrograde").
+- How the starting orbits were distributed within their ranges.
