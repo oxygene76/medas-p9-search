@@ -1,0 +1,24 @@
+Addendum 5 (docs/sets-decomposition-addendum-5-20261121.md), computed 2026-11-21 on the notebook
+checkout: 3098827f0702161c86a861d2a0af10dfd51db82e, git status empty
+tools/sets_addendum5.py sha256 80d8a59d02144ad829e42ad85e0fafeb115df5fc85d59a80101f93019ab452b7
+tools/prod_eval.py sha256 1ebb2d45c47ea0bb465b67f95d1d9b3a766678b4230fc89cad7d01c4b2c65cbb (prod-eval-v1)
+runs: jobs/BB-A and jobs/BB-B of the checked archives of sets A and B (lists setsA/B-results-sha256-20261117, docs/sets-evaluation-procedure.md 12ab70b), bin/p9sim checked against bin/SHA256-p9sim
+calls: python -I tools/sets_addendum5.py RUN_A --p9sim PKG_A/bin/p9sim --wall 256 > A.json; ... RUN_B --p9sim PKG_B/bin/p9sim --wall 200 > B.json
+wall clock: A 0:36.44, B 0:44.36
+python 3.14.4 numpy 2.5.4
+cross-check (a) against the registered values, tolerance 1e-9:
+A M1 (a): gleich (Differenz 0.00e+00)
+A M2 (a): gleich (Differenz 0.00e+00)
+A R jenseits der Wand S_BB (a): gleich (Differenz 1.80e-16)
+A Teil 2 SBB ungewichtet: gleich (Differenz 1.80e-16)
+A Teil 2 obs_q30-100 ungewichtet: gleich (Differenz 5.55e-16)
+A Teil 2 q42-100_i<30 ungewichtet: gleich (Differenz 4.44e-16)
+A Schnappschüsse im Fenster: gleich (Differenz 0.00e+00)
+B M1 (a): gleich (Differenz 0.00e+00)
+B M2 (a): gleich (Differenz 0.00e+00)
+B R jenseits der Wand S_BB (a): gleich (Differenz 3.33e-16)
+B Teil 2 SBB ungewichtet: gleich (Differenz 3.33e-16)
+B Teil 2 obs_q30-100 ungewichtet: gleich (Differenz 0.00e+00)
+B Teil 2 q42-100_i<30 ungewichtet: gleich (Differenz 5.55e-17)
+B Schnappschüsse im Fenster: gleich (Differenz 0.00e+00)
+== GEGENPROBE BESTANDEN
