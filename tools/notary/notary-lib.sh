@@ -46,6 +46,10 @@ manifest_of() {
         MANIFEST_SHA=e25436425b6634bf6ca4079644e5e18a6f3cc99b71d505438f00be30e28257c5
         EXPECT="medas-p9-search=f80681f933aa6642bab05d867d85ce446ddcb3ad medas-p9-search-equiv=fed221ad835c82b1ca255e268fb51d76d3cbebb4"
         WH=0 ;;
+    e9) MANIFEST=$NOTARY_DIR/manifest-e9-bb-a2-20261121.json; SPEC=$NOTARY_DIR/spec-e9-bb-a2-20261121.json
+        MANIFEST_SHA=ee2ff1003c0b37a12381bbf0762179e98646d2f8b54f2eb5a9a00d9842d04be1
+        EXPECT="medas-p9-search=0003408b1591464a82733fafe00709f8b000694f"
+        WH=0 ;;
     r1) MANIFEST=$NOTARY_DIR/manifest-r1-results-20261110-v3.json; SPEC=$NOTARY_DIR/spec-r1-results-20261110-v3.json
         MANIFEST_SHA=eae0cae31e560320cc338025a97b4da29e1e8dee63c582d9ab9f5c52ec52992d
         EXPECT="medas-p9-search=ea21771860b76732e263b4d3eb40c9255c693116"
@@ -64,7 +68,7 @@ manifest_of() {
         MANIFEST_SHA=7ecd6320435a1dd13fc592e900b803c3cb166ff4eb5e57fcdfed693b2576ca15
         EXPECT="medas-p9-search=8debfcf6c8e0e85f1f1e83e9b4d4b456d7bcbf67 medas-p9-search-bb2021=32defaf0e413ca14778391fd3baaec55967e8105"
         WH=0 ;;
-    *) die "unknown manifest name '$1' (a3, e2, e3, e4, e5, e6, r1, r1-v2, e3-20261103 or e3-20261102)" ;;
+    *) die "unknown manifest name '$1' (a3, e2, e3, e4, e5, e6, e9, r1, r1-v2, e3-20261103 or e3-20261102)" ;;
   esac
 }
 
