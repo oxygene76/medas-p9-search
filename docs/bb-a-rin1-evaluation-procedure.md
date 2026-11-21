@@ -148,11 +148,15 @@ changed.
 - **Command,** from the clean checkout of section 3, with RUN as there and A the unpacked
   `p9bbsets-5b05cc3/jobs/BB-A` of set A:
   ```sh
-  join -t "$(printf '\t')" -j 1 <(cut -f1,3,5 RUN/segments.tsv) <(cut -f1,3,5 A/segments.tsv) > OUT/segments-compare.tsv
-  awk -F'\t' '{ s = ($3 == $5) ? "same" : "different"; print $1, $2, $4, s }' OUT/segments-compare.tsv
+  paste <(cut -f1,3,5 RUN/segments.tsv) <(cut -f1,3,5 A/segments.tsv) > OUT/segments-compare.tsv
+  awk -F'\t' '$1 != $4 { print "rows out of step at", NR; bad = 1 }
+    { s = ($3 == $6) ? "same" : "different"; print $1, $2, $5, s } END { exit bad }' OUT/segments-compare.tsv
   ```
 - **What it can say:**
   - From the first segment with the same hash on, the two runs hold the same particles in the same states.
   - Every snapshot in such segments is the same in both runs.
   - The measures of section 3 then differ only through the snapshots before it.
 - **The outcome stays as section 3 fixes it,** from the measures.
+- **Corrected on 2026-11-21, before the evaluation:** the first version of this command used `join`, which needs keys
+  sorted as text (0, 1, 10, …) and would have dropped rows; `paste` of the two files in their row order, with a check
+  that the segment numbers match, replaces it.
