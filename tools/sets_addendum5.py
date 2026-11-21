@@ -16,6 +16,7 @@ Part 1, three definitions of the angle, for the particle and for Planet Nine ali
   c  Omega + omega for i < 90 deg, Omega - omega for i > 90 deg
   For each: M1 (circular mean of Delta over S_BB pooled over the window), M2 (mean over the snapshots of R in S_BB),
   R_pooled, R beyond the wall of S_BB (as in part 2, unweighted), and M2 separately for i < 90 deg and i > 90 deg.
+  For information, with angle a: M2, R_pooled and R beyond the wall for S_BB with i < 40 deg (no upper limit in q).
 
 Part 2, R beyond the wall, with the registered angle (a), for three selections (150 < a < 1000 au throughout):
   SBB          q > 42 au (as registered; tools/sets_decompose.py, 2d10dae)
@@ -103,6 +104,7 @@ def beyond(a, dv, idx, wall, min_k, boot, rng):
 def evaluate(run, p9sim, wall, boot=1000, seed=20261121, min_k=100):
     P1 = {d: {"a": [], "dv": [], "idx": []} for d in DEFS}
     R_t = {d: {"all": [], "pro": [], "retro": []} for d in DEFS}
+    I40 = {"R_t": [], "a": [], "dv": [], "idx": []}
     P2 = {s: {"a": [], "dv": [], "idx": []} for s in ("SBB", "obs_q30-100", "q42-100_i<30")}
     n_snap = n_sbb = n_retro = 0
     for t, load in snapshots(run, p9sim):
@@ -123,6 +125,10 @@ def evaluate(run, p9sim, wall, boot=1000, seed=20261121, min_k=100):
             R_t[d]["retro"].append(circ_mean(dv[retro])[1])
             for key, val in (("a", el["a"][s]), ("dv", dv[s]), ("idx", el["idx"][s])):
                 P1[d][key].append(val)
+        i40 = s & (el["inc"] < 40.0)
+        I40["R_t"].append(circ_mean(el["dvarpi"][i40])[1])
+        for key, val in (("a", el["a"][i40]), ("dv", el["dvarpi"][i40]), ("idx", el["idx"][i40])):
+            I40[key].append(val)
         for name, m in sel.items():
             for key, val in (("a", el["a"][m]), ("dv", el["dvarpi"][m]), ("idx", el["idx"][m])):
                 P2[name][key].append(val)
@@ -139,6 +145,10 @@ def evaluate(run, p9sim, wall, boot=1000, seed=20261121, min_k=100):
         out["part1"][d] = {"M1_deg": m1, "M2_mean_R": float(np.mean(R_t[d]["all"])), "R_pooled": r_pool,
                            "M2_i_lt_90": float(np.mean(R_t[d]["pro"])), "M2_i_gt_90": float(np.mean(R_t[d]["retro"])),
                            "R_beyond_wall_SBB": beyond(p["a"], p["dv"], p["idx"], wall, min_k, 0, rng)["mean_R_unweighted"]}
+    p = {k: np.concatenate(I40[k]) for k in ("a", "dv", "idx")}
+    out["part1"]["a_SBB_i_lt_40"] = {"M2_mean_R": float(np.mean(I40["R_t"])), "R_pooled": circ_mean(p["dv"])[1],
+                                     "R_beyond_wall": beyond(p["a"], p["dv"], p["idx"], wall, min_k, 0, rng)["mean_R_unweighted"],
+                                     "particle_snapshots": int(len(p["dv"]))}
     for name in P2:
         p = cat(P2[name])
         out["part2"][name] = beyond(p["a"], p["dv"], p["idx"], wall, min_k, boot, rng)

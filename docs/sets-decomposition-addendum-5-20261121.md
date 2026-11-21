@@ -1,8 +1,10 @@
-# Decomposition of sets A and B, addendum 5: the definition of ϖ, and the weighting of R beyond the wall (DRAFT, 2026-11-21)
+# Decomposition of sets A and B, addendum 5: the definition of ϖ, and the weighting of R beyond the wall (2026-11-21)
 
 **Status:**
-- **Draft for review.** It is committed and timestamped **before** any computation; computed only with the project
-  lead's go. No partial result is looked at before the stamp.
+- **Fixed** on 2026-11-21 after the review of the draft (2263441) with two additions: a variant with i < 40° in
+  part 1, and the wording fixed beforehand in "What follows".
+- Committed and timestamped **before** any computation; computed only with the project lead's go. No partial
+  result was looked at before the stamp.
 - Written after outcome 4, after addenda 1–4 and after an independent reading of the code
   (`docs/code-review-20261121.md`, points A1, B8, C2, C3, C5).
 - Exploratory, on the existing snapshots; no new run. **It changes nothing:** not the criteria of the sets, not the
@@ -44,8 +46,17 @@
 - Brown & Batygin 2019 (arXiv:1901.07115, p. 3, eqs. 1–2) take the reduced Poincaré coordinates with γ = −ϖ and
   x = √(2Γ) cos ϖ, after Morbidelli 2002. The standard construction there uses ϖ = ω + Ω. The formula itself is not
   printed.
+- The word "retrograde" occurs in neither paper.
 - Neither paper gives a rule for retrograde orbits, or says how ϖ of the simulated particles in the figures was
   formed.
+- The likelihood of the comparison with the simulations combines a kernel in the pole position with one in Δϖ:
+  "σ = 2° in great-circle distance from the pole position and σ = 10° in longitudinal distance from Δϖ"
+  (Brown & Batygin 2021, p. 12).
+- Brown & Batygin 2019 is at hand (arXiv:1901.07115v1, sha256 `2c8124ea…3d660`). It defines the variables, not ϖ:
+  - Γ = 1 − √(1 − e²), γ = −ϖ, Z = √(1 − e²)(1 − cos i), z = −Ω (eq. 1);
+  - x = √(2Γ) cos ϖ, y = √(2Γ) sin ϖ, p = √(2Z) cos Ω, q = √(2Z) sin Ω (eqs. 2–3; p. 3).
+  - (x, y) points "in the direction of the longitude of perihelion" (p. 3).
+  - There is no explicit definition of ϖ, so no further variant is added.
 
 ### What is computed
 
@@ -65,6 +76,9 @@ Sets A and B, window 1–4 Gyr (301 snapshots), selection S_BB (150 < a < 1000 a
 - R beyond the wall of S_BB (bins as part 2, unweighted);
 - M2 separately for the particles with i < 90° and i > 90°.
 
+**For information, with the registered angle (a):** M2, R_pooled and R beyond the wall for S_BB with i < 40°. There
+is no upper limit in q. This shows the effect of the inclination apart from the high perihelion.
+
 ### Prediction, fixed now
 
 - **(a)** reproduces the registered values exactly.
@@ -80,6 +94,10 @@ Sets A and B, window 1–4 Gyr (301 snapshots), selection S_BB (150 < a < 1000 a
   - set B within ±10° of 166.7°;
   - set A may move by more than 10°, because its cluster is weak.
 - **M2 for i > 90° in set A:** no prediction.
+- **S_BB with i < 40° (information):**
+  - M2 higher than under (a) for all of S_BB, in both sets. The reason: addendum 2 found the observable orbits
+    (i < 40°) clustered far more strongly beyond the wall than all of S_BB.
+  - No prediction of the values. M2 also counts the bins inside the wall, where the clustering is weak in both sets.
 - **Compared with the chat's proposal** (set A below 0.20, no firm prediction for B): this prediction is stronger for
   set B, because of the bound above.
 
@@ -123,7 +141,8 @@ All three use 150 < a < 1000 au and the window 1–4 Gyr. Bins of 10 au from the
   - the bound for prograde orbits;
   - (c) equals (b) for nearly retrograde orbits;
   - counts, weights and bootstrap on a constructed case;
-  - (a) gives M1 and M2 of prod-eval-v1 on a synthetic run.
+  - (a) gives M1 and M2 of prod-eval-v1 on a synthetic run;
+  - the variant i < 40° is computed and, where all inclinations are below 40°, equals (a).
 - **Calls,** from a clean checkout at the commit of this addendum, with the unpacked, checked archives of sets A and B
   (`docs/sets-evaluation-procedure.md`, 12ab70b) and their `bin/p9sim`:
   ```sh
@@ -138,3 +157,14 @@ Nothing for outcome 4. The result is reported:
 - in "What this does not mean" of section 6 of the website, in one sentence;
 - in the notes of Table 2;
 - in a sentence in section 4.
+
+**Wording fixed now:**
+- **If M2 stays below 0.20 in both sets under (a), (b) and (c):** section 6 says that the result does not depend on
+  the definition of ϖ, with the values.
+- **If M2 reaches 0.20 in one set under (b) or (c):** section 6 and `kurz.json` say two things:
+  - outcome 4 holds for the registered definition;
+  - with the other definition, this set reaches the limit.
+- **Table 2, regardless of the outcome:**
+  - the row of the observable orbits gives the value weighted with n and the 95 % span of the bootstrap;
+  - the unweighted value stands in the note.
+- The variant S_BB with i < 40° is information. It does not enter these rules.

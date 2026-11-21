@@ -84,6 +84,11 @@ class OnASyntheticRun(unittest.TestCase):
             for k in s5.DEFS:
                 self.assertIsNotNone(out["part1"][k]["R_beyond_wall_SBB"])
             self.assertAlmostEqual(out["part1"]["a"]["R_beyond_wall_SBB"], out["part2"]["SBB"]["mean_R_unweighted"], places=12)
+            # the synthetic run has inclinations of 5-25 deg only, so the variant i < 40 deg equals (a)
+            v = out["part1"]["a_SBB_i_lt_40"]
+            self.assertAlmostEqual(v["M2_mean_R"], out["part1"]["a"]["M2_mean_R"], places=12)
+            self.assertAlmostEqual(v["R_pooled"], out["part1"]["a"]["R_pooled"], places=12)
+            self.assertAlmostEqual(v["R_beyond_wall"], out["part1"]["a"]["R_beyond_wall_SBB"], places=12)
 
 
 if __name__ == "__main__":
