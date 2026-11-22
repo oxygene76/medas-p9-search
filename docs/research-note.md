@@ -2,12 +2,15 @@
 
 **Status:** version 1, not peer-reviewed. Planet Nine is a hypothesis; this note reports what our computations show
 about published simulations of it, nothing about whether the planet exists.
-- **Every result in it is taken unchanged from a result report entered on the chain:**
+- **Where the results come from:** from result reports entered on the chain:
   - production run and long runs 110–112: entry r1 (#7);
   - paired tests for sets A and B: entry rp (#11);
-  - sets A and B and the outcome: entry r2 (#12).
-  - Not entered: addendum 5 of the decomposition and its result (section 10.3) came after entry #12; they are
-    timestamped with OpenTimestamps but not entered on the chain.
+  - sets A and B and the outcome: entry r2 (#12);
+  - the equivalence result: entry e3 (#4, revealed with the data package); the V2 result: entry e5 (#6).
+  - Not entered, but timestamped with OpenTimestamps: the reproduction check (section 11), and addendum 5 of the
+    decomposition with its result (section 10.3), which came after entry #12.
+  - Computed for this note from the entered result files: t and p at 1 and 2 Gyr (section 9) and the spans of M1 and
+    ψ over all snapshots (section 8).
 - **Exploratory and marked as such:** what was looked at after the outcome (section 10.3), each step fixed and
   timestamped before it was computed, with the exceptions named there.
 - **Announced, without results here:** the check run BB-A-rin1 (#9), the run BB-A2 with a second seed (#10) and the
@@ -32,10 +35,10 @@ before their evaluation).
   clustering, in the general test and in paired tests for both sets. Over 4 Gyr, checked only for the Planet Nine of
   the production run, no growing difference was found; the long runs can test this clearly to 1 Gyr, with limits to
   2 Gyr, and not at 4 Gyr. For sets A and B the check covers 0–200 Myr.
-- **The comparison with Brown & Batygin (2021)** gives outcome 4 of five, "No cluster", by the criteria entered
+- **The comparison with Brown & Batygin (2021)** gives outcome 4 of five, "no cluster", by the criteria entered
   beforehand: the strength of the clustering is 0.050 (set A) and 0.127 (set B), below the limit of 0.20.
   - Set B clusters in the expected direction (166.7°), set A does not (127.3°).
-  - The result does not depend on the definition of the longitude of perihelion.
+  - The outcome does not depend on the definition of the longitude of perihelion.
 - **Afterwards, exploratory:** the orbits a survey could observe cluster far more strongly, 0.03–0.08 below the
   values read from the published figures on a scale from 0 to 1; with only the bodies that survive 4 Gyr, as
   Batygin et al. (2019) show them, 0.64 and 0.56, above them. Our set A holds more highly inclined orbits than one figure of the paper
@@ -104,9 +107,11 @@ before their evaluation).
 
 - **Production run and V5 runs:** on an NVIDIA A100 (PCIe, 40 GB) of the GPU server.
 - **MERCURIUS:** on the server's CPU, pinned and at low priority.
-- **Speed comparison:** that of 2026-11-03/04 in medas-p9-search-bb2021 (`docs/`, `speed/`).
+- **Speed:** the production run took 53.0 h on one GPU. In the paired tests the same task took 1.7 h with our
+  integrator on one GPU, 109 h with MERCURIUS on one processor core and 7 h on 16 cores: about 60 and 4 times faster.
+  The earlier speed comparison of 2026-11-03/04 is in `speed/`.
 - **Program versions:** p9gpu and p9sim of commit 9a084ed (sha256 `7666c5ba…`, `b14f7956…`), REBOUND 5.2.2, CUDA
-  build as in `docs/production-package.md`.
+  build as in `docs/production-package.md` (commit 801fb20).
 - **Packages:** production run p9prod-9a084ed (entry e3); sets A and B p9bbsets-5b05cc3 (entry e4). Which run was
   computed from which commit and package is in the table of the README.
 
@@ -165,9 +170,9 @@ a manifest that lists every file by sha256 and git commit.
 |---|---|---|---|---|
 | a3 | #2 | 2026-11-02 12:08:31 | 10694917 | validation status up to 2026-10-21, with the addendum on single runs and means |
 | e2 | #3 (refers to #2) | 2026-11-02 12:14:09 | 10694977 | the equivalence test, fixed before its evaluation |
-| e3 | #4 (refers to #3) | 2026-11-04 09:31:02 | 10723643 | equivalence result; criteria of the production run, of the long runs 110–112 and of the order on the A100; the packages |
-| e4 | #5 (refers to #4) | 2026-11-04 17:06:01 | 10728476 | addendum 16 (V2 short runs) and the packages of sets A and B |
-| e5 | #6 (refers to #5) | 2026-11-10 07:18:02 | 10814015 | criteria of the paired tests V5 against MERCURIUS for sets A and B |
+| e3 | #4 (refers to #3) | 2026-11-04 09:31:02 | 10723643 | equivalence result; criteria of the production run, of the long runs 110–112 and of the order on the A100; the comparison criteria with Brown & Batygin at 224b7a1; the packages |
+| e4 | #5 (refers to #4) | 2026-11-04 17:06:01 | 10728476 | the comparison criteria with Brown & Batygin at 1c5f2ba, with addendum 16 (V2 short runs), and the packages of sets A and B |
+| e5 | #6 (refers to #5) | 2026-11-10 07:18:02 | 10814015 | the V2 result and the criteria of the paired tests V5 against MERCURIUS for sets A and B |
 | r1 | #7 (refers to #4, result) | 2026-11-11 07:30:03 | 10829443 | results of the production run and of the long runs 110–112: the two reports (version 3, versions 1 and 2 as stamped copies), the result files, the checksum lists, procedures and tools |
 | e6 | #9 (refers to #5, job) | 2026-11-18 16:12:49 | 10942017 | criteria of the check run BB-A-rin1 (set A with the inner removal checked in every step), before the run |
 | e9 | #10 (refers to #5, job) | 2026-11-21 12:46:24 | 10986124 | criteria of the run BB-A2 (set A with a second seed for the test bodies), before the run |
@@ -181,7 +186,7 @@ The transactions, commitments and the SHA-256 of each manifest are in `docs/nota
 - #3, #5, #6, #7, #11 and #12 were revealed on 2026-11-22 (blocks 11001405–11001457).
 - Their manifests and the files outside git are attached to the release `notary-reveal-1` of the repository.
 - #2 and #4 are revealed with the data package, #9 and #10 with their results.
-- Documents under version control can be read in the repository already, also for entries not yet revealed; only the
+- Documents under version control can be read in the repository already, even for entries not yet revealed; only the
   reveal proves that they are the ones entered.
 
 **OpenTimestamps (Bitcoin), a second, independent anchor:**
@@ -315,7 +320,8 @@ S(t) per run and the single differences are in the long-run report.
 
 ### 10.1 The runs
 
-- Both sets were released by their paired tests (section 7) and computed over 4 Gyr on the A100.
+- Both sets were released by their paired tests (section 7) and computed over 4 Gyr on the A100. Their check against
+  MERCURIUS covers 0–200 Myr; beyond that there is none for these Planet Nines (section 3).
   - Set A: 12–14 Nov, 54.8 h.
   - Set B: 14–16 Nov, 52.9 h, with a pause of 29 min on 15 Nov at a segment boundary, without loss.
 - They were evaluated by the procedure fixed before any look (`docs/sets-evaluation-procedure.md`, 12ab70b), with
@@ -323,7 +329,7 @@ S(t) per run and the single differences are in the long-run report.
 
 ### 10.2 The outcome (entry r2, #12; `docs/sets-outcome-20261117.md`)
 
-**Outcome 4 of five, "No cluster"** (`docs/bb2021-comparison-criteria.md` section 6: M2 < 0.20 in at least one set).
+**Outcome 4 of five, "no cluster"** (`docs/bb2021-comparison-criteria.md` section 6: M2 < 0.20 in at least one set).
 It holds in both sets.
 
 | | set A | set B |
@@ -356,7 +362,7 @@ exception: the spread over the four subsets of set A (addendum 3) was written do
   formed afterwards from the inclination histogram of addendum 2.
 - Addendum 5 and its result came after entry #12; they are timestamped, not entered on the chain.
 - **Observable orbits** (perihelion 30–100 au, inclination below 40°, the selection of Batygin et al. 2019) cluster
-  far more strongly than all orbits beyond the inner edge:
+  far more strongly than all orbits beyond the inner edge (0.10 and 0.15, simple means):
   - weighted 0.53 (A) and 0.45 (B), unweighted 0.55 and 0.48;
   - figures of the paper 0.60–0.61 and 0.51–0.52;
   - with only the bodies that survive 4 Gyr, as Batygin et al. (2019) show them: simple means 0.64 and 0.56
@@ -405,8 +411,8 @@ What the results so far say, within the limits of section 3.
   - The four subsets agree within 1.41° (limit 10°). In the frame and element variants M1 changes by at most 0.1°, and
     ψ lies between 1.5° and 3.9°.
   - From 1 to 4 Gyr M1 stays between 138° and 174°, and ψ stays within 8° of Planet Nine's pole from 0.5 Gyr on.
-  - The check against MERCURIUS covers the direction only over 0–200 Myr (equivalence test). The long runs test R, not
-    M1.
+  - The check against MERCURIUS does not cover the direction: the equivalence test, the paired tests and the long runs
+    compare the strength R, not M1.
 - **Strength (M2): limited by the long-time check.**
   - R falls to 0.05 at 4 Gyr. That lies about 7 times above this run's own noise floor (0.0075 at n = 14,196), so it is
     not noise.
@@ -456,7 +462,7 @@ A and B:
 - **Data:** Zenodo records per campaign, CC BY 4.0 (`docs/data-package-proposal.md`). The DOI follows with entry e7.
 - **Verification:**
   - the SHA-256 of a manifest equals the content digest the chain shows for the revealed entry;
-  - every file equals its line (`tools/manifest.py verify`);
+  - every file has the SHA-256 that its line names (`tools/manifest.py verify`);
   - one segment rerun gives its result hash.
 
 ## References
