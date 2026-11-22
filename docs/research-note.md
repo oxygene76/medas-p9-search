@@ -19,7 +19,7 @@ about published simulations of it, nothing about whether the planet exists.
 - **Revised on 2026-11-22** after a reading of version 1 and the readings of the result reports by an AI session
   (p9-review-82, 2026-11-22). The result pages of the website say the same, with the same numbers.
 
-**Author:** Eike Janßen, MEDAS Computers GmbH (ORCID to follow).
+**Author:** Eike Janßen, MEDAS Computers GmbH.
 
 ---
 
@@ -196,7 +196,18 @@ The transactions, commitments and the SHA-256 of each manifest are in `docs/nota
 | manifests a3 and e2 | 973126 (2026-10-25 21:00:34 UTC), 973129, 973151 |
 | checksum list of the equivalence runs | 974272 (2026-11-02 15:49:32 UTC) |
 | comparison criteria with Brown & Batygin at 224b7a1 | 974281 (2026-11-02 17:58:45 UTC) |
-| IRAS/AKARI criteria, comparison criteria at 1c5f2ba, V2 result, checksum list of the production run, checksum lists and evaluation tool and procedure of the long runs, the result reports in versions 1–3 | pending upgrade; to be filled in |
+| IRAS/AKARI criteria at 0b0c773 and f0cc090 | 974431, 974437 |
+| comparison criteria with Brown & Batygin at 1c5f2ba | 974519 |
+| V2 result at 4d42c89 | 974792 |
+| checksum list of the production run | 975191 |
+| checksum lists of the long runs and their evaluation tool (`tools/long_eval.py` at 6a69854) | 975278 |
+| evaluation procedure of the long runs at af2e058 | 975284 |
+| result reports of the production run and of the long runs, version 1 (cce5b92, ea38f05) | 975282 |
+| the same, version 2 (85d4061, 2e21864) | 975284 |
+| the same, version 3 (ea21771) | 975288 |
+
+The first Bitcoin block of each stamp, from `ots info` after `ots upgrade` on 2026-11-22. The first three rows were
+checked against the block headers without a Bitcoin node; the others not yet.
 
 **Deviations from the registered protocol** (all reported, none changes a criterion):
 - The evaluation tool of the long runs (`tools/long_eval.py`) was written after the runs and before any look at R. It
