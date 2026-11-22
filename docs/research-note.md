@@ -6,11 +6,15 @@ about published simulations of it, nothing about whether the planet exists.
   - production run and long runs 110–112: entry r1 (#7);
   - paired tests for sets A and B: entry rp (#11);
   - sets A and B and the outcome: entry r2 (#12).
+  - Not entered: addendum 5 of the decomposition and its result (section 10.3) came after entry #12; they are
+    timestamped with OpenTimestamps but not entered on the chain.
 - **Exploratory and marked as such:** what was looked at after the outcome (section 10.3), each step fixed and
-  timestamped before it was computed.
+  timestamped before it was computed, with the exceptions named there.
 - **Announced, without results here:** the check run BB-A-rin1 (#9), the run BB-A2 with a second seed (#10) and the
   mercury6 counter-run. They follow in a later version.
 - **Earlier versions:** the draft `docs/research-note-draft.md` up to ba5a62f, in the history.
+- **Revised on 2026-11-22** after a reading of version 1 and the readings of the result reports by an AI session
+  (p9-review-82, 2026-11-22). The result pages of the website say the same, with the same numbers.
 
 **Author:** Eike Janßen, MEDAS Computers GmbH (ORCID to follow).
 
@@ -20,17 +24,21 @@ about published simulations of it, nothing about whether the planet exists.
 
 We recomputed the long-term clustering of distant trans-Neptunian test bodies under the Planet Nine hypothesis of
 Brown & Batygin (2021) with our own GPU integrator, and compared two of their published simulation sets with our
-method. All criteria, tools and run packages were fixed beforehand and entered as notarised commitments on the
-blockchain medasdigital-2, with OpenTimestamps as a second anchor.
+method. The criteria, tools and run packages were fixed before the runs they concern and entered as notarised
+commitments on the blockchain medasdigital-2, with OpenTimestamps as a second anchor (exceptions: the equivalence test
+was entered before its evaluation; the evaluation tool of the long runs was written after the runs and timestamped
+before their evaluation).
 - **The integrator** is equivalent to MERCURIUS (REBOUND) over 200 Myr: within ±0.035 in the strength of the
-  clustering, in the general test and in paired tests for both sets. Over 4 Gyr no growing difference was found; the
-  long runs can test this clearly to 1 Gyr, with limits to 2 Gyr, and not at 4 Gyr.
+  clustering, in the general test and in paired tests for both sets. Over 4 Gyr, checked only for the Planet Nine of
+  the production run, no growing difference was found; the long runs can test this clearly to 1 Gyr, with limits to
+  2 Gyr, and not at 4 Gyr. For sets A and B the check covers 0–200 Myr.
 - **The comparison with Brown & Batygin (2021)** gives outcome 4 of five, "No cluster", by the criteria entered
   beforehand: the strength of the clustering is 0.050 (set A) and 0.127 (set B), below the limit of 0.20.
   - Set B clusters in the expected direction (166.7°), set A does not (127.3°).
   - The result does not depend on the definition of the longitude of perihelion.
 - **Afterwards, exploratory:** the orbits a survey could observe cluster far more strongly, 0.03–0.08 below the
-  published figures on a scale from 0 to 1. Our set A holds more highly inclined orbits than one figure of the paper
+  values read from the published figures on a scale from 0 to 1; with only the bodies that survive 4 Gyr, as
+  Batygin et al. (2019) show them, 0.64 and 0.56, above them. Our set A holds more highly inclined orbits than one figure of the paper
   shows. Why, we cannot explain.
 - **Announced:** a check run, a second random start of set A and a counter-run with mercury6.
 
@@ -56,11 +64,19 @@ blockchain medasdigital-2, with OpenTimestamps as a second anchor.
   - the Sun, carrying the masses of Mercury to Mars;
   - Jupiter, Saturn, Uranus and Neptune from JPL DE440s at JD 2458270.0;
   - Planet Nine with the posterior values of Brown & Batygin (2021): 6.2 Earth masses, a 380 au, q 300 au, i 16°;
-  - massless test bodies: a 150–500 au, q 30–50 au, i 0–25°, made by `tools/make_ic.py`.
+  - in sets A and B, one of two parameter sets of the same paper each (`docs/bb2021-comparison-criteria.md`): set A
+    7 Earth masses, a 500 au, e 0.33 (q 335 au), i 17°; set B 5 Earth masses, a 300 au, e 0.15 (q 255 au), i 17°, as
+    the paper's table (the caption of its figure names 16°);
+  - massless test bodies: a 150–500 au, q 30–50 au, i 0–25°, made by `tools/make_ic.py`, in the production run and in
+    both sets. The paper does not state how its starting orbits are distributed.
+  - All known differences of the setup from the paper: `docs/bb2021-article-vs-package.md`.
 - **Integrator:** Wisdom–Holman in democratic heliocentric coordinates, dt 0.5 yr.
   - Close encounters with a smooth transition to sub-steps.
   - The planets with 8 inner steps, in FP64.
-  - Removal beyond 10,000 au, within 4.5 au of the Sun, and on collision with a planet's physical radius.
+  - Removal beyond 10,000 au and within 4.5 au of the Sun, both checked only every 1,000 steps (500 yr), and on
+    collision with a planet's physical radius. MERCURIUS (p9sim) removes with the same rule and cadence, so the
+    comparisons with it say nothing about the cadence. The 4.5 au come from the job parameters of the packages
+    (`r_in_au`); the program's default is 5 au (`docs/code-review-20261121.md`, C1).
   - The details: `docs/gpu-integrator.md`, `docs/close-encounters.md`.
 - **Reference:** MERCURIUS (REBOUND 5.2.2), r_crit 3 Hill radii, the same start values.
 - **Production run:** 64,000 test bodies, 0–4 Gyr, a snapshot every 10 Myr, as 40 segments of 100 Myr.
@@ -91,16 +107,22 @@ blockchain medasdigital-2, with OpenTimestamps as a second anchor.
 - **Speed comparison:** that of 2026-11-03/04 in medas-p9-search-bb2021 (`docs/`, `speed/`).
 - **Program versions:** p9gpu and p9sim of commit 9a084ed (sha256 `7666c5ba…`, `b14f7956…`), REBOUND 5.2.2, CUDA
   build as in `docs/production-package.md`.
+- **Packages:** production run p9prod-9a084ed (entry e3); sets A and B p9bbsets-5b05cc3 (entry e4). Which run was
+  computed from which commit and package is in the table of the README.
 
 ### 2.4 Methods and tools, including AI tools
 
-To be agreed with the author before publication (`docs/data-package-proposal.md` section 5):
-- An AI coding assistant (Claude, Anthropic) wrote and revised code, tests, packages and documents under the
-  direction of the author.
-- The author made the scientific decisions: questions, criteria, thresholds, the order of the runs, and the
-  acceptance of each evaluation.
-- Every result rests on deterministic programs and their tests, not on the assistant.
-- The criteria were fixed and notarised before the runs (section 4).
+- An AI assistant (Claude, by Anthropic) did much of the work under the direction of the author. It wrote and
+  revised the integrator, the evaluation programs, the tests and the computing packages, drafted the criteria, the
+  reports, this note and the result pages of the website, ran evaluations by the procedures fixed beforehand, and
+  checked texts and numbers.
+- Further AI sessions read the code and the texts of the website independently and, on 2026-11-22, after their
+  entries, the result reports of entries r1, rp and r2 (#7, #11, #12), compared with the result files. The reports of entry r1 (#7) were reviewed twice before their entry; who wrote these
+  reviews is not documented. The author read the result pages of the website.
+- The author made the decisions: the questions, the criteria and their limits, the order of the runs, the acceptance
+  of every result and every text, and every entry on the chain, which only the author can sign.
+- The results rest on deterministic programs, their tests and the checks described here, not on the judgement of an
+  AI.
 
 ## 3. Model assumptions and limits
 
@@ -114,25 +136,29 @@ runs:
     in the introduction (p. 2) as an earlier explanation of Sedna. The check is in the production report.
   - **Limit of that check:** the paper names what is integrated and does not state the absence of a tide
     explicitly. The arXiv version (v2) was checked, not the journal version.
-  - **Two differences remain:** their integrator (mercury6, hybrid, 300 days) against ours, and our Sun carrying the
-    inner planets.
-  - **A direct comparison with mercury6, their program, was not computed** (decision of 2026-11-13). If the verdicts on
-    sets A and B agree with Brown & Batygin, it is dropped. If they deviate, it follows as an announced addendum, with
-    its own criteria entry before the run. That matches the outcomes 3 and 4 of `docs/bb2021-comparison-criteria.md`
-    section 6. A feasibility study exists (about 790 core hours for a paired test as in the equivalence test).
+  - **Differences of the setup** include their integrator (mercury6, hybrid, 300 days; Chambers 1999) against ours,
+    our Sun carrying the inner planets, the cadence of the inner removal, the reference plane of the test bodies and
+    their number. The full list is `docs/bb2021-article-vs-package.md`.
+  - **A direct comparison with mercury6, their program, has not been computed yet.** For outcome 4, which was reached
+    (section 10.2), the criteria (`docs/bb2021-comparison-criteria.md` section 6) call for a counter-run of set A with
+    mercury6. It follows as an announced addendum, with its own entry before the run. A feasibility study exists
+    (about 790 core hours for a paired test as in the equivalence test).
 - **Massless test bodies:** no self-gravity of the disk, no collisions among them.
 - **No observational bias.** M1–M5 describe the simulated distribution, not what surveys would see. The 10 observed
   objects of their Table 1 are shown for information only and are not judged (`docs/bb2021-observed-table1.tsv`,
   ϖ9 = 254°; the Planet Nine of the production run starts at ϖ = 248.5°).
-- **Method:** the equivalence with MERCURIUS was shown for 0–200 Myr. Over 4 Gyr it rests on three paired long runs,
-  which can find only large biases (about 0.05 in R).
+- **Method:** the equivalence with MERCURIUS was shown for 0–200 Myr, for the Planet Nine of the production run and,
+  in the paired tests, for those of sets A and B. Over 4 Gyr it rests on three paired long runs with the Planet Nine
+  of the production run only, which can find only large biases (about 0.05 in R). For sets A and B, whose encounter
+  regime differs (section 6), there is no check beyond 200 Myr.
 - **One posterior point:** the production run uses one Planet Nine, and sets A and B two more. It is not a sample of
   the posterior.
 
 ## 4. Pre-registration: notary entries and timestamps
 
-All criteria, tools and packages were fixed before the runs they concern and entered on the chain medasdigital-2 in
-the notary contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`. Each entry is a commitment to
+The criteria, tools and packages were fixed before the runs they concern (exceptions: the equivalence test was
+entered before its evaluation, and the evaluation tool of the long runs was written after the runs; see the
+deviations below) and entered on the chain medasdigital-2 in the notary contract `medas1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqejyaze`. Each entry is a commitment to
 a manifest that lists every file by sha256 and git commit.
 
 | entry | chain entry | time (UTC) | block | content |
@@ -146,7 +172,7 @@ a manifest that lists every file by sha256 and git commit.
 | e6 | #9 (refers to #5, job) | 2026-11-18 16:12:49 | 10942017 | criteria of the check run BB-A-rin1 (set A with the inner removal checked in every step), before the run |
 | e9 | #10 (refers to #5, job) | 2026-11-21 12:46:24 | 10986124 | criteria of the run BB-A2 (set A with a second seed for the test bodies), before the run |
 | rp | #11 (refers to #6, result) | 2026-11-21 13:22:09 | 10986511 | results of the paired tests for sets A and B |
-| r2 | #12 (refers to #5, note) | 2026-11-21 13:26:07 | 10986554 | result of sets A and B: outcome report, set reports, procedures, the later addenda. A result, entered as a note because the contract accepts the type result only with a reference to a job, and #5 is a note |
+| r2 | #12 (refers to #5, note) | 2026-11-21 13:26:07 | 10986554 | result of sets A and B: outcome report, set reports, procedures, addenda 1–4 of the decomposition (addendum 5 and its result came after this entry; they are timestamped, not entered). A result, entered as a note because the contract accepts the type result only with a reference to a job, and #5 is a note |
 | e7 | planned | – | – | the data package |
 
 The transactions, commitments and the SHA-256 of each manifest are in `docs/notary.md`.
@@ -238,9 +264,11 @@ The transactions, commitments and the SHA-256 of each manifest are in `docs/nota
 
 **Information** (reported, not judged):
 - **Strength:** R in S_BB falls from 0.57 at 0.1 Gyr to 0.10 at 1 Gyr and 0.05 at 4 Gyr.
-- **Direction:** after an early phase (270° at 0.1 Gyr, 135° at 0.5 Gyr), M1 stays between 141° and 173° from 1 to
+- **Direction:** after an early phase (270° at 0.1 Gyr, 135° at 0.5 Gyr), M1 stays between 138° and 174° from 1 to
   4 Gyr.
-- **Pole:** ψ stays within 7° of Planet Nine's pole from 0.5 Gyr on.
+- **Pole:** ψ stays within 8° of Planet Nine's pole from 0.5 Gyr on.
+- These two spans are taken over all 301 snapshots (`timeseries.csv` of the result). Version 1 and the result report
+  gave 141°–173° and 7° from a sample of snapshots (corrected 2026-11-22).
 - **Planet Nine:** its ϖ precesses from 248.5° to 354.6° over 4 Gyr. Δϖ is always taken against its value at the same
   snapshot.
 - **Survivors:** 63,911 test bodies at 10 Myr, 25,864 at 2.01 Gyr, 17,798 at 4 Gyr.
@@ -311,37 +339,47 @@ It holds in both sets.
   subsets. Its inner edge is no separate miss: it is measured against the strength of the outer orbits and, with a
   strength this weak, follows from it.
 - **What the criteria fix for this outcome:**
-  - It contradicts the published figures for these sets.
+  - In the words of the criteria, it "contradicts Fig. 1 or Fig. 3 for that set".
   - A counter-run of set A with mercury6, the program of the paper, follows as an announced addendum with its own
     entry before the run.
-  - The authors are asked about the details of their runs.
-  - The production run (section 8) is not read as the long-term behaviour of their Planet Nine with our method; it is
-    held if mercury6 shows a cluster.
+  - The authors are asked about the details of their runs. This has not been done yet.
+  - The production run (section 8) is "reported as not confirmed at long times, together with the outcome of A and B"
+    (`docs/production-criteria.md` section 5). If mercury6 shows a cluster, it is held.
 
 ### 10.3 Looked at afterwards (exploratory; changes nothing of the outcome)
 
 Each computation on our runs was fixed and timestamped before it was run (addenda 1–5 of the decomposition), with one
-marked exception. The readings of the paper's figures were not registered beforehand.
+exception: the spread over the four subsets of set A (addendum 3) was written down after it was computed.
+- The selection of the observable orbits (addendum 2) was fixed when preliminary values from 32 snapshots were
+  already known.
+- The readings of the paper's figures were not registered beforehand, nor was the comparison of set A with Fig. 4,
+  formed afterwards from the inclination histogram of addendum 2.
+- Addendum 5 and its result came after entry #12; they are timestamped, not entered on the chain.
 - **Observable orbits** (perihelion 30–100 au, inclination below 40°, the selection of Batygin et al. 2019) cluster
   far more strongly than all orbits beyond the inner edge:
   - weighted 0.53 (A) and 0.45 (B), unweighted 0.55 and 0.48;
   - figures of the paper 0.60–0.61 and 0.51–0.52;
+  - with only the bodies that survive 4 Gyr, as Batygin et al. (2019) show them: simple means 0.64 and 0.56
+    (addendum 2), above the values read from the paper's figures;
   - the comparison formed the same way as the figures is the unweighted one.
   - The paper does not state this selection.
 - **One figure speaks against it.** Fig. 4 of the paper shows about 0.92–0.94 of the pole density below 30°
-  inclination for orbits with a perihelion beyond 42 au. Our set A has 0.57–0.62, and 0.76 when weighted the way the
-  paper weights simulated objects.
+  inclination for orbits with a perihelion beyond 42 au. Our set A has 0.57–0.62, counted like the figure over inclinations up to
+  about 70° (over all inclinations 0.46), and 0.76 when weighted the way the paper weights simulated objects.
 - **Inclination matters** (announced in addendum 5 before computing): with the registered measure and only orbits
-  inclined below 40°, the strength is 0.21 (A) and 0.28 (B), above the limit. Beyond the inner edge these orbits reach
+  inclined below 40°, the strength is 0.21 (A; 0.207, at the limit, against a spread of the registered M2 over the
+  four subsets of 0.046–0.056) and 0.28 (B), above it. Beyond the inner edge these orbits reach
   0.27 and 0.34, still well below the figures. The registered criterion counts all inclinations, so the outcome stays.
 - **Not a matter of the definition of ϖ** (addendum 5, after an independent reading of the code,
   `docs/code-review-20261121.md`): with the azimuth of the eccentricity vector, or with Ω − ω for retrograde orbits,
-  the strength is 0.053 or 0.052 (A) and 0.122 or 0.130 (B).
+  the strength is 0.053 and 0.052, respectively (A), and 0.122 and 0.130 (B); the direction of set A moves to 136°
+  and 139° and stays outside its limit.
 
 ### 10.4 Announced, without results here
 
 - **BB-A-rin1** (#9): set A with the inner removal checked in every step. It tests whether this rule of our program
-  explains the difference. Prediction entered beforehand: most likely not the cause.
+  explains the difference. Prediction entered beforehand: most likely not the cause. MERCURIUS removes with the same
+  rule and cadence, so the comparisons with it say nothing about this.
 - **BB-A2** (#10): set A with a second, independent seed for the test bodies. It measures the spread between two
   realisations.
 - **The mercury6 counter-run of set A** (10.2).
@@ -360,14 +398,13 @@ p9repro-d3c2363, 2026-11-11), gave their stored result hashes again: **6 of 6**
 
 ## 12. Discussion
 
-What the results so far say, within the limits of section 3. Question 3 (sets A and B) is open, and with it the
-reading that `docs/production-criteria.md` section 5 fixes for the production run together with sets A and B.
+What the results so far say, within the limits of section 3.
 
 **Question 1 (production run), as classified in the result reports:**
 - **Direction (M1) and pole (M3): robust in the sense of the evaluation.**
   - The four subsets agree within 1.41° (limit 10°). In the frame and element variants M1 changes by at most 0.1°, and
     ψ lies between 1.5° and 3.9°.
-  - From 1 to 4 Gyr M1 stays between 141° and 173°, and ψ stays within 7° of Planet Nine's pole from 0.5 Gyr on.
+  - From 1 to 4 Gyr M1 stays between 138° and 174°, and ψ stays within 8° of Planet Nine's pole from 0.5 Gyr on.
   - The check against MERCURIUS covers the direction only over 0–200 Myr (equivalence test). The long runs test R, not
     M1.
 - **Strength (M2): limited by the long-time check.**
@@ -387,19 +424,27 @@ noise floor of section 9.
 - With our method, the two published simulation sets do not show the clustering of the published figures by the
   criteria fixed beforehand: outcome 4.
 - Set B comes closer than set A: a cluster in the right direction, about two thirds of the required strength.
+- **How far a late difference between the methods could reach:** in the long runs our integrator lay 0.045 below
+  MERCURIUS at 4 Gyr (not significant; the same sign at 1, 2 and 4 Gyr), as large as the M2 of set A (0.050). Over the
+  window 1–4 Gyr, over which M2 is formed, the difference of our integrator from MERCURIUS is −0.013 ± 0.005
+  (standard error, three pairs), small against the distance of sets A and B from the limit (0.150 and 0.073). This
+  holds only by analogy: the long runs used the Planet Nine of the production run (section 3) and measure the bodies
+  with a > 230 au, M2 of the sets those with 150–1,000 au.
 - **What this does not mean:**
   - no statement about Planet Nine;
   - no judgement on the paper, because the cause of the difference is not known.
   - Each set is one realisation.
   - Values of the paper are read from figures.
 - **Where the difference lies, as far as seen afterwards:** in orbits with a high perihelion or a high inclination,
-  which our runs keep. The observable orbits come within 0.03–0.08 of the figures. Which orbits the figures count, only
+  which remain in our runs. The observable orbits come within 0.03–0.08 of the values read from the figures; with only
+  the bodies that survive 4 Gyr they lie above them (0.64 and 0.56). Which orbits the figures count, only
   the authors can say.
 
 **The combined reading** that `docs/production-criteria.md` section 5 fixes for the production run together with sets
 A and B:
 - It requires outcome 1, which is not reached.
-- The production run therefore stands as computed (section 8), without a comparison with Brown & Batygin.
+- The production run is therefore "reported as not confirmed at long times, together with the outcome of A and B":
+  its values stand as computed (section 8), but not as the long-term behaviour of their Planet Nine with our method.
 
 ## 13. Data and code availability
 
@@ -420,6 +465,7 @@ A and B:
 - Rein, H., & Liu, S.-F. 2012, A&A, 537, A128 (REBOUND).
 - Rein, H., Hernandez, D. M., Tamayo, D., et al. 2019, MNRAS, 485, 5490 (MERCURIUS).
 - Batygin, K., Adams, F. C., Brown, M. E., & Becker, J. C. 2019, Physics Reports, 805, 1.
+- Chambers, J. E. 1999, MNRAS, 304, 793 (mercury6).
 - Wisdom, J., & Holman, M. 1991, AJ, 102, 1528.
 - Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ, 161, 105 (DE440).
 - OpenTimestamps, https://opentimestamps.org.
