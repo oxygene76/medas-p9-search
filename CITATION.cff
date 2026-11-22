@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "medas-p9-search: N-body simulations of the Planet Nine hypothesis with a pre-registered, notarised protocol"
+type: software
+authors:
+  - family-names: "Janßen"
+    given-names: "Eike"
+    affiliation: "MEDAS Computers GmbH"
+license: GPL-3.0-or-later
+repository-code: "https://github.com/oxygene76/medas-p9-search"
+date-released: 2026-11-24
+keywords:
+  - Planet Nine
+  - trans-Neptunian objects
+  - N-body simulation
+  - GPU integrator
+  - pre-registration
+references:
+  - type: article
+    authors:
+      - family-names: "Brown"
+        given-names: "Michael E."
+      - family-names: "Batygin"
+        given-names: "Konstantin"
+    title: "The Orbit of Planet Nine"
+    journal: "The Astronomical Journal"
+    volume: 162
+    start: 219
+    year: 2021
+    doi: "10.3847/1538-3881/ac2056"
