@@ -1,5 +1,11 @@
 # Comparison with Brown & Batygin 2021: the outcome over sets A and B (2026-11-17)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r2 (#12) on 2026-11-21.
+- Contrary to the status line below, it was not reviewed independently before the entry.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+- The count "three of the four" measures outside counts M4 as the criteria do. The research note and the result pages treat the inner edge as no separate miss: with a strength this weak it follows from the strength (`docs/code-review-20261121.md`, point C3).
+
 **Status:** result report, for independent review. The outcome is not final before that review. Nothing goes into the
 research note, onto the website or into a notary entry before it. Planet Nine is a hypothesis; this file reports
 whether our method reproduces the published simulations of that hypothesis, nothing about whether the planet exists.

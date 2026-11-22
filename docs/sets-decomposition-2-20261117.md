@@ -1,5 +1,10 @@
 # Decomposition of sets A and B, addendum 2 (selection of Batygin et al. 2019): result (2026-11-17)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r2 (#12) on 2026-11-21.
+- Contrary to the status line below, it was not reviewed independently before the entry.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+
 **Status:**
 - Exploratory, after outcome 4, as fixed by `docs/sets-decomposition-addendum-2-20261117.md` (843438e, timestamped
   before this computation; not blind, see there).

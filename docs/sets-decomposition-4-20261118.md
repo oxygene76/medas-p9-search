@@ -1,5 +1,10 @@
 # Decomposition, addendum 4: result (2026-11-18)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r2 (#12) on 2026-11-21.
+- A review of this report before the entry is not documented.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+
 Exploratory, as fixed by `docs/sets-decomposition-addendum-4-20261118.md` (22f70fd, timestamped before). Script
 `tools/sets_addendum4.py` (0a13208, committed before it ran, run from a clean detached checkout), 301 snapshots
 (1–4 Gyr). **It changes nothing:** not the criteria of the sets, not their verdicts, not outcome 4. Files:

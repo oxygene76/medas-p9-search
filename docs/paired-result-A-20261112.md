@@ -1,5 +1,10 @@
 # Paired test of set A, V5 against MERCURIUS: result (2026-11-12)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry rp (#11) on 2026-11-21.
+- Who made the independent recomputation of `result.json` named in the status line below (version 2) is not documented. The report itself was not reviewed independently before the entry.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+
 **Status:** result report, version 2 (2026-11-12): the section on a possible small systematic difference added after
 the independent recomputation, which agrees with `result.json`. Version 1 is commit 6d92c3f and stays as stamped. The release file goes to the server only after the independent
 recomputation of `result.json`, and nothing goes into the research note before the review.

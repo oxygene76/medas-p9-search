@@ -1,5 +1,13 @@
 # Production run p9prod-9a084ed: result of the evaluation (2026-11-10)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r1 (#7) on 2026-11-11.
+- Before the entry it was reviewed twice (versions 2 and 3 of 2026-11-10); who wrote these reviews is not documented.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+- "Two differences remain" (scope) is outdated: all known differences of the setup are listed in `docs/bb2021-article-vs-package.md`.
+- "Reading with sets A and B: still open" is outdated: sets A and B gave outcome 4 (`docs/sets-outcome-20261117.md`, entry r2, #12). By section 5 of the criteria this run is therefore reported as not confirmed at long times, together with the outcome of A and B.
+- Over all 301 snapshots, M1 stays between 138° and 174° from 1 to 4 Gyr, and ψ within 8° of Planet Nine's pole from 0.5 Gyr on. The values 141°–173° and 7° below came from a sample of snapshots.
+
 **Status:** result report, for independent review before anything of it goes into the research note. The criteria are
 `docs/production-criteria.md` as entered in entry 3 (chain entry #4, block 10723643). The steps are
 `docs/production-evaluation-procedure.md` (0ca9595). The files as the tool wrote them are in

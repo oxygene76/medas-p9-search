@@ -1,5 +1,11 @@
 # Paired long runs 110–112, V5 against MERCURIUS: result of the evaluation (2026-11-10)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r1 (#7) on 2026-11-11.
+- Before the entry it was reviewed twice (versions 2 and 3 of 2026-11-10); who wrote these reviews is not documented.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+- These runs use the Planet Nine of the production run. For the Planet Nines of sets A and B the check against MERCURIUS covers only 0–200 Myr (paired tests).
+
 **Status:** result report, for independent review before anything of it goes into the research note. The criteria are
 `docs/long-runs-110-112-criteria.md` as entered in entry 3 (chain entry #4, block 10723643, commit 7302607). The
 steps, and the decisions L1 and L2 of 2026-11-10, are in `docs/long-runs-evaluation-procedure.md` (af2e058,

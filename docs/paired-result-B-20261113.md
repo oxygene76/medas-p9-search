@@ -1,5 +1,10 @@
 # Paired test of set B, V5 against MERCURIUS: result (2026-11-13)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry rp (#11) on 2026-11-21.
+- Contrary to the status line below, it was not reviewed independently before the entry.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+
 **Status:** result report, for independent review. The release file goes to the server only after the independent
 recomputation of `result.json`, and nothing goes into the research note before the review.
 - **Criteria:** `docs/bb2021-paired-test-proposal.md` as entered in entry e5 (chain entry #6, block 10814015,

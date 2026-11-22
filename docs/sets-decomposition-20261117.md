@@ -1,5 +1,10 @@
 # Exploratory decomposition of sets A and B beyond the wall: result (2026-11-17)
 
+**Status addendum of 2026-11-22** (the text below is unchanged as entered):
+- Entered with entry r2 (#12) on 2026-11-21.
+- The Claude chat recomputed f) and c) from the export, as stated below; a review of the whole report before the entry is not documented.
+- On 2026-11-22, after the entry, an AI session (p9-review-82) read this report independently and compared it with the result files; it found no computing error. The limitations it found are taken up in the research note (`docs/research-note.md`) and on the result pages of the website.
+
 **Status:**
 - Exploratory, after outcome 4, as fixed in advance by the addendum `docs/sets-decomposition-addendum-20261117.md`
   (6130d44, timestamped before any look). Computed with the project lead's go of 2026-11-17.
